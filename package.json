@@ -1,0 +1,32 @@
+{
+  "name": "aragon.js",
+  "version": "0.0.0",
+  "description": "",
+  "main": "build/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "ava"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aragon/aragon.js.git"
+  },
+  "keywords": [
+    "ethereum",
+    "aragon",
+    "web3",
+    "client",
+    "blockchain"
+  ],
+  "author": "",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/aragon/aragon.js/issues"
+  },
+  "homepage": "https://github.com/aragon/aragon.js#readme",
+  "devDependencies": {
+    "ava": "^0.21.0"
+  }
+}
