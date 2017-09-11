@@ -7,12 +7,12 @@
       alt="API stability" />
   </a>
   <!-- NPM version -->
-  <a href="https://npmjs.org/package/node-aragon">
-    <img src="https://img.shields.io/npm/v/node-aragon.svg?style=flat-square"
+  <a href="https://npmjs.org/package/@aragon/node-aragon">
+    <img src="https://img.shields.io/npm/v/@aragon/node-aragon.svg?style=flat-square"
       alt="NPM version" />
   </a>
   <!-- Supported Node version !-->
-  <img src="https://img.shields.io/node/v/commitizen.svg?style=flat-square"
+  <img src="https://img.shields.io/node/v/@aragon/node-aragon.svg?style=flat-square"
     alt="Node Version" />
   <!-- Build Status -->
   <a href="https://travis-ci.org/aragon/node-aragon">
@@ -25,8 +25,8 @@
       alt="Test Coverage" />
   </a>
   <!-- Downloads -->
-  <a href="https://npmjs.org/package/node-aragon">
-    <img src="https://img.shields.io/npm/dm/node-aragon.svg?style=flat-square"
+  <a href="https://npmjs.org/package/@aragon/node-aragon">
+    <img src="https://img.shields.io/npm/dm/@aragon/node-aragon.svg?style=flat-square"
       alt="Downloads" />
   </a>
   <!-- Standard -->
