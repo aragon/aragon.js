@@ -1,17 +1,19 @@
 {
-  "name": "aragon.js",
-  "version": "0.0.0",
-  "description": "",
+  "name": "node-aragon",
+  "version": "0.0.0-development",
+  "description": "A JavaScript library for interacting with Aragon",
   "main": "build/index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "ava"
+    "commit": "git-cz",
+    "test": "ava",
+    "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aragon/aragon.js.git"
+    "url": "https://github.com/aragon/node-aragon.git"
   },
   "keywords": [
     "ethereum",
@@ -23,10 +25,25 @@
   "author": "",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/aragon/aragon.js/issues"
+    "url": "https://github.com/aragon/node-aragon/issues"
   },
-  "homepage": "https://github.com/aragon/aragon.js#readme",
+  "homepage": "https://github.com/aragon/node-aragon#readme",
   "devDependencies": {
-    "ava": "^0.21.0"
+    "ava": "^0.21.0",
+    "commitizen": "^2.9.6",
+    "cz-conventional-changelog": "^2.0.0",
+    "semantic-release": "^7.0.2"
+  },
+  "dependencies": {
+    "aragon-core": "0.0.0",
+    "debug": "^3.0.0",
+    "rxdb": "^5.2.1",
+    "rxjs": "^5.4.2",
+    "web3": "^1.0.0-beta.16"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-conventional-changelog"
+    }
   }
 }
