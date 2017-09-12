@@ -20,8 +20,8 @@
       alt="Build Status" />
   </a>
   <!-- Test Coverage -->
-  <a href="https://codecov.io/github/aragon/node-aragon">
-    <img src="https://img.shields.io/codecov/c/github/aragon/node-aragon/master.svg?style=flat-square"
+  <a href="https://coveralls.io/github/aragon/node-aragon">
+    <img src="https://img.shields.io/coveralls/aragon/node-aragon.svg?style=flat-square"
       alt="Test Coverage" />
   </a>
   <!-- Downloads -->

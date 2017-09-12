@@ -8,7 +8,7 @@
   },
   "scripts": {
     "commit": "git-cz",
-    "test": "ava",
+    "test": "nyc ava",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
   "repository": {
@@ -31,7 +31,9 @@
   "devDependencies": {
     "ava": "^0.21.0",
     "commitizen": "^2.9.6",
+    "coveralls": "^2.13.1",
     "cz-conventional-changelog": "^2.0.0",
+    "nyc": "^11.2.1",
     "semantic-release": "^7.0.2"
   },
   "dependencies": {
