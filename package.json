@@ -57,5 +57,10 @@
     "require": [
       "babel-register"
     ]
+  },
+  "nyc": {
+    "exclude": [
+      "build"
+    ]
   }
 }
