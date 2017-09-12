@@ -8,6 +8,7 @@
   },
   "scripts": {
     "commit": "git-cz",
+    "lint": "standard",
     "test": "nyc --all ava",
     "prepublish": "babel -d build src",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
@@ -39,7 +40,8 @@
     "coveralls": "^2.13.1",
     "cz-conventional-changelog": "^2.0.0",
     "nyc": "^11.2.1",
-    "semantic-release": "^7.0.2"
+    "semantic-release": "^7.0.2",
+    "standard": "^10.0.3"
   },
   "dependencies": {
     "aragon-core": "0.0.0",
