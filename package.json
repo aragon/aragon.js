@@ -1,5 +1,5 @@
 {
-  "name": "node-aragon",
+  "name": "@aragon/node-aragon",
   "version": "0.0.0-development",
   "description": "A JavaScript library for interacting with Aragon",
   "main": "build/index.js",
