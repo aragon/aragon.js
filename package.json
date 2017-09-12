@@ -8,7 +8,7 @@
   },
   "scripts": {
     "commit": "git-cz",
-    "test": "nyc ava",
+    "test": "nyc --all ava",
     "prepublish": "babel -d build src",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
