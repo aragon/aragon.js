@@ -15,15 +15,7 @@ export const isAddress = (variableName, value) => {
   )
 }
 
-export const isHex = (variableName, value) => {
-  assert(
-    Web3.utils.isHex(value),
-    typeAssertionMessage(variableName, 'HexValue', value)
-  )
-}
-
 export default {
   ok: assert,
-  isAddress,
-  isHex
+  isAddress
 }
