@@ -1,4 +1,5 @@
 import Web3 from 'web3'
+import { Observable, Subject } from 'rxjs/Rx'
 import assert from './utils/assert'
 
 // NOTE: How do we handle breaking changes in app reducers + events?
@@ -6,17 +7,17 @@ import assert from './utils/assert'
 
 /**
  * This is the kernel proxy (aka. "the DAO" in the context of the user).
- * 
+ *
  * All transactions are routed through the proxy to the kernel and
  * eventually to the app responsible for handling the transaction.
- * 
+ *
  * The proxy also acts as the shell around any events that might be
  * fired from apps and the kernel (e.g. ACL events), and is thus
  * the event store for a specific DAO.
- * 
+ *
  * A DAO's storage is also tied to the kernel proxy. Apps and the
  * kernel write to the kernel proxy storage.
- * 
+ *
  * @export
  * @class Proxy
  */
