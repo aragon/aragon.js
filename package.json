@@ -63,7 +63,8 @@
   },
   "nyc": {
     "exclude": [
-      "build"
+      "build",
+      "test/helpers"
     ]
   },
   "publishConfig": {
