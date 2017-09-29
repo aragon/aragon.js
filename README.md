@@ -65,9 +65,9 @@ npm i node-aragon
 ```
 
 ## Contributing
-Please take a look at our guides for contributing:
+Please take a look at our guides for contributing guidelines if you're interested in helping!:
 - [contributing](https://github.com/aragon/node-aragon/blob/master/CONTRIBUTING.md)
 - [code of conduct](https://github.com/aragon/node-aragon/blob/master/code_of_conduct) 
 - [Aragon code of condutct](https://wiki.aragon.one/documentation/Code_of_Conduct/)
-guidelines if you're interested in helping!
 
+> Thank you
