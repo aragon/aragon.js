@@ -1,0 +1,15 @@
+# Editor files
+.vscode
+
+# Dependencies
+node_modules
+
+# Artifacts
+build
+
+# Tests and coverage
+coverage
+.nyc_output
+
+# Tools
+wallaby.js

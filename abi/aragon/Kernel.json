@@ -1,0 +1,338 @@
+[
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_appId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getAppCode",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "canPerform",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getPermissionInstances",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "CREATE_PERMISSIONS_ROLE",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_appId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_code",
+        "type": "address"
+      }
+    ],
+    "name": "setAppCode",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_newKernel",
+        "type": "address"
+      }
+    ],
+    "name": "upgradeKernel",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "UPGRADE_APPS_ROLE",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getInitializationBlock",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "revokePermission",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getPermission",
+    "outputs": [
+      {
+        "name": "allowed",
+        "type": "bool"
+      },
+      {
+        "name": "parent",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      },
+      {
+        "name": "_parent",
+        "type": "address"
+      }
+    ],
+    "name": "createPermission",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_permissionsCreator",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "UPGRADE_KERNEL_ROLE",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "kernelImpl",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      },
+      {
+        "name": "_parent",
+        "type": "address"
+      }
+    ],
+    "name": "grantPermission",
+    "outputs": [],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "entity",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "app",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "name": "parent",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "allowed",
+        "type": "bool"
+      }
+    ],
+    "name": "SetPermission",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "newKernel",
+        "type": "address"
+      }
+    ],
+    "name": "UpgradeKernel",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "appId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "name": "newAppCode",
+        "type": "address"
+      }
+    ],
+    "name": "SetAppCode",
+    "type": "event"
+  }
+]

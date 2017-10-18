@@ -1,0 +1,6 @@
+[
+  {
+    "payable": true,
+    "type": "fallback"
+  }
+]

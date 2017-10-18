@@ -1,0 +1,46 @@
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "appId",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "kernel",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_kernel",
+        "type": "address"
+      },
+      {
+        "name": "_appId",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "type": "constructor"
+  },
+  {
+    "payable": true,
+    "type": "fallback"
+  }
+]

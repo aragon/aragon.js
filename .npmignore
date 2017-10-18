@@ -1,0 +1,12 @@
+# Tests and coverage
+test
+coverage
+.nyc_output
+
+# Docs
+docs
+README.md
+
+# Dotfiles
+.travis.yml
+.babelrc
