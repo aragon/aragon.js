@@ -56,12 +56,16 @@
   </h4>
 </div>
 
+## 🚨 VERY EXPERIMENTAL 🚨
+
+Things are moving at break neck speed, so expect things to break fast.
+
 ## Basic Overview
 The layer between [Aragon Core](https://github.com/aragon/aragon-core) and the Aragon web- and desktop [application](https://github.com/aragon/aragon). Use it to build third-party apps for Aragon, or to roll your own front-end.
 
 ## Install
 ```sh
-npm i node-aragon
+npm i @aragon/node-aragon
 ```
 
 ## Contributing
