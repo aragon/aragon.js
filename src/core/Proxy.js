@@ -1,30 +1,21 @@
 import { Observable } from 'rxjs/Rx'
-import assert from '../utils/assert'
-
-// NOTE: How do we handle breaking changes in app reducers + events?
 
 /**
- * This is the kernel proxy (aka. "the DAO" in the context of the user).
+ * This is a generic contract proxy.
  *
- * All transactions are routed through the proxy to the kernel and
- * eventually to the app responsible for handling the transaction.
- *
- * The proxy also acts as the shell around any events that might be
- * fired from apps and the kernel (e.g. ACL events), and is thus
- * the event store for a specific DAO.
- *
- * A DAO's storage is also tied to the kernel proxy. Apps and the
- * kernel write to the kernel proxy storage.
+ * It handles fetching events and doing calls for the kernel
+ * and the applications.
  *
  * @export
  * @class Proxy
  */
 export default class Proxy {
   /**
-   * Creates an instance of the kernel proxy.
+   * Creates an instance of the proxy.
    *
-   * @param {any} address The address of the kernel proxy.
-   * @param {any} web3
+   * @param {any} address The address of the proxy
+   * @param {array} jsonInterface The JSON interface of the contract we are proxying
+   * @param {object} wrapper A reference to the Aragon wrapper
    * @memberof Proxy
    */
   constructor (address, jsonInterface, wrapper) {
