@@ -38,17 +38,12 @@ export default class Proxy {
   }
 
   events () {
-    // return Observable.fromEvent(
-    //   this.contract.events.allEvents({
-    //     fromBlock: 0
-    //   }),
-    //   'data'
-    // )
-    return Observable.fromPromise(
-      this.contract.getPastEvents('allEvents', {
+    return Observable.fromEvent(
+      this.contract.events.allEvents({
         fromBlock: 0
-      })
-    ).switchMap((evts) => Observable.from(evts))
+      }),
+      'data'
+    )
   }
 
   call (method, ...params) {
