@@ -7,11 +7,9 @@
     "test": "test"
   },
   "scripts": {
-    "commit": "git-cz",
     "lint": "standard",
     "test": "nyc --all ava",
-    "prepublish": "babel -d build src",
-    "semantic-release": "semantic-release pre && npm publish && semantic-release post"
+    "prepublish": "babel -d build src"
   },
   "repository": {
     "type": "git",
@@ -37,12 +35,9 @@
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-es2015": "^6.24.1",
     "babel-register": "^6.26.0",
-    "commitizen": "^2.9.6",
     "coveralls": "^2.13.1",
-    "cz-conventional-changelog": "^2.0.0",
     "ganache-core": "^1.1.3",
     "nyc": "^11.2.1",
-    "semantic-release": "^7.0.2",
     "standard": "^10.0.3"
   },
   "dependencies": {
@@ -56,11 +51,6 @@
     "stream-to-string": "^1.1.0",
     "uuid": "^3.1.0",
     "web3": "^1.0.0-beta.16"
-  },
-  "config": {
-    "commitizen": {
-      "path": "node_modules/cz-conventional-changelog"
-    }
   },
   "ava": {
     "require": [
