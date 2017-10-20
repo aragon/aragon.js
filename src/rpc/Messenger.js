@@ -2,7 +2,6 @@ import assert from '../utils/assert'
 import jsonrpc from '../utils/jsonrpc'
 import PostMessage from './providers/PostMessage'
 
-// TODO: Maybe abstract this away to use a provider like Web3 to allow non-iframe apps (i.e. CLI apps)
 export default class Messenger {
   constructor (provider = new PostMessage()) {
     this.provider = provider
