@@ -11,9 +11,6 @@
     <img src="https://img.shields.io/npm/v/@aragon/node-aragon.svg?style=flat-square"
       alt="NPM version" />
   </a>
-  <!-- Supported Node version !-->
-  <img src="https://img.shields.io/node/v/@aragon/node-aragon.svg?style=flat-square"
-    alt="Node Version" />
   <!-- Build Status -->
   <a href="https://travis-ci.org/aragon/node-aragon">
     <img src="https://img.shields.io/travis/aragon/node-aragon/master.svg?style=flat-square"
