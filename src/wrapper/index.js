@@ -79,7 +79,8 @@ export default class Aragon {
 
           // If the proxy is not live then we remove it
           if (!isProxyLive) {
-            const { [event.returnValues.app]: _, newProxies } = proxies
+            let newProxies = Object.assign({}, proxies)
+            delete newProxies[event.returnValues.app]
 
             return Observable.of(newProxies)
           }
