@@ -5,6 +5,7 @@ import PostMessage from './providers/PostMessage'
 /**
  * The RPC messenger used for sending requests and responses between contexts.
  *
+ * @param {Provider} [provider=PostMessage] The underlying provider that passes messages
  * @class Messenger
  */
 export default class Messenger {
@@ -17,6 +18,7 @@ export default class Messenger {
    *
    * @returns {Observable}
    * @memberof Messenger
+   * @instance
    */
   bus () {
     return this.provider.messages()
@@ -27,6 +29,7 @@ export default class Messenger {
    *
    * @returns {Observable}
    * @memberof Messenger
+   * @instance
    */
   requests () {
     return this.bus()
@@ -38,6 +41,7 @@ export default class Messenger {
    *
    * @returns {Observable}
    * @memberof Messenger
+   * @instance
    */
   responses () {
     return this.bus()
@@ -51,6 +55,7 @@ export default class Messenger {
    * @param {any} result The result of the request.
    * @returns {void}
    * @memberof Messenger
+   * @instance
    */
   sendResponse (id, result) {
     assert.ok(id, assert.typeAssertionMessage('id', 'string', id))
@@ -69,6 +74,7 @@ export default class Messenger {
    * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {string} The ID of the payload that was sent
    * @memberof Messenger
+   * @instance
    */
   send (method, params = []) {
     assert.ok(method, assert.typeAssertionMessage('method', 'string', method))
@@ -87,6 +93,7 @@ export default class Messenger {
    * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {Observable} An observable of responses to the sent request
    * @memberof Messenger
+   * @instance
    */
   sendAndObserveResponses (method, params = []) {
     const id = this.send(method, params)
@@ -102,6 +109,7 @@ export default class Messenger {
    * @param {Array<any>} [params] The parameters to send with the call
    * @returns {Observable} An observable that resolves to the response
    * @memberof Messenger
+   * @instance
    */
   sendAndObserveResponse (method, params = []) {
     return this.sendAndObserveResponses(method, params)
