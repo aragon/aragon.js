@@ -17,7 +17,7 @@ export default class Provider {
   /**
    * Send a message to a target.
    *
-   * @param {object} payload The payload to send
+   * @param {Object} payload The payload to send
    * @memberof Provider
    * @instance
    */

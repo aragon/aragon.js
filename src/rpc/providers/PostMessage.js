@@ -4,7 +4,7 @@ import { Observable } from 'rxjs/Rx'
 /**
  * A provider that uses the PostMessage API to pass messages between frames and WebWorkers.
  *
- * @param {object} [target=window.parent] An object implementing the PostMessage API.
+ * @param {Object} [target=window.parent] An object implementing the PostMessage API.
  * @class PostMessage
  * @extends {Provider}
  */
@@ -31,7 +31,7 @@ export default class PostMessage extends Provider {
   /**
    * Send a payload to the underlying target of this provider.
    *
-   * @param {object} payload
+   * @param {Object} payload
    * @memberof PostMessage
    * @instance
    */
