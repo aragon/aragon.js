@@ -41,13 +41,11 @@ export default class Proxy {
     )
   }
 
-  call (method, ...params) {
+  async call (method, ...params) {
     if (!this.contract.methods[method]) {
-      return Observable.throw(new Error(`No method named ${method} on ${this.address}`))
+      throw new Error(`No method named ${method} on ${this.address}`)
     }
 
-    return Observable.fromPromise(
-      this.contract.methods[method](...params).call()
-    )
+    return this.contract.methods[method](...params).call()
   }
 }
