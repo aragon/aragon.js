@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "lint": "standard && documentation lint src",
+    "lint": "standard",
+    "postlint": "documentation lint src",
     "test": "nyc --all ava",
     "prepublish": "babel -d build src"
   },
