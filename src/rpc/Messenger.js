@@ -40,28 +40,6 @@ export default class Messenger {
   }
 
   /**
-   * Only listen for specific request types on the bus
-   *
-   * @param {string} type The method name of the requests to listen for
-   * @memberof Messenger
-   */
-  ofType (type) {
-    return this.requests()
-      .filter((message) => message.method === type)
-  }
-
-  /**
-   * Only listen for responses with a specific ID on the bus
-   *
-   * @param {string} type The ID of the responses to listen for
-   * @memberof Messenger
-   */
-  ofId (id) {
-    return this.responses()
-      .filter((message) => message.id === id)
-  }
-
-  /**
    * Send a response
    *
    * @param {string} id The ID of the request being responded to.
@@ -108,7 +86,8 @@ export default class Messenger {
   sendAndObserveResponses (method, params = []) {
     const id = this.send(method, params)
 
-    return this.ofId(id)
+    return this.responses()
+      .filter((message) => message.id === id)
   }
 
   /**

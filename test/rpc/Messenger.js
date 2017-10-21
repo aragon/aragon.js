@@ -52,32 +52,6 @@ test('messenger.responses', (t) => {
     .map((message) => t.is(message.method, undefined))
 })
 
-test('messenger.ofType', (t) => {
-  const messenger = new Messenger(
-    mockProvider(null, [
-      { jsonrpc: '2.0', id: 'foo-id', method: 'foo', params: [] },
-      { jsonrpc: '2.0', id: 'bar-id', method: 'bar', params: [] }
-    ])
-  )
-
-  t.plan(1)
-  return messenger.ofType('foo')
-    .map((message) => t.is(message.method, 'foo'))
-})
-
-test('messenger.ofId', (t) => {
-  const messenger = new Messenger(
-    mockProvider(null, [
-      { jsonrpc: '2.0', id: 'foo-id', result: 'foo' },
-      { jsonrpc: '2.0', id: 'bar-id', result: 'bar' }
-    ])
-  )
-
-  t.plan(1)
-  return messenger.ofId('bar-id')
-    .map((message) => t.is(message.id, 'bar-id'))
-})
-
 test('messenger.sendResponse', (t) => {
   t.plan(4)
 

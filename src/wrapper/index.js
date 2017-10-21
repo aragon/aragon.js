@@ -2,6 +2,7 @@ import Web3 from 'web3'
 import { Observable, Subject } from 'rxjs/Rx'
 import Messenger from '../rpc/Messenger'
 import PostMessage from '../rpc/providers/PostMessage'
+import handlers from '../rpc/handlers'
 import Proxy from '../core/Proxy'
 import ACL from '../core/ACL'
 import apm from '../apm'
@@ -127,7 +128,6 @@ export default class Aragon {
   }
 
   registerSandbox (sandbox, proxyAddress) {
-    // TODO: Is there a more elegant way? Refactor this
     // Set up messenger
     const messenger = new Messenger(
       new PostMessage(sandbox)
@@ -135,80 +135,29 @@ export default class Aragon {
 
     // Get the application proxy
     const proxy = this.apps()
+      .first((apps) => apps.hasOwnProperty(proxyAddress))
       .map(
-        (apps) => {
-          const application = apps[proxyAddress]
-
-          if (!application) {
-            throw new Error(`There is no known JSON interface for ${proxyAddress}`)
-          }
-
-          return new Proxy(
-            proxyAddress, application.abi, this
-          )
-        }
+        (apps) => new Proxy(
+          proxyAddress, apps[proxyAddress].abi, this
+        )
       )
 
-    // Request handlers
-    const registerHandler = (observable) => {
-      return observable
-        .subscribe(
-          (result) => messenger.sendResponse(result.id, result.payload),
-          (result) => messenger.sendResponse(result.id, result.payload)
-        )
-    }
-
-    // Cache
-    const disposeCacheHandler = registerHandler(
-      messenger.ofType('cache')
-        .map((request) => ({
-          id: request.id,
-          payload: null
-        }))
+    // Wrap requests with the application proxy
+    const request$ = Observable.combineLatest(
+      messenger.requests(), proxy,
+      function wrapRequest (request, proxy) {
+        return { request, proxy }
+      }
     )
 
-    // Events
-    const disposeEventsHandler = registerHandler(
-      messenger.ofType('events')
-        .withLatestFrom(proxy)
-        .switchMap(
-          ([ request, proxy ]) => {
-            return proxy.events()
-              .map((payload) => ({
-                id: request.id,
-                payload
-              }))
-          }
-        )
+    // Register request handlers and return dispose function
+    // TODO: Intent handler
+    return handlers.combineRequestHandlers(
+      handlers.createRequestHandler(request$, 'cache', handlers.cache),
+      handlers.createRequestHandler(request$, 'events', handlers.events),
+      handlers.createRequestHandler(request$, 'call', handlers.call)
+    ).subscribe(
+      (response) => messenger.sendResponse(response.id, response.payload)
     )
-
-    // TODO: intent
-
-    // Calls
-    const disposeCallsHandler = registerHandler(
-      messenger.ofType('call')
-        .withLatestFrom(proxy)
-        .mergeMap(
-          ([ request, proxy ]) => {
-            const method = request.params[0]
-
-            return proxy.call(method, ...request.params.slice(1))
-              .catch((err) => Observable.of({
-                id: request.id,
-                payload: err.message
-              }))
-              .map((payload) => ({
-                id: request.id,
-                payload
-              }))
-          }
-        )
-    )
-
-    return () => {
-      disposeCacheHandler()
-      disposeEventsHandler()
-      disposeCallsHandler()
-    }
   }
 }
