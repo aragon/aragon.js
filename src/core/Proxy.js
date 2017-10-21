@@ -20,12 +20,17 @@ export default class Proxy {
    */
   constructor (address, jsonInterface, wrapper) {
     this.address = address
+    this.wrapper = wrapper
     this.web3 = wrapper.web3
 
     this.contract = new this.web3.eth.Contract(
       jsonInterface,
       address
     )
+  }
+
+  getWrapper () {
+    return this.wrapper
   }
 
   events () {

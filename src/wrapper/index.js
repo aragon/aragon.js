@@ -151,10 +151,10 @@ export default class Aragon {
     )
 
     // Register request handlers and return dispose function
-    // TODO: Intent handler
     return handlers.combineRequestHandlers(
       handlers.createRequestHandler(request$, 'cache', handlers.cache),
       handlers.createRequestHandler(request$, 'events', handlers.events),
+      handlers.createRequestHandler(request$, 'intent', handlers.intent),
       handlers.createRequestHandler(request$, 'call', handlers.call)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)

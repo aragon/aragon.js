@@ -33,4 +33,5 @@ export function combineRequestHandlers (...handlers) {
 // Export request handlers
 export { default as cache } from './cache'
 export { default as events } from './events'
+export { default as intent } from './intent'
 export { default as call } from './call'
