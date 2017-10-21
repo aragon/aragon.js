@@ -6,7 +6,6 @@ import { Observable } from 'rxjs/Rx'
  * It handles fetching events and doing calls for the kernel
  * and the applications.
  *
- * @export
  * @class Proxy
  */
 export default class Proxy {

@@ -2,6 +2,11 @@ import assert from '../utils/assert'
 import jsonrpc from '../utils/jsonrpc'
 import PostMessage from './providers/PostMessage'
 
+/**
+ * The RPC messenger used for sending requests and responses between contexts.
+ *
+ * @class Messenger
+ */
 export default class Messenger {
   constructor (provider = new PostMessage()) {
     this.provider = provider
@@ -61,7 +66,7 @@ export default class Messenger {
    * Send a request
    *
    * @param {string} method The method name to call
-   * @param {array=[]} params The parameters to send with the call
+   * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {string} The ID of the payload that was sent
    * @memberof Messenger
    */
@@ -79,7 +84,7 @@ export default class Messenger {
    * Helper method to send a request and listen for responses to that request
    *
    * @param {string} method The method name to call
-   * @param {array=[]} params The parameters to send with the call
+   * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {Observable} An observable of responses to the sent request
    * @memberof Messenger
    */
@@ -94,7 +99,7 @@ export default class Messenger {
    * Helper method to send a request and listen for a single response to that request
    *
    * @param {string} method The method name to call
-   * @param {array=[]} params The parameters to send with the call
+   * @param {Array<any>} [params] The parameters to send with the call
    * @returns {Observable} An observable that resolves to the response
    * @memberof Messenger
    */
