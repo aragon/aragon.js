@@ -10,7 +10,8 @@
     "lint": "standard",
     "postlint": "documentation lint src",
     "test": "nyc --all ava",
-    "prepublish": "babel -d build src"
+    "build": "babel -d build src",
+    "prepublish": "env NODE_ENV=production npm run build"
   },
   "repository": {
     "type": "git",
