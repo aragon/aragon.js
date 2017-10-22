@@ -32,12 +32,30 @@ export default class Proxy {
     return this.wrapper
   }
 
+  streamingPredicate () {
+    // TODO: Get block from cache
+    return this.web3.eth.call({
+      to: this.address,
+      data: this.web3.eth.abi.encodeFunctionCall(
+        require('../../abi/aragon/Initializable.json')[0]
+      )
+    }).then(
+      (value) => this.web3.eth.abi.decodeParameter('uint256', value)
+    ).then(
+      (initializationBlock) => ({ fromBlock: initializationBlock })
+    )
+  }
+
   events () {
-    return Observable.fromEvent(
-      this.contract.events.allEvents({
-        fromBlock: 0
-      }),
-      'data'
+    return Observable.fromPromise(
+      this.streamingPredicate()
+    ).switchMap(
+      (streamingPredicate) => Observable.fromEvent(
+        this.contract.events.allEvents(
+          streamingPredicate
+        ),
+        'data'
+      )
     )
   }
 
