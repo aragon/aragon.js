@@ -24,7 +24,10 @@
     "client",
     "blockchain"
   ],
-  "author": "",
+  "author": "Aragon Institution MTU <contact@aragon.one>",
+  "contributors": [
+    "Oliver Nordbjerg <oliver@aragon.one>"
+  ],
   "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/aragon/node-aragon/issues"
