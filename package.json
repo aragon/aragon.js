@@ -54,7 +54,7 @@
     "aragon-core": "0.0.0",
     "babel-core": "^6.26.0",
     "debug": "^3.0.0",
-    "eth-ens-namehash": "^2.0.0",
+    "ethereum-ens": "^0.7.3",
     "ipfs-api": "^14.3.5",
     "rxdb": "^5.2.1",
     "rxjs": "^5.4.2",
