@@ -1,59 +1,34 @@
 [
   {
-    "constant": true,
-    "inputs": [],
-    "name": "KERNEL_APP_ID",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "APP_ADDR_NAMESPACE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "KERNEL_APP",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
+    "constant": false,
     "inputs": [
       {
-        "name": "",
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
         "type": "bytes32"
       }
     ],
-    "name": "apps",
+    "name": "grantPermission",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "CREATE_PERMISSIONS_ROLE",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "bytes32"
       }
     ],
     "payable": false,
@@ -62,17 +37,12 @@
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "name": "_id",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getApp",
+    "inputs": [],
+    "name": "EVMSCRIPT_REGISTRY_APP_ID",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "bytes32"
       }
     ],
     "payable": false,
@@ -83,15 +53,23 @@
     "constant": false,
     "inputs": [
       {
-        "name": "_baseAcl",
+        "name": "_entity",
         "type": "address"
       },
       {
-        "name": "_permissionsCreator",
+        "name": "_app",
         "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      },
+      {
+        "name": "_params",
+        "type": "uint256[]"
       }
     ],
-    "name": "initialize",
+    "name": "grantPermissionP",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -99,12 +77,56 @@
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "CORE_NAMESPACE",
+    "inputs": [
+      {
+        "name": "_who",
+        "type": "address"
+      },
+      {
+        "name": "_where",
+        "type": "address"
+      },
+      {
+        "name": "_what",
+        "type": "bytes32"
+      }
+    ],
+    "name": "hasPermission",
     "outputs": [
       {
         "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
         "type": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "permissionParams",
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint8"
+      },
+      {
+        "name": "op",
+        "type": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint240"
       }
     ],
     "payable": false,
@@ -126,29 +148,6 @@
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_name",
-        "type": "bytes32"
-      },
-      {
-        "name": "_appBase",
-        "type": "address"
-      }
-    ],
-    "name": "newAppInstance",
-    "outputs": [
-      {
-        "name": "appProxy",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "constant": true,
     "inputs": [],
     "name": "getInitializationBlock",
@@ -165,7 +164,7 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "APP_MANAGER_ROLE",
+    "name": "EVMSCRIPT_REGISTRY_APP",
     "outputs": [
       {
         "name": "",
@@ -180,74 +179,45 @@
     "constant": false,
     "inputs": [
       {
-        "name": "_name",
-        "type": "bytes32"
-      },
-      {
-        "name": "_appBase",
+        "name": "_entity",
         "type": "address"
-      }
-    ],
-    "name": "newPinnedAppInstance",
-    "outputs": [
-      {
-        "name": "appProxy",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "ACL_APP",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_namespace",
-        "type": "bytes32"
-      },
-      {
-        "name": "_name",
-        "type": "bytes32"
       },
       {
         "name": "_app",
         "type": "address"
-      }
-    ],
-    "name": "setApp",
-    "outputs": [
+      },
       {
-        "name": "id",
+        "name": "_role",
         "type": "bytes32"
       }
     ],
+    "name": "revokePermission",
+    "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "ACL_APP_ID",
+    "inputs": [
+      {
+        "name": "_sender",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      },
+      {
+        "name": "params",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "canPerform",
     "outputs": [
       {
         "name": "",
-        "type": "bytes32"
+        "type": "bool"
       }
     ],
     "payable": false,
@@ -258,19 +228,37 @@
     "constant": false,
     "inputs": [
       {
-        "name": "_kernel",
+        "name": "_newManager",
         "type": "address"
       },
       {
-        "name": "_appId",
-        "type": "bytes32"
+        "name": "_app",
+        "type": "address"
       },
       {
-        "name": "_initializePayload",
-        "type": "bytes"
+        "name": "_role",
+        "type": "bytes32"
       }
     ],
-    "name": "newAppProxyPinned",
+    "name": "setPermissionManager",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getPermissionManager",
     "outputs": [
       {
         "name": "",
@@ -278,7 +266,61 @@
       }
     ],
     "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entity",
+        "type": "address"
+      },
+      {
+        "name": "_app",
+        "type": "address"
+      },
+      {
+        "name": "_role",
+        "type": "bytes32"
+      },
+      {
+        "name": "_manager",
+        "type": "address"
+      }
+    ],
+    "name": "createPermission",
+    "outputs": [],
+    "payable": false,
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_permissionsCreator",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "EMPTY_PARAM_HASH",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -297,12 +339,29 @@
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "APP_BASES_NAMESPACE",
+    "inputs": [
+      {
+        "name": "_who",
+        "type": "address"
+      },
+      {
+        "name": "_where",
+        "type": "address"
+      },
+      {
+        "name": "_what",
+        "type": "bytes32"
+      },
+      {
+        "name": "_how",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "hasPermission",
     "outputs": [
       {
         "name": "",
-        "type": "bytes32"
+        "type": "bool"
       }
     ],
     "payable": false,
@@ -311,8 +370,13 @@
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "acl",
+    "inputs": [
+      {
+        "name": "_script",
+        "type": "bytes"
+      }
+    ],
+    "name": "getExecutor",
     "outputs": [
       {
         "name": "",
@@ -321,56 +385,6 @@
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_kernel",
-        "type": "address"
-      },
-      {
-        "name": "_appId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "newAppProxy",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_kernel",
-        "type": "address"
-      },
-      {
-        "name": "_appId",
-        "type": "bytes32"
-      },
-      {
-        "name": "_initializePayload",
-        "type": "bytes"
-      }
-    ],
-    "name": "newAppProxy",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -405,38 +419,30 @@
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_kernel",
-        "type": "address"
-      },
-      {
-        "name": "_appId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "newAppProxyPinned",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "name": "proxy",
+        "indexed": true,
+        "name": "entity",
         "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "app",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "name": "allowed",
+        "type": "bool"
       }
     ],
-    "name": "NewAppProxy",
+    "name": "SetPermission",
     "type": "event"
   },
   {
@@ -444,26 +450,21 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "namespace",
-        "type": "bytes32"
-      },
-      {
-        "indexed": true,
-        "name": "name",
-        "type": "bytes32"
-      },
-      {
-        "indexed": true,
-        "name": "id",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
         "name": "app",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "role",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "name": "manager",
         "type": "address"
       }
     ],
-    "name": "SetApp",
+    "name": "ChangePermissionManager",
     "type": "event"
   }
 ]
