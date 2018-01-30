@@ -24,11 +24,19 @@ export default class Aragon {
     this.transactions = new Subject()
   }
 
-  kernel () {
+  async initACL() {
+    await this._acl.init()
+  }
+
+  kernel() {
     return this.kernelProxy
   }
 
-  apps () {
+  acl() {
+    return this._acl
+  }
+
+  apps() {
     if (this._apps) return this._apps
 
     // TODO: Optimize. A lot.

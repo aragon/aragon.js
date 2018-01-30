@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs/Rx'
+import { Observable, Subject } from 'rxjs/Rx'
 
 /**
  * This is a generic contract proxy.
@@ -32,32 +32,51 @@ export default class Proxy {
     return this.wrapper
   }
 
-  streamingPredicate () {
+  async pastPredicate() {
     // TODO: Get block from cache
-    return this.web3.eth.call({
-      to: this.address,
-      data: this.web3.eth.abi.encodeFunctionCall(
-        require('../../abi/aragon/Initializable.json')[0]
-      )
-    }).then(
-      (value) => this.web3.eth.abi.decodeParameter('uint256', value)
-    ).then(
-      (initializationBlock) => ({ fromBlock: initializationBlock })
-    )
+    const initializableABI = require('../../abi/aragon/Initializable.json')
+    const initializable = new this.web3.eth.Contract(initializableABI, this.address)
+    const initialized = await initializable.methods.getInitializationBlock().call()
+
+    return { fromBlock: parseInt(initialized) }
   }
 
-  events () {
-    return Observable.fromPromise(
-      this.streamingPredicate()
-    ).switchMap(
-      (streamingPredicate) => Observable.fromEvent(
-        this.contract.events.allEvents(
-          streamingPredicate
-        ),
-        'data'
-      )
+  async streamingPredicate() {
+
+  }
+
+  async events() {
+    const predicate = await this.pastPredicate()
+
+    const subject = new Subject()
+
+    this.contract.getPastEvents('allEvents', predicate, (err, evs) => {
+      evs.forEach(ev => subject.next(ev))
+    })
+
+    // TODO: subscribe to future events
+
+    return subject
+  }
+
+  cacheLastProcessedBlock(block) {
+
+  }
+
+  /*
+  // TODO: Implement
+  event(eventName, filter = {}) {
+    return Observable.fromPromise(this.streamingPredicate())
+      .switchMap(
+        (streamingPredicate) => Observable.fromEvent(
+          this.contract.events[eventName](
+            streamingPredicate, filter
+          ),
+          'data'
+        )
     )
   }
+  */
 
   async call (method, ...params) {
     if (!this.contract.methods[method]) {

@@ -11,7 +11,12 @@
     "postlint": "documentation lint src",
     "test": "nyc --all ava",
     "build": "babel -d build src",
-    "prepublish": "env NODE_ENV=production npm run build"
+    "prepublish": "env NODE_ENV=production npm run build",
+    "run": "npm run build; node wrapperTest.js"
+  },
+  "config": {
+    "rpc": "http://localhost:8545",
+    "dao": "0xceb27ce0ac6a85501a9e6a6e4f9ab5fc1e75f6cb"
   },
   "repository": {
     "type": "git",
