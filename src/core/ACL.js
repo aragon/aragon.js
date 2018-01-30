@@ -42,7 +42,7 @@ export default class ACL {
     }
   }
 
-  stateObservable() {
+  get stateObservable() {
     return this._state
   }
 

@@ -6,17 +6,7 @@ const node = process.env.npm_package_config_rpc
 const start = async () => {
   const wrapper = new Aragon(process.env.npm_package_config_dao, new Web3.providers.HttpProvider(node))
   try {
-    await wrapper.initACL()
-    setTimeout(async () => {
-      try {
-        await wrapper.acl().stateObservable().subscribe(
-          function (x) {
-          console.log('Next: %s', x)
-        })
-      } catch (e) {
-        console.log('exception thrown 2', e)
-      }
-    }, 1000)
+    await wrapper.apps()
   } catch (e) {
     console.log('exception thrown', e)
   }

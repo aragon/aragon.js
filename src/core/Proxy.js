@@ -43,10 +43,9 @@ export default class Proxy {
 
   async pastPredicate() {
     // TODO: Get block from cache
-
     const lastProcessed = this.lastProcessedBlock
 
-    if (lastProcessed) {
+    if (lastProcessed && false) { // TODO: remove
       console.log('returning last processed', lastProcessed)
       return { fromBlock: lastProcessed + 1 }
     }

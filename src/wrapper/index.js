@@ -26,18 +26,40 @@ export default class Aragon {
 
   async initACL() {
     await this._acl.init()
+    this.aclInit = true
   }
 
   kernel() {
     return this.kernelProxy
   }
 
-  acl() {
+  get acl() {
     return this._acl
   }
 
-  apps() {
+  async toAppId(entity) {
+    try {
+      // Continue here
+    } catch (e) {
+      return null
+    }
+  }
+
+  async apps() {
+    // TODO: App list can change during execution
     if (this._apps) return this._apps
+
+    if (!this.aclInit) await this.initACL()
+
+    this.acl.stateObservable.subscribe(
+      async (x) => {
+        const appIds = x.keys().map(async (entity) => { entity, appId: await this.toAppId() })
+        const apps = await Promise.all(appIds)
+      },
+      e => console.log('error', e)
+    )
+
+    return
 
     // TODO: Optimize. A lot.
     const appCodes = this.kernel().events()
