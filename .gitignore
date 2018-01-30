@@ -13,3 +13,5 @@ coverage
 
 # Tools
 wallaby.js
+
+.localstorage

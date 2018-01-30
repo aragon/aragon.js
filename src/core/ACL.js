@@ -10,15 +10,11 @@ export default class ACL {
   async init() {
     const aclAddr = await this.kernel.contract.methods.acl().call()
     this.acl = this.aclProxy(aclAddr)
-    console.log('events')
-    const eventObs = await this.acl.events()
 
-    eventObs.subscribe(x => console.log('x', x.event))
+    const eventObs = await this.acl.events()
 
     this._state = eventObs.scan(
         (state, { returnValues: values }) => {
-          console.log('scan values', values)
-
           if (!state[values.app]) state[values.app] = {}
           const currentPermissions = state[values.app][values.role] || []
 
@@ -28,13 +24,9 @@ export default class ACL {
             state[values.app][values.role] = currentPermissions
               .filter((entity) => entity !== values.entity)
           }
-
-          console.log('scan state', state)
           return state
         }, {}
       )
-
-      this._state.last().subscribe(x => console.log('xa', x))
   }
 
   aclProxy(address) {

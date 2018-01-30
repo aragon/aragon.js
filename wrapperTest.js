@@ -9,7 +9,6 @@ const start = async () => {
     await wrapper.initACL()
     setTimeout(async () => {
       try {
-        console.log('gogogo')
         await wrapper.acl().stateObservable().subscribe(
           function (x) {
           console.log('Next: %s', x)
