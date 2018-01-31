@@ -8,28 +8,24 @@ const registries = {
   15: '0x41c1d1d886b4256fab171128ab161c50e24d5ab5'
 }
 
-export function resolve (name, eth, chainId = 15) {
+const resolve = async (name, eth, chainId = 15) => {
   let node = name
-  if (!name.startsWith('0x')) {
+  if (!name.startsWith('0x') && name.length == 64 + 2) {
     node = hash(name)
   }
 
-  if (!registries[chainId]) {
+  const ensAddr = process.env.npm_package_config_ens || registries[chainId]
+  if (!ensAddr) {
     return Promise.reject(new Error(`No known ENS registry for chain ID ${chainId}`))
   }
 
-  return new eth.Contract(
-    require('../../abi/ens/ENSRegistry.json'),
-    registries[chainId]
-  ).methods.resolver(node).call()
-    .then((resolverAddress) => {
-      if (resolverAddress === consts.NULL_ADDRESS) throw new Error('ENS name could not be resolved')
+  const ens = new eth.Contract(require('../../abi/ens/ENSRegistry.json'), ensAddr)
+  const resolverAddr = await ens.methods.resolver(node).call()
 
-      return new eth.Contract(
-        require('../../abi/ens/ENSResolver.json'),
-        resolverAddress
-      ).methods.addr(node).call()
-    })
+  if (resolverAddr === consts.NULL_ADDRESS) throw new Error('ENS name could not be resolved')
+
+  const resolver = new eth.Contract(require('../../abi/ens/ENSResolver.json'), resolverAddr)
+  return resolver.methods.addr(node).call()
 }
 
 export default {

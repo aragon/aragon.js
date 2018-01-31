@@ -26,9 +26,13 @@ const readFileFromApplication = (contentURI, path) => {
 }
 
 const getApplicationInfo = (contentURI) => {
+  // TODO: Remove
+  return { repo: contentURI }
+
   return Promise.all([
     readFileFromApplication(contentURI, 'manifest.json'),
-    readFileFromApplication(contentURI, 'artifact.json')
+    readFileFromApplication(contentURI, 'artifact.json'),
+    readFileFromApplication(contentURI, 'arapp.json'),
   ])
     .then((files) => files.map(JSON.parse))
     .then(

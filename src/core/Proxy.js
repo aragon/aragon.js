@@ -21,6 +21,7 @@ export default class Proxy {
     this.address = address
     this.wrapper = wrapper
     this.web3 = wrapper.web3
+    this.cachingEnabled = false // TODO: enable caching
 
     this.processedBlockKey = `${address}:cache:allEvents:processed`
 
@@ -45,7 +46,7 @@ export default class Proxy {
     // TODO: Get block from cache
     const lastProcessed = this.lastProcessedBlock
 
-    if (lastProcessed && false) { // TODO: remove
+    if (lastProcessed && this.cachingEnabled) {
       console.log('returning last processed', lastProcessed)
       return { fromBlock: lastProcessed + 1 }
     }

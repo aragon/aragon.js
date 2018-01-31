@@ -11,7 +11,7 @@ export default class Aragon {
   constructor (daoAddress, provider) {
     // Set up Web3
     this.web3 = new Web3(provider)
-
+    this.apm = apm(this.web3)
     // Set up the kernel proxy (which is located at the "DAO address")
     this.kernelProxy = new Proxy(
       daoAddress, require('../../abi/aragon/Kernel.json'), this
@@ -37,24 +37,59 @@ export default class Aragon {
     return this._acl
   }
 
-  async toAppId(entity) {
+  async appProxyValues(entity) {
     try {
-      // Continue here
+      const appProxyABI = require('../../abi/aragon/AppProxy.json')
+      const appProxy = new this.web3.eth.Contract(appProxyABI, entity)
+
+      return {
+        kernel: await appProxy.methods.kernel().call(),
+        appId: await appProxy.methods.appId().call(),
+        codeAddress: await appProxy.methods.getCode().call(),
+      }
+
+    } catch (e) {
+      return { kernel: null }
+    }
+  }
+
+  isApp(app) {
+    return this.addressesEqual(app.kernel, this.kernelProxy.address)
+  }
+
+  addressesEqual(a, b) {
+    return a && b && a.toLowerCase() == b.toLowerCase() // addrs can have checksum
+  }
+
+  async getAPMPackage(app) {
+    try {
+      return await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
     } catch (e) {
       return null
     }
   }
 
   async apps() {
-    // TODO: App list can change during execution
-    if (this._apps) return this._apps
-
     if (!this.aclInit) await this.initACL()
 
+    // TODO: Do reactive magic so we don't kill nodes with requests every time the ACL is updated
     this.acl.stateObservable.subscribe(
       async (x) => {
-        const appIds = x.keys().map(async (entity) => { entity, appId: await this.toAppId() })
-        const apps = await Promise.all(appIds)
+        const entities = [...new Set(Object.keys(x))] // remove dups
+
+        const appIds = entities.map(async (entity) =>
+          ({
+            proxyAddress: entity,
+            ...await this.appProxyValues(entity)
+          })
+        )
+        const foo = await Promise.all(appIds)
+        const apps = foo.filter(fo => this.isApp(fo))
+        console.log('got all the apps', apps)
+
+        const repos = await Promise.all(apps.map(app => this.getAPMPackage(app)))
+
+        console.log('got all the repos', repos)
       },
       e => console.log('error', e)
     )
