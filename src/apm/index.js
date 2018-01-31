@@ -1,8 +1,10 @@
 import ipfs from './storage/ipfs'
+import file from './storage/file'
 import ens from '../ens'
 
 const providers = {
-  ipfs
+  ipfs,
+  file,
 }
 
 const readFileFromApplication = (contentURI, path) => {
@@ -26,13 +28,9 @@ const readFileFromApplication = (contentURI, path) => {
 }
 
 const getApplicationInfo = (contentURI) => {
-  // TODO: Remove
-  return { repo: contentURI }
-
   return Promise.all([
     readFileFromApplication(contentURI, 'manifest.json'),
     readFileFromApplication(contentURI, 'artifact.json'),
-    readFileFromApplication(contentURI, 'arapp.json'),
   ])
     .then((files) => files.map(JSON.parse))
     .then(

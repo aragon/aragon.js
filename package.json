@@ -16,8 +16,8 @@
   },
   "config": {
     "rpc": "http://localhost:8545",
-    "dao": "0xc6af2a3e93d5781f4fe12df60ead57336f35378c",
-    "ens": "0xf707c357daadb3e203617202fbf0b97a093fe5b0",
+    "dao": "0xbc8dc86fab5393fd36c4902373198bf1e9830656",
+    "ens": "0x7e36e66c8acc9ae9fe88ce4e6b39b77f547cd638",
     "localstorage": "./.localstorage"
   },
   "repository": {
@@ -33,7 +33,8 @@
   ],
   "author": "Aragon Institution MTU <contact@aragon.one>",
   "contributors": [
-    "Oliver Nordbjerg <oliver@aragon.one>"
+    "Oliver Nordbjerg <oliver@aragon.one>",
+    "Jorge Izquierdo <jorge@aragon.one>"
   ],
   "license": "GPL-3.0",
   "bugs": {
