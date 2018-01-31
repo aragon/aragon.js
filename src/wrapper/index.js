@@ -86,6 +86,8 @@ export default class Aragon {
         const foo = await Promise.all(appIds)
         const apps = foo.filter(fo => this.isApp(fo))
         const repos = await Promise.all(apps.map(app => this.getAPMPackage(app)))
+
+        console.log(repos)
       },
       e => console.log('error', e)
     )

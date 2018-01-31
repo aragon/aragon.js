@@ -16,8 +16,8 @@
   },
   "config": {
     "rpc": "http://localhost:8545",
-    "dao": "0xbc8dc86fab5393fd36c4902373198bf1e9830656",
-    "ens": "0x7e36e66c8acc9ae9fe88ce4e6b39b77f547cd638",
+    "dao": "0x618b40be9c74e4e7b1c7d9d8bdfb8e0d35508b7e",
+    "ens": "0x761392f863ba1f6df65796b9e9bbb4d1660b87fc",
     "localstorage": "./.localstorage"
   },
   "repository": {
