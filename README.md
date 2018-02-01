@@ -7,23 +7,23 @@
       alt="API stability" />
   </a>
   <!-- NPM version -->
-  <a href="https://npmjs.org/package/@aragon/node-aragon">
-    <img src="https://img.shields.io/npm/v/@aragon/node-aragon.svg?style=flat-square"
+  <a href="https://npmjs.org/package/@aragon/aragon.js">
+    <img src="https://img.shields.io/npm/v/@aragon/aragon.js.svg?style=flat-square"
       alt="NPM version" />
   </a>
   <!-- Build Status -->
-  <a href="https://travis-ci.org/aragon/node-aragon">
-    <img src="https://img.shields.io/travis/aragon/node-aragon/master.svg?style=flat-square"
+  <a href="https://travis-ci.org/aragon/aragon.js">
+    <img src="https://img.shields.io/travis/aragon/aragon.js/master.svg?style=flat-square"
       alt="Build Status" />
   </a>
   <!-- Test Coverage -->
-  <a href="https://coveralls.io/github/aragon/node-aragon">
-    <img src="https://img.shields.io/coveralls/aragon/node-aragon.svg?style=flat-square"
+  <a href="https://coveralls.io/github/aragon/aragon.js">
+    <img src="https://img.shields.io/coveralls/aragon/aragon.js.svg?style=flat-square"
       alt="Test Coverage" />
   </a>
   <!-- Downloads -->
-  <a href="https://npmjs.org/package/@aragon/node-aragon">
-    <img src="https://img.shields.io/npm/dm/@aragon/node-aragon.svg?style=flat-square"
+  <a href="https://npmjs.org/package/@aragon/aragon.js">
+    <img src="https://img.shields.io/npm/dm/@aragon/aragon.js.svg?style=flat-square"
       alt="Downloads" />
   </a>
   <!-- Standard -->
@@ -39,11 +39,11 @@
       Website
     </a>
     <span> | </span>
-    <a href="https://github.com/aragon/node-aragon/tree/master/docs">
+    <a href="https://github.com/aragon/aragon.js/tree/master/docs">
       Documentation
     </a>
     <span> | </span>
-    <a href="https://github.com/aragon/node-aragon/blob/master/.github/CONTRIBUTING.md">
+    <a href="https://github.com/aragon/aragon.js/blob/master/.github/CONTRIBUTING.md">
       Contributing
     </a>
     <span> | </span>
@@ -62,7 +62,7 @@ The layer between [Aragon Core](https://github.com/aragon/aragon-core) and the A
 
 ## Install
 ```sh
-npm i @aragon/node-aragon
+npm i @aragon/client
 ```
 
 ## Usage
@@ -76,4 +76,4 @@ See our example application [here](https://github.com/aragon/aragon-example-appl
 TBD.
 
 ## Contributing
-Please take a look at our [contributing](https://github.com/aragon/node-aragon/blob/master/CONTRIBUTING.md) guidelines if you're interested in helping!
+Please take a look at our [contributing](https://github.com/aragon/aragon.js/blob/master/CONTRIBUTING.md) guidelines if you're interested in helping!
