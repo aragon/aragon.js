@@ -5,7 +5,7 @@
 node_modules
 
 # Artifacts
-build
+dist
 
 # Tests and coverage
 coverage
