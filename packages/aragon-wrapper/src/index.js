@@ -62,26 +62,20 @@ export default class Aragon {
     this.permissions.connect()
   }
 
-  async getAppProxyValues (proxyAddress) {
+  getAppProxyValues (proxyAddress) {
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
-
-    let isForwarder
-    try {
-      isForwarder = await appProxy.call('isForwarder')
-    } catch (_) {
-      isForwarder = false
-    }
 
     return Promise.all([
       appProxy.call('kernel'),
       appProxy.call('appId'),
-      appProxy.call('getCode')
+      appProxy.call('getCode'),
+      appProxy.call('isForwarder').catch(() => false)
     ]).then((values) => ({
       proxyAddress,
       kernelAddress: values[0],
       appId: values[1],
       codeAddress: values[2],
-      isForwarder
+      isForwarder: values[3]
     })).catch(() => ({ kernelAddress: null }))
   }
 
