@@ -28,7 +28,7 @@ module.exports = (web3, opts = {
   const getApplicationInfo = (contentURI) => {
     return Promise.all([
       readFileFromApplication(contentURI, 'manifest.json'),
-      readFileFromApplication(contentURI, 'artifact.json')
+      readFileFromApplication(contentURI, 'arapp.json')
     ])
       .then((files) => files.map(JSON.parse))
       .then(
