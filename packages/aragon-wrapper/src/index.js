@@ -49,7 +49,7 @@ export default class Aragon {
         )
 
         const newPermissionsForRole = event.allowed
-          ? currentPermissionsForRole.concat(event.role)
+          ? currentPermissionsForRole.concat(event.entity)
           : currentPermissionsForRole.filter((entity) => entity !== event.entity)
 
         return dotprop.set(
