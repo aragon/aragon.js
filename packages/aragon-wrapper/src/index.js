@@ -118,7 +118,7 @@ export default class Aragon {
     this.forwarders.connect()
   }
 
-  registerSandbox (sandbox, proxyAddress) {
+  runApp (sandbox, proxyAddress) {
     // Set up messenger
     const messenger = new Messenger(
       new PostMessage(sandbox)
