@@ -105,6 +105,8 @@ export default class Aragon {
           ))
         )
       )
+      .publishReplay(1)
+    this.apps.connect()
   }
 
   initForwarders () {
@@ -112,6 +114,8 @@ export default class Aragon {
       .map(
         (apps) => apps.filter((app) => app.isForwarder)
       )
+      .publishReplay(1)
+    this.forwarders.connect()
   }
 
   registerSandbox (sandbox, proxyAddress) {
