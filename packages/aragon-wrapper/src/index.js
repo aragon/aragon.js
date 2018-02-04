@@ -144,8 +144,8 @@ export default class Aragon {
       }
     )
 
-    // Register request handlers and return dispose function
-    return handlers.combineRequestHandlers(
+    // Register request handlers
+    const shutdown = handlers.combineRequestHandlers(
       handlers.createRequestHandler(request$, 'cache', handlers.cache),
       handlers.createRequestHandler(request$, 'events', handlers.events),
       handlers.createRequestHandler(request$, 'intent', handlers.intent),
@@ -153,6 +153,10 @@ export default class Aragon {
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
+
+    return {
+      shutdown
+    }
   }
 
   async getAccounts () {
