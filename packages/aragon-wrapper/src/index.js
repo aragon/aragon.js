@@ -10,7 +10,7 @@ import handlers from './rpc/handlers'
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: new Web3.providers.WebsocketProvider('wss://rinkeby.infura.io/ws')
+      provider: new Web3.providers.WebsocketProvider('ws://rinkeby.aragon.network:8546')
     }
     options = Object.assign(defaultOptions, options)
 
