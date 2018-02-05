@@ -309,7 +309,14 @@ export default class Aragon {
 
     // Check if we have direct access
     try {
-      await this.web3.eth.estimateGas(directTransaction)
+      // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
+      // so this is a hack to make sure checksums are not destroyed
+      // Also, at the same time it's a hack for checking if the call will revert,
+      // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
+      // So yeah...
+      await this.web3.eth.estimateGas(
+        Object.assign({}, directTransaction)
+      )
 
       return [directTransaction]
     } catch (_) {}
