@@ -1,5 +1,4 @@
 import ipfs from './providers/ipfs'
-//import fs from './providers/fs'
 import * as ens from '../ens'
 
 module.exports = (web3, opts = {
@@ -7,8 +6,7 @@ module.exports = (web3, opts = {
 }) => {
   // Set up providers
   const providers = {
-    ipfs: ipfs(opts.ipfs),
-    //fs: fs(opts.fs)
+    ipfs: ipfs(opts.ipfs)
   }
 
   const readFileFromApplication = (contentURI, path) => {
