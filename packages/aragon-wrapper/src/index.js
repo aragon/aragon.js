@@ -162,8 +162,7 @@ export default class Aragon {
   }
 
   async getAccounts () {
-    // return this.web3.eth.getAccounts()
-    return ['0x692c16ef3D640b8f5dCEC895023B4fC294D85aB3']
+    return this.web3.eth.getAccounts()
   }
 
   /**
