@@ -187,14 +187,14 @@ export default class Aragon {
       )
 
       if (path.length > 0) {
-        return this.describePath(path)
+        return this.describeTransactionPath(path)
       }
     }
 
     return []
   }
 
-  async describePath (path) {
+  async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       const app = await this.apps.map(
         (apps) => apps.find((app) => app.proxyAddress === step.to)
