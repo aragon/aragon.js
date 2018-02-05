@@ -8,6 +8,8 @@ import Messenger from './rpc/Messenger'
 import PostMessage from './rpc/providers/PostMessage'
 import handlers from './rpc/handlers'
 import { encodeCallScript } from './evmscript'
+import radspec from 'radspec'
+import { keccak256 } from 'js-sha3'
 
 export default class Aragon {
   constructor (daoAddress, options = {}) {
@@ -184,10 +186,55 @@ export default class Aragon {
         params
       )
 
-      if (path.length > 0) return path
+      if (path.length > 0) {
+        return this.describePath(path)
+      }
     }
 
     return []
+  }
+
+  async describePath (path) {
+    return Promise.all(path.map(async (step) => {
+      const app = await this.apps.map(
+        (apps) => apps.find((app) => app.proxyAddress === step.to)
+      ).take(1).toPromise()
+
+      // No app artifact
+      if (!app) return step
+
+      // Missing methods in artifact
+      if (!app.functions) return step
+
+      // Find the method
+      const methodId = step.data.substr(2, 8)
+      const method = app.functions.find(
+        (method) => keccak256(method.sig).substr(0, 8) === methodId
+      )
+
+      // Method does not exist in artifact
+      if (!method) return step
+
+      const expression = method.notice
+
+      // No expression
+      if (!expression) return step
+      return Object.assign(step, {
+        description: await radspec.evaluate(expression, {
+          abi: app.abi,
+          transaction: step
+        })
+      })
+    }))
+  }
+
+  async canForward (forwarder, sender, script) {
+    const canForward = new this.web3.eth.Contract(
+      require('../abi/aragon/Forwarder.json'),
+      forwarder
+    ).methods['canForward']
+
+    return canForward(sender, script).call().catch(() => false)
   }
 
   /**
@@ -262,10 +309,10 @@ export default class Aragon {
 
     // Check if we have direct access
     try {
-      await this.web3.eth.call(directTransaction)
+      await this.web3.eth.estimateGas(directTransaction)
 
       return [directTransaction]
-    } finally {}
+    } catch (_) {}
 
     // Find forwarders with permission to perform the action
     const forwardersWithPermission = forwarders
@@ -292,7 +339,7 @@ export default class Aragon {
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
-      let script = encodeCallScript(directTransaction)
+      let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         return [createForwarderTransaction(forwarder, script), directTransaction]
       }
@@ -312,7 +359,7 @@ export default class Aragon {
     const queue = forwardersWithPermission.map(
       (forwarderWithPermission) => [
         [createForwarderTransaction(
-          forwarderWithPermission, encodeCallScript(directTransaction)
+          forwarderWithPermission, encodeCallScript([directTransaction])
         ), directTransaction], forwarders
       ]
     )
@@ -329,7 +376,7 @@ export default class Aragon {
       const previousForwarder = path[0].to
 
       // Encode the previous transaction into an EVM callscript
-      let script = encodeCallScript(path[0])
+      let script = encodeCallScript([path[0]])
 
       if (await this.canForward(previousForwarder, forwarder, script)) {
         if (await this.canForward(forwarder, sender, script)) {
@@ -352,6 +399,4 @@ export default class Aragon {
 
     return []
   }
-
-  // TODO: Cache
 }
