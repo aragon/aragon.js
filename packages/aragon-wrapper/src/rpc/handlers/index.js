@@ -15,8 +15,8 @@ export function createRequestHandler (request$, requestType, handler) {
 
   // Send request to handler and return response
   return filteredRequest$.mergeMap(
-    ({ request, proxy }) => Observable.from(
-      handler(request, proxy)
+    ({ request, proxy, wrapper }) => Observable.from(
+      handler(request, proxy, wrapper)
     ).materialize(),
     createResponse
   ).filter(

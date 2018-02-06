@@ -1,6 +1,6 @@
 // TODO: Clean up imports
 import Web3 from 'web3'
-import { Observable } from 'rxjs/Rx'
+import { Subject, Observable } from 'rxjs/Rx'
 import apm from './apm'
 import { makeProxy } from './utils'
 import dotprop from 'dot-prop'
@@ -22,10 +22,10 @@ export default class Aragon {
     this.web3 = new Web3(options.provider)
 
     // Set up APM
-    this.apm = apm(this.web3, {
+    this.apm = apm(this.web3, Object.assign(options.apm, {
       provider: options.provider,
       registryAddress: options.ensRegistryAddress
-    })
+    }))
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -35,6 +35,7 @@ export default class Aragon {
     await this.initAcl()
     this.initApps()
     this.initForwarders()
+    this.transactions = new Subject()
   }
 
   async initAcl () {
@@ -142,7 +143,7 @@ export default class Aragon {
       messenger.requests(),
       proxy,
       function wrapRequest (request, proxy) {
-        return { request, proxy }
+        return { request, proxy, wrapper: this }
       }
     )
 
@@ -161,7 +162,7 @@ export default class Aragon {
     }
   }
 
-  async getAccounts () {
+  getAccounts () {
     return this.web3.eth.getAccounts()
   }
 
