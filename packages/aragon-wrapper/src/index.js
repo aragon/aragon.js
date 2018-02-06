@@ -1,15 +1,21 @@
-// TODO: Clean up imports
-import Web3 from 'web3'
+// Externals
 import { Subject, Observable } from 'rxjs/Rx'
-import apm from './apm'
-import { makeProxy } from './utils'
+import Web3 from 'web3'
 import dotprop from 'dot-prop'
+import radspec from 'radspec'
+
+// APM
+import { keccak256 } from 'js-sha3'
+import apm from './apm'
+
+// RPC
 import Messenger from './rpc/Messenger'
 import PostMessage from './rpc/providers/PostMessage'
 import handlers from './rpc/handlers'
+
+// Utilities
 import { encodeCallScript } from './evmscript'
-import radspec from 'radspec'
-import { keccak256 } from 'js-sha3'
+import { makeProxy } from './utils'
 
 export default class Aragon {
   constructor (daoAddress, options = {}) {
