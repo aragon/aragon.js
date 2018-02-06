@@ -17,6 +17,27 @@ import handlers from './rpc/handlers'
 import { encodeCallScript } from './evmscript'
 import { makeProxy } from './utils'
 
+/**
+ * An Aragon wrapper.
+ *
+ * @param {string} daoAddress
+ *        The address of the DAO.
+ * @param {Object} options
+ *        Wrapper options.
+ * @param {*} [options.provider=ws://rinkeby.aragon.network:8546]
+ *        The Web3 provider to use for blockchain communication
+ * @param {String} [options.ensRegistryAddress=null]
+ *        The address of the ENS registry
+ * @example
+ * const aragon = new Aragon('0xdeadbeef')
+ *
+ * // Initialises the wrapper and logs the installed apps
+ * aragon.init(() => {
+ *   aragon.apps.subscribe(
+ *     (apps) => console.log(apps)
+ *   )
+ * })
+ */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
@@ -37,6 +58,11 @@ export default class Aragon {
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
   }
 
+  /**
+   * Initialise the wrapper.
+   *
+   * @return {Promise<void>}
+   */
   async init () {
     await this.initAcl()
     this.initApps()
@@ -44,6 +70,11 @@ export default class Aragon {
     this.transactions = new Subject()
   }
 
+  /**
+   * Initialise the ACL.
+   *
+   * @return {Promise<void>}
+   */
   async initAcl () {
     // Set up ACL proxy
     const aclAddress = await this.kernelProxy.call('acl')
@@ -73,6 +104,13 @@ export default class Aragon {
     this.permissions.connect()
   }
 
+  /**
+   * Get proxy metadata (`appId`, address of the kernel, ...).
+   *
+   * @param  {string} proxyAddress
+   *         The address of the proxy to get metadata from
+   * @return {Promise<Object>}
+   */
   getAppProxyValues (proxyAddress) {
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
 
@@ -90,11 +128,22 @@ export default class Aragon {
     })).catch(() => ({ kernelAddress: null }))
   }
 
+  /**
+   * Check if an object is an app.
+   *
+   * @param  {Object}  app
+   * @return {boolean}
+   */
   isApp (app) {
     return app.kernelAddress &&
       app.kernelAddress.toLowerCase() === this.kernelProxy.address.toLowerCase()
   }
 
+  /**
+   * Initialise apps observable.
+   *
+   * @return {void}
+   */
   initApps () {
     // TODO: Only includes apps in the namespace `keccak256("app")`
     this.apps = this.permissions
@@ -120,6 +169,11 @@ export default class Aragon {
     this.apps.connect()
   }
 
+  /**
+   * Initialise forwarder observable.
+   *
+   * @return {void}
+   */
   initForwarders () {
     this.forwarders = this.apps
       .map(
@@ -129,6 +183,15 @@ export default class Aragon {
     this.forwarders.connect()
   }
 
+  /**
+   * Run an app.
+   *
+   * @param  {Object} sandbox
+   *         An object that is compatible with the PostMessage API.
+   * @param  {string} proxyAddress
+   *         The address of the app proxy.
+   * @return {Object}
+   */
   runApp (sandbox, proxyAddress) {
     // Set up messenger
     const messenger = new Messenger(
@@ -168,6 +231,11 @@ export default class Aragon {
     }
   }
 
+  /**
+   * Get the available accounts for the current user.
+   *
+   * @return {Promise<Array<string>>} An array of addresses
+   */
   getAccounts () {
     return this.web3.eth.getAccounts()
   }
