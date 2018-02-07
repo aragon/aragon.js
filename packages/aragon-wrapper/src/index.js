@@ -9,8 +9,7 @@ import { keccak256 } from 'js-sha3'
 import apm from './apm'
 
 // RPC
-import Messenger from './rpc/Messenger'
-import PostMessage from './rpc/providers/PostMessage'
+import Messenger, { providers } from '@aragon/messenger'
 import handlers from './rpc/handlers'
 
 // Utilities
@@ -195,7 +194,7 @@ export default class Aragon {
   runApp (sandbox, proxyAddress) {
     // Set up messenger
     const messenger = new Messenger(
-      new PostMessage(sandbox)
+      new providers.PostMessage(sandbox)
     )
 
     // Get the application proxy
