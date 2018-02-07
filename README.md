@@ -69,7 +69,7 @@ TBD.
 
 For wrappers, see [here](docs/WRAPPER.md).
 
-For apps, wait.
+For apps, see [here](docs/APP.md).
 
 ## Contributing
 Please take a look at our [contributing](https://github.com/aragon/aragon.js/blob/master/CONTRIBUTING.md) guidelines if you're interested in helping!
