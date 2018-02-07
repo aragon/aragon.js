@@ -2,7 +2,8 @@
   "name": "@aragon/messenger",
   "version": "1.0.0-beta.1",
   "description": "RPC messenger for Aragon tools",
-  "main": "dist/index.js",
+  "main": "index.js",
+  "files": ["dist"],
   "scripts": {
     "lint": "standard && flow src",
     "postlint": "documentation lint src",
