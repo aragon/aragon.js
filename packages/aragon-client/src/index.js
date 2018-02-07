@@ -1,4 +1,4 @@
-import Messenger from '../../aragon-wrapper/rpc/Messenger'
+import Messenger from '@aragon/messenger'
 
 const AppProxyHandler = {
   get (target, name, receiver) {
