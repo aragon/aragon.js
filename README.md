@@ -67,7 +67,7 @@ TBD.
 
 ## Documentation
 
-For wrappers, see [here](docs/WRAPPERS.md).
+For wrappers, see [here](docs/WRAPPER.md).
 
 For apps, wait.
 
