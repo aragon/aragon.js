@@ -1,4 +1,4 @@
-<p align="center"><img width="40%" src="https://aragon.one/rsc/imgs/logo_text_black.svg"></p>
+<p align="center"><img width="25%" src="https://wiki.aragon.one/design/logo/png/stroke.png"></p>
 
 <div align="center">
   <!-- Stability -->
