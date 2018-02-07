@@ -1,6 +1,10 @@
 import jsonrpc from './jsonrpc'
 import PostMessage from './providers/PostMessage'
 
+export const providers = {
+  PostMessage
+}
+
 /**
  * The RPC messenger used for sending requests and responses between contexts.
  *
