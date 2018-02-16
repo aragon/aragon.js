@@ -63,7 +63,37 @@ npm i @aragon/client
 
 ## Quick Start
 
-TBD.
+```js
+const Aragon = require('@aragon/client')
+
+// Set up app
+const app = new Aragon()
+
+// Listen to events and build app state
+const state$ = app.store((state, event) => {
+  // Initial state
+  if (state === null) state = 0
+  
+  // Build state
+  if (event.event === 'Decrement') {
+    state--
+  }
+  if (event.event === 'Increment') {
+    state++
+  }
+  
+  return state
+})
+
+// Log out the state
+state$.subscribe(console.log)
+
+// Send an intent to the wrapper
+app.increment().subscribe(
+  (txHash) => console.log(`Success! Incremented in tx ${txHash}`),
+  (err) => console.log(`Could not increment: ${err}`)
+)
+```
 
 ## Documentation
 
