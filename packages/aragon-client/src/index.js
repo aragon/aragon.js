@@ -102,6 +102,21 @@ class AppProxy {
       [method, ...params]
     ).pluck('result')
   }
+
+  /**
+   * Send a notification.
+   *
+   * @param {string} title The notification title
+   * @param {string} body The notification body
+   * @param {object={}} context The application context to send back if the notification is clicked
+   * @return {void}
+   */
+  notify (title, body, context = {}) {
+    return this.rpc.send(
+      'notification',
+      [title, body, context]
+    )
+  }
 }
 
 /**

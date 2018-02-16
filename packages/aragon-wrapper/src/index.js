@@ -66,6 +66,7 @@ export default class Aragon {
     await this.initAcl()
     this.initApps()
     this.initForwarders()
+    this.initNotifications()
     this.transactions = new Subject()
   }
 
@@ -183,6 +184,16 @@ export default class Aragon {
   }
 
   /**
+   * Initialise the notifications observable.
+   *
+   * @return {void}
+   */
+  initNotifications () {
+    // TODO: Load notifications from cache
+    this.notifications = new Subject()
+  }
+
+  /**
    * Run an app.
    *
    * @param  {Object} sandbox
@@ -220,7 +231,8 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'cache', handlers.cache),
       handlers.createRequestHandler(request$, 'events', handlers.events),
       handlers.createRequestHandler(request$, 'intent', handlers.intent),
-      handlers.createRequestHandler(request$, 'call', handlers.call)
+      handlers.createRequestHandler(request$, 'call', handlers.call),
+      handlers.createRequestHandler(request$, 'notification', handlers.notifications)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
