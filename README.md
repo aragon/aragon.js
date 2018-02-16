@@ -7,8 +7,8 @@
       alt="API stability" />
   </a>
   <!-- NPM version -->
-  <a href="https://npmjs.org/package/@aragon/aragon.js">
-    <img src="https://img.shields.io/npm/v/@aragon/aragon.js.svg?style=flat-square"
+  <a href="https://npmjs.org/package/@aragon/client">
+    <img src="https://img.shields.io/npm/v/@aragon/client.svg?style=flat-square"
       alt="NPM version" />
   </a>
   <!-- Build Status -->
@@ -22,8 +22,8 @@
       alt="Test Coverage" />
   </a>
   <!-- Downloads -->
-  <a href="https://npmjs.org/package/@aragon/aragon.js">
-    <img src="https://img.shields.io/npm/dm/@aragon/aragon.js.svg?style=flat-square"
+  <a href="https://npmjs.org/package/@aragon/client">
+    <img src="https://img.shields.io/npm/dm/@aragon/client.svg?style=flat-square"
       alt="Downloads" />
   </a>
   <!-- Standard -->
