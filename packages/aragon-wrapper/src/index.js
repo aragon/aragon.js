@@ -43,7 +43,7 @@ import Cache from './cache'
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: new Web3.providers.WebsocketProvider('ws://rinkeby.aragon.network:8546')
+      provider: 'ws://rinkeby.aragon.network:8546'
     }
     options = Object.assign(defaultOptions, options)
 
