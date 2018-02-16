@@ -10,11 +10,11 @@ import apm from './apm'
 
 // RPC
 import Messenger, { providers } from '@aragon/messenger'
-import handlers from './rpc/handlers'
+import * as handlers from './rpc/handlers'
 
 // Utilities
 import { encodeCallScript } from './evmscript'
-import { makeProxy } from './utils'
+import { makeProxy, makeProxyFromABI } from './utils'
 
 /**
  * An Aragon wrapper.
@@ -200,10 +200,10 @@ export default class Aragon {
     // Get the application proxy
     const proxy = this.apps
       .map((apps) => apps.find(
-        (app) => app.codeAddress === proxyAddress)
+        (app) => app.proxyAddress === proxyAddress)
       )
       .map(
-        (app) => makeProxy(app.codeAddress, app.abi, this.web3)
+        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
       )
 
     // Wrap requests with the application proxy
