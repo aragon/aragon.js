@@ -16,6 +16,9 @@ import * as handlers from './rpc/handlers'
 import { encodeCallScript } from './evmscript'
 import { makeProxy, makeProxyFromABI } from './utils'
 
+// Cache
+import Cache from './cache'
+
 /**
  * An Aragon wrapper.
  *
@@ -55,6 +58,9 @@ export default class Aragon {
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
+
+    // Set up cache
+    this.cache = new Cache(daoAddress)
   }
 
   /**
