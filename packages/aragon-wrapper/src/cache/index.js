@@ -10,7 +10,13 @@ export default class Cache {
     // Set up cache DB
     let adapter = null
     if (typeof window === 'undefined') {
-      adapter = new FileAsync('cache.json')
+      const path = require('path')
+      const os = require('os')
+      adapter = new FileAsync(
+        path.resolve(
+          os.homedir(), '.aragon', 'cache.json'
+        )
+      )
     } else {
       adapter = new LocalStorage()
     }
