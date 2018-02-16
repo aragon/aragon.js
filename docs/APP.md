@@ -49,6 +49,18 @@ Cache a value for the application.
 
 Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Will pass through `value`
 
+## notify
+
+Send a notification.
+
+**Parameters**
+
+-   `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The notification title
+-   `body` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The notification body
+-   `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** The application context to send back if the notification is clicked (optional, default `{}`)
+
+Returns **void**
+
 ## state
 
 Observe the application state.
