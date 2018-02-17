@@ -43,7 +43,9 @@ import Cache from './cache'
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: web3.currentProvider || 'ws://rinkeby.aragon.network:8546'
+      provider: (web3 && web3.currentProvider
+        ? web3.currentProvider
+        : 'ws://rinkeby.aragon.network:8546')
     }
     options = Object.assign(defaultOptions, options)
 
