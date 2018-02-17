@@ -227,9 +227,7 @@ export default class Aragon {
     const request$ = Observable.combineLatest(
       messenger.requests(),
       proxy,
-      function wrapRequest (request, proxy) {
-        return { request, proxy, wrapper: this }
-      }
+      (request, proxy) => ({ request, proxy, wrapper: this })
     )
 
     // Register request handlers
