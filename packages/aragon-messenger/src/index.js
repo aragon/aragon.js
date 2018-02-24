@@ -1,18 +1,20 @@
 import jsonrpc from './jsonrpc'
-import PostMessage from './providers/PostMessage'
+import MessagePortMessage from './providers/MessagePortMessage'
+import WindowMessage from './providers/WindowMessage'
 
 export const providers = {
-  PostMessage
+  MessagePortMessage,
+  WindowMessage,
 }
 
 /**
  * The RPC messenger used for sending requests and responses between contexts.
  *
- * @param {Provider} [provider=PostMessage] The underlying provider that passes messages
+ * @param {Provider} [provider=MessagePortMessage] The underlying provider that passes messages
  * @class Messenger
  */
 export default class Messenger {
-  constructor (provider = new PostMessage()) {
+  constructor (provider = new MessagePortMessage()) {
     this.provider = provider
   }
 
