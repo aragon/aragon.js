@@ -4,7 +4,8 @@
   "description": "Library for Aragon apps",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "standard && flow src",
+    "flow": "flow src",
+    "lint": "standard src",
     "postlint": "documentation lint src",
     "test": "nyc --silent --all ava",
     "build": "babel -d dist src",
