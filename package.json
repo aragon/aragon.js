@@ -3,6 +3,7 @@
     "lerna": "^2.4.0"
   },
   "scripts": {
-    "lint": "lerna run lint"
+    "lint": "lerna run lint",
+    "test": "lerna run test"
   }
 }
