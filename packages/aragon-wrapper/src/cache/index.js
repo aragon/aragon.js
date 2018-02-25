@@ -3,6 +3,9 @@ import low from 'lowdb'
 import LocalStorage from 'lowdb/adapters/LocalStorage'
 import { Subject } from 'rxjs/Rx'
 
+/**
+ * A cache.
+ */
 export default class Cache {
   constructor (prefix) {
     this.prefix = prefix
@@ -51,6 +54,7 @@ export default class Cache {
   /**
    * Observe the value of a key in cache over time
    *
+   * @memberof Cache
    * @param  {string} key
    * @return {Observable}
    */

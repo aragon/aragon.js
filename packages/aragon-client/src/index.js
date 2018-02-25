@@ -15,6 +15,9 @@ const AppProxyHandler = {
   }
 }
 
+/**
+ * A JavaScript proxy that wraps RPC calls to the wrapper.
+ */
 class AppProxy {
   constructor (rpc = new Messenger()) {
     this.rpc = rpc
@@ -23,6 +26,7 @@ class AppProxy {
   /**
    * Get events from the application contract.
    *
+   * @memberof AppProxy
    * @return {Observable} An observable of contract events (as defined in Web3)
    */
   events () {
@@ -34,6 +38,7 @@ class AppProxy {
   /**
    * Cache a value for the application.
    *
+   * @memberof AppProxy
    * @param  {string} key   The cache key
    * @param  {string} value The value to cache
    * @return {string}       Will pass through `value`
@@ -50,6 +55,7 @@ class AppProxy {
   /**
    * Observe the application state.
    *
+   * @memberof AppProxy
    * @return {Observable} An observable of application states over time.
    */
   state () {
@@ -74,6 +80,7 @@ class AppProxy {
    *
    * The reducer takes the signature `(state, event)` a lá Redux.
    *
+   * @memberof AppProxy
    * @param  {reducer} reducer
    * @return {Observable} An observable of the resulting state from reducing events
    */
@@ -92,6 +99,7 @@ class AppProxy {
   /**
    * Perform a call to the application contract.
    *
+   * @memberof AppProxy
    * @param  {string} method The method to call
    * @param  {...*} params Parameters for the call
    * @return {Observable} An observable that emits the return value(s) of the call.
@@ -106,9 +114,10 @@ class AppProxy {
   /**
    * Send a notification.
    *
+   * @memberof AppProxy
    * @param {string} title The notification title
    * @param {string} body The notification body
-   * @param {object={}} context The application context to send back if the notification is clicked
+   * @param {object} [context={}] The application context to send back if the notification is clicked
    * @return {void}
    */
   notify (title, body, context = {}) {
