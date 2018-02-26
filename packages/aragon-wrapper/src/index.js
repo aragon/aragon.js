@@ -204,16 +204,16 @@ export default class Aragon {
   /**
    * Run an app.
    *
-   * @param  {Object} sandbox
-   *         An object that is compatible with the PostMessage API.
+   * @param  {Object} sandboxMessengerProvider
+   *         An object that can communicate with the app sandbox via Aragon RPC.
    * @param  {string} proxyAddress
    *         The address of the app proxy.
    * @return {Object}
    */
-  runApp (sandbox, proxyAddress) {
+  runApp (sandboxMessengerProvider, proxyAddress) {
     // Set up messenger
     const messenger = new Messenger(
-      new providers.PostMessage(sandbox)
+      sandboxMessengerProvider
     )
 
     // Get the application proxy
