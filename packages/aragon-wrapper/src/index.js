@@ -9,7 +9,7 @@ import { keccak256 } from 'js-sha3'
 import apm from './apm'
 
 // RPC
-import Messenger, { providers } from '@aragon/messenger'
+import Messenger from '@aragon/messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
@@ -535,4 +535,4 @@ export default class Aragon {
 }
 
 // Re-export the Aragon RPC providers
-export providers
+export { providers } from '@aragon/messenger'
