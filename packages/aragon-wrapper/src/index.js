@@ -202,6 +202,28 @@ export default class Aragon {
   }
 
   /**
+   * Send a notification.
+   *
+   * @param {string} title The notification title
+   * @param {string} body The notification body
+   * @param {object} [context={}] The application context to send back if the notification is clicked
+   * @param  {Date}  [date=new Date()] The date the notification was sent
+   * @return {void}
+   */
+  sendNotification (app, title, body, context = {}, date = new Date()) {
+    this.notifications.next({
+      title,
+      body,
+      context,
+      app,
+      date,
+      acknowledge: function () {
+        // TODO
+      }
+    })
+  }
+
+  /**
    * Run an app.
    *
    * @param  {Object} sandboxMessengerProvider
