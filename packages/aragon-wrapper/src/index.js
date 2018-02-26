@@ -399,6 +399,24 @@ export default class Aragon {
       throw new Error(`No method named ${methodName} on ${destination}`)
     }
 
+    // The direct transaction we eventually want to perform
+    const directTransaction = {
+      from: sender,
+      to: destination,
+      data: this.web3.eth.abi.encodeFunctionCall(
+        app.abi.find(
+          (method) => method.name === methodName
+        ),
+        params
+      )
+    }
+
+    // If the method has no ACL requirements, we assume we
+    // can perform the action directly
+    if (method.roles.length === 0) {
+      return [directTransaction]
+    }
+
     // TODO: Support multiple needed roles?
     const roleSig = app.roles.find(
       (role) => role.id === method.roles[0]
@@ -413,17 +431,6 @@ export default class Aragon {
     // No one has access
     if (permissionsForMethod.length === 0) {
       return []
-    }
-
-    const directTransaction = {
-      from: sender,
-      to: destination,
-      data: this.web3.eth.abi.encodeFunctionCall(
-        app.abi.find(
-          (method) => method.name === methodName
-        ),
-        params
-      )
     }
 
     // Check if we have direct access
