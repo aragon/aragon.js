@@ -1,5 +1,5 @@
 // Externals
-import { Subject, Observable } from 'rxjs/Rx'
+import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import Web3 from 'web3'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
@@ -197,8 +197,11 @@ export default class Aragon {
    * @return {void}
    */
   initNotifications () {
-    // TODO: Load notifications from cache
-    this.notifications = new Subject()
+    this.notifications = new BehaviorSubject(
+      this.cache.get('notifications', [])
+    )
+      .scan((notifications, notification) => notifications.concat(notification))
+      .do((notifications) => this.cache.set(notifications))
   }
 
   /**
