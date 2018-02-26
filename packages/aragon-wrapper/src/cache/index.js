@@ -51,6 +51,12 @@ export default class Cache {
     ).value()
   }
 
+  update (key, transition) {
+    return this.set(key,
+      transition(this.get(key))
+    )
+  }
+
   /**
    * Observe the value of a key in cache over time
    *
