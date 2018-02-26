@@ -45,10 +45,10 @@ export default class Cache {
       .then(() => this.changes.next({ key, value }))
   }
 
-  get (key) {
+  get (key, defaultValue) {
     return this.db.get(
       this.getCacheKeyPath(key)
-    ).value()
+    ).value() || defaultValue
   }
 
   update (key, transition) {
