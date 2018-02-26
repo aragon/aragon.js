@@ -23,7 +23,7 @@
     "blockchain"
   ],
   "author": "Aragon Institution MTU <contact@aragon.one>",
-  "license": "GPL-3.0",
+  "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/aragon/aragon.js/issues"
   },
