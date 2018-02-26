@@ -1,4 +1,5 @@
 import Messenger from '@aragon/messenger'
+import { fromPromise } from 'rxjs/observable/fromPromise'
 
 const AppProxyHandler = {
   get (target, name, receiver) {
@@ -87,11 +88,22 @@ class AppProxy {
   store (reducer) {
     const initialState = this.state().take(1)
 
+    // Wrap the reducer in another reducer that
+    // allows us to execute code asynchronously
+    // in our reducer. That's a lot of reducing.
+    //
+    // This is needed for the `mergeScan` operator.
+    // Also, this supports both sync and async code
+    // (because of the `Promise.resolve`).
+    const wrappedReducer = (state, event) =>
+      fromPromise(
+        Promise.resolve(reducer(state, event))
+      )
+
     return initialState
       .switchMap((initialState) =>
         this.events()
-          .startWith(initialState)
-          .scan(reducer)
+          .mergeScan(wrappedReducer, initialState, 1)
           .map((state) => this.cache('state', state))
       )
   }
