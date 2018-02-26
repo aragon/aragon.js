@@ -243,8 +243,14 @@ export default class Aragon {
       (response) => messenger.sendResponse(response.id, response.payload)
     )
 
+    // App context helper function
+    function setContext (context) {
+      return messenger.send('context', [context])
+    }
+
     return {
-      shutdown
+      shutdown,
+      setContext
     }
   }
 

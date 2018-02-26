@@ -126,6 +126,24 @@ class AppProxy {
       [title, body, context]
     )
   }
+
+  /**
+   * Listen for app contexts sent from the wrapper.
+   *
+   * An app context is sent from the wrapper and correspond to a specific view
+   * in your app.
+   *
+   * For example, when sending a notification, you can optionally supply an
+   * app context. If the notification is clicked, the app is loaded and
+   * the context is sent back to the app.
+   *
+   * @return {Observable} An observable of incoming app contexts
+   */
+  context () {
+    return this.rpc.requests()
+      .filter((request) => request.method === 'context')
+      .map((request) => request.params[0])
+  }
 }
 
 /**
