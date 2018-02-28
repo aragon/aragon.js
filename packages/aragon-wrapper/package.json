@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@aragon/messenger": "^1.0.0-beta.3",
+    "@aragon/templates-beta": "^1.1.0",
     "dot-prop": "^4.2.0",
     "ethereum-ens": "^0.7.3",
     "ethjs-ens": "^2.0.1",
