@@ -201,7 +201,7 @@ export default class Aragon {
       this.cache.get('notifications', [])
     )
       .scan((notifications, notification) => notifications.concat(notification))
-      .do((notifications) => this.cache.set(notifications))
+      .do((notifications) => this.cache.set('notifications', notifications))
   }
 
   /**
