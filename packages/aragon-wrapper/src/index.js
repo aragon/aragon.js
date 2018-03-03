@@ -271,6 +271,33 @@ export default class Aragon {
   }
 
   /**
+   * Clears a notification.
+   *
+   * @param {string} id The notification's id
+   * @return {void}
+   */
+  clearNotification (id) {
+    this.notifications.next({
+      modifier: (notifications) => {
+        return notifications.filter(notification => notification.id !== id)
+      }
+    })
+  }
+
+  /**
+   * Clears all notifications.
+   *
+   * @return {void}
+   */
+  clearNotifications () {
+    this.notifications.next({
+      modifier: (notifications) => {
+        return []
+      }
+    })
+  }
+
+  /**
    * Run an app.
    *
    * @param  {Object} sandboxMessengerProvider
