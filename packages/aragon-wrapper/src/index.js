@@ -1,5 +1,6 @@
 // Externals
 import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { isBefore } from 'date-fns/esm'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import dotprop from 'dot-prop'
@@ -240,7 +241,20 @@ export default class Aragon {
       read: false,
     }
     this.notifications.next({
-      modifier: (notifications, notification) => notifications.concat(notification),
+      modifier: (notifications, notification) => {
+        // Find the first notification that's not before this new one
+        // and insert ahead of it if it exists
+        const newNotificationIndex = notifications.findIndex(
+          notification => !isBefore(new Date(notification.date), date)
+        )
+        return newNotificationIndex === -1 ?
+          [...notifications, notification] :
+          [
+            ...notifications.slice(0, newNotificationIndex),
+            notification,
+            ...notifications.slice(newNotificationIndex)
+          ]
+      },
       notification: {
         ...notification,
         acknowledge: () => this.acknowledgeNotification(id),
