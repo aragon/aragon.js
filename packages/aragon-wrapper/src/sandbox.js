@@ -6,7 +6,7 @@ import debug from 'debug'
 const wrapper = new Aragon(
   '0x94b8a1c323ef9da0b9df74ba0edb45fd7ddd8151',
   { provider: new Web3.providers.HttpProvider('http://localhost:8545'),
-    ensRegistryAddress: '0x2e0ecaae14bc77001ba0c0c2500c60af1e12c980',
+    ensRegistryAddress: '0x3943df114b7f6ad8a187733b48f20c6efb0c8627',
     apm: {
       provider: new Web3.providers.HttpProvider('http://localhost:8545'),
     },
@@ -16,5 +16,5 @@ const wrapper = new Aragon(
 
 const log = debug('wrapper')
 
-// wrapper.templates.newDAO('multisig', 'bareto', [['0x2e0ecaae14bc77001ba0c0c2500c60af1e12c980', '0xbf2edcb9e51c37be45c731ead4e077cf1debc66a'], 2]).then(console.log)
-wrapper.templates.newDAO('democracy', 'LOLOLO', [['0x2e0ecaae14bc77001ba0c0c2500c60af1e12c980', '0xbf2edcb9e51c37be45c731ead4e077cf1debc66a'], [1,2], 10, 5, 500]).then(console.log)
+wrapper.templates.newDAO('multisig', 'hahalojjsjsjs', [['0x2e0ecaae14bc77001ba0c0c2500c60af1e12c981', '0xbf2edcb9e51c37be45c731ead4e077cf1debc661'], 1]).then(console.log)
+wrapper.templates.newDAO('democracy', 'rlolsssssolacananan', [['0x2e0ecaae14bc77001ba0c0c2500c60af1e12c981', '0xbf2edcb9e51c37be45c731ead4e077cf1debc661'], [1,2], 5000000, 10000, 5000]).then(console.log)
