@@ -16,6 +16,9 @@ import * as handlers from './rpc/handlers'
 import { encodeCallScript } from './evmscript'
 import { makeProxy, makeProxyFromABI } from './utils'
 
+// Templates
+import Templates from './templates'
+
 // Cache
 import Cache from './cache'
 
@@ -54,15 +57,16 @@ export default class Aragon {
 
     // Set up APM
     this.apm = apm(this.web3, Object.assign(options.apm, {
-      provider: options.provider,
       registryAddress: options.ensRegistryAddress
     }))
+
+    this.templates = Templates(this.web3, this.apm, options.from)
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
-    this.cache = new Cache(daoAddress)
+    // this.cache = new Cache(daoAddress)
   }
 
   /**
