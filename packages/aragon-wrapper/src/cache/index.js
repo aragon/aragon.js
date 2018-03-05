@@ -69,6 +69,6 @@ export default class Cache {
       (change) => change.key === key
     ).map(
       (change) => change.value
-    )
+    ).startWith(this.get(key))
   }
 }
