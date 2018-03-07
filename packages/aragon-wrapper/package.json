@@ -34,6 +34,7 @@
     "babel-eslint": "^7.2.1",
     "babel-plugin-transform-flow-strip-types": "^6.22.0",
     "babel-plugin-transform-function-bind": "^6.22.0",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-plugin-transform-pipeline": "^0.1.0",
     "babel-preset-env": "^1.6.1",
     "babel-preset-minify": "^0.3.0",
@@ -59,6 +60,7 @@
   },
   "dependencies": {
     "@aragon/messenger": "^1.0.0-beta.3",
+    "date-fns": "^2.0.0-alpha.7",
     "dot-prop": "^4.2.0",
     "ethereum-ens": "^0.7.3",
     "ethjs-ens": "^2.0.1",
@@ -67,6 +69,7 @@
     "lowdb": "^1.0.0",
     "radspec": "^1.0.0-beta.1",
     "rxjs": "^5.5.6",
+    "uuid": "^3.2.1",
     "web3": "^1.0.0-beta.21",
     "web3-eth-abi": "^1.0.0-beta.28"
   }

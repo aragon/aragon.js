@@ -19,6 +19,7 @@
   "plugins": [
     "transform-flow-strip-types",
     "transform-function-bind",
+    ["transform-object-rest-spread", { "useBuiltIns": true }],
     "transform-pipeline"
   ],
   "env": {
