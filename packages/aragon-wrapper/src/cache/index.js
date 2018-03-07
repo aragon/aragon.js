@@ -62,13 +62,14 @@ export default class Cache {
    *
    * @memberof Cache
    * @param  {string} key
+   * @param  {*}      defaultValue
    * @return {Observable}
    */
-  observe (key) {
+  observe (key, defaultValue) {
     return this.changes.filter(
       (change) => change.key === key
     ).map(
       (change) => change.value
-    ).startWith(this.get(key))
+    ).startWith(this.get(key, defaultValue))
   }
 }
