@@ -28,7 +28,7 @@ export const isValidResponse = (response) => {
   return !!response &&
     response.jsonrpc === '2.0' &&
     (typeof response.id === 'string') &&
-    (response.result !== undefined || response.error !== undefined)
+    (response.hasOwnProperty('result') || response.hasOwnProperty('error'))
 }
 
 export default {
