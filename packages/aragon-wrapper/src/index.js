@@ -1,5 +1,7 @@
 // Externals
-import { Subject, Observable } from 'rxjs/Rx'
+import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { isBefore } from 'date-fns/esm'
+import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
@@ -201,28 +203,114 @@ export default class Aragon {
    * @return {void}
    */
   initNotifications () {
-    // TODO: Load notifications from cache
-    this.notifications = new Subject()
+    // If the cached notifications doesn't exist or isn't an array, set it to an empty one
+    let cached = this.cache.get('notifications')
+    if (!Array.isArray(cached)) {
+      cached = []
+    } else {
+      // Set up acknowledge for unread notifications
+      cached.forEach(notification => {
+        if (notification && !notification.read) {
+          notification.acknowledge = () => this.acknowledgeNotification(notification.id)
+        }
+      })
+    }
+
+    this.notifications = new BehaviorSubject(cached)
+      .scan((notifications, { modifier, notification }) => modifier(notifications, notification))
+      .do((notifications) => this.cache.set('notifications', notifications))
+      .publishReplay(1)
+    this.notifications.connect()
   }
 
   /**
    * Send a notification.
    *
+   * @param {string} app   The address of the app sending the notification
    * @param {string} title The notification title
-   * @param {string} body The notification body
+   * @param {string} body  The notification body
    * @param {object} [context={}] The application context to send back if the notification is clicked
    * @param  {Date}  [date=new Date()] The date the notification was sent
    * @return {void}
    */
   sendNotification (app, title, body, context = {}, date = new Date()) {
-    this.notifications.next({
-      title,
+    const id = uuidv4()
+    const notification = {
+      app,
       body,
       context,
-      app,
       date,
-      acknowledge: function () {
-        // TODO
+      id,
+      title,
+      read: false,
+    }
+    this.notifications.next({
+      modifier: (notifications, notification) => {
+        // Find the first notification that's not before this new one
+        // and insert ahead of it if it exists
+        const newNotificationIndex = notifications.findIndex(
+          notification => !isBefore(new Date(notification.date), date)
+        )
+        return newNotificationIndex === -1 ?
+          [...notifications, notification] :
+          [
+            ...notifications.slice(0, newNotificationIndex),
+            notification,
+            ...notifications.slice(newNotificationIndex)
+          ]
+      },
+      notification: {
+        ...notification,
+        acknowledge: () => this.acknowledgeNotification(id),
+      },
+    })
+  }
+
+  /**
+   * Acknowledge a notification.
+   *
+   * @param {string} id The notification's id
+   * @return {void}
+   */
+  acknowledgeNotification (id) {
+    this.notifications.next({
+      modifier: (notifications) => {
+        const notificationIndex = notifications.findIndex(notification => notification.id === id)
+        // Copy the old notifications and replace the old notification with a read version
+        const newNotifications = [...notifications]
+        newNotifications[notificationIndex] = {
+          ...notifications[notificationIndex],
+          read: true,
+          acknowledge: () => {},
+        }
+        return newNotifications
+      }
+    })
+  }
+
+  /**
+   * Clears a notification.
+   *
+   * @param {string} id The notification's id
+   * @return {void}
+   */
+  clearNotification (id) {
+    this.notifications.next({
+      modifier: (notifications) => {
+        return notifications.filter(notification => notification.id !== id)
+      }
+    })
+  }
+
+  /**
+   * Clears all notifications.
+   *
+   * @return {void}
+   */
+  clearNotifications () {
+    this.notifications.next({
+      modifier: (notifications) => {
+        return []
       }
     })
   }

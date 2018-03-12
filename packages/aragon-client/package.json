@@ -1,17 +1,63 @@
 {
-	"dependencies": {
-		"ava": "^0.24.0",
-		"babel-cli": "^6.26.0",
-		"babel-eslint": "^7.2.1",
-		"babel-plugin-transform-flow-strip-types": "^6.22.0",
-		"babel-plugin-transform-function-bind": "^6.22.0",
-		"babel-plugin-transform-pipeline": "^0.1.0",
-		"babel-preset-env": "^1.6.1",
-		"debug": "^3.1.0",
-		"documentation": "^5.3.5",
-		"eslint-plugin-flowtype": "^2.41.0",
-		"flow-bin": "^0.63.1",
-		"nyc": "^11.4.1",
-		"standard": "^10.0.3"
-	}
+  "name": "@aragon/client",
+  "version": "1.0.0-beta.2",
+  "description": "Library for Aragon apps",
+  "main": "dist/index.js",
+  "scripts": {
+    "flow": "flow src",
+    "lint": "standard src",
+    "postlint": "documentation lint src",
+    "test": "nyc --silent --all ava",
+    "build": "babel -d dist src",
+    "prepublish": "env NODE_ENV=production npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aragon/aragon.js.git"
+  },
+  "keywords": [
+    "ethereum",
+    "aragon",
+    "web3",
+    "client",
+    "blockchain"
+  ],
+  "author": "Aragon Institution MTÜ <contact@aragon.one>",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/aragon/aragon.js/issues"
+  },
+  "homepage": "https://github.com/aragon/aragon.js#readme",
+  "devDependencies": {
+    "ava": "^0.24.0",
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^7.2.1",
+    "babel-plugin-transform-flow-strip-types": "^6.22.0",
+    "babel-plugin-transform-function-bind": "^6.22.0",
+    "babel-plugin-transform-pipeline": "^0.1.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-minify": "^0.3.0",
+    "debug": "^3.1.0",
+    "documentation": "^5.3.5",
+    "eslint-plugin-flowtype": "^2.41.0",
+    "flow-bin": "^0.63.1",
+    "nyc": "^11.4.1",
+    "standard": "^10.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "plugins": [
+      "flowtype"
+    ]
+  },
+  "ava": {
+    "require": "babel-register",
+    "babel": "inherit"
+  },
+  "dependencies": {
+    "@aragon/messenger": "^1.0.0-beta.3"
+  }
 }

@@ -20,5 +20,10 @@
     "transform-flow-strip-types",
     "transform-function-bind",
     "transform-pipeline"
-  ]
+  ],
+  "env": {
+    "production": {
+      "presets": ["minify"]
+    }
+  }
 }

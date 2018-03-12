@@ -38,17 +38,25 @@ export default class Cache {
   }
 
   set (key, value) {
-    return this.db.set(
+    // Some lowdb adapters are synchronous while others are asynchronous so
+    // let's always wrap it in a promise
+    return Promise.resolve(this.db.set(
       this.getCacheKeyPath(key),
       value
-    ).write()
+    ).write())
       .then(() => this.changes.next({ key, value }))
   }
 
-  get (key) {
+  get (key, defaultValue) {
     return this.db.get(
       this.getCacheKeyPath(key)
-    ).value()
+    ).value() || defaultValue
+  }
+
+  update (key, transition) {
+    return this.set(key,
+      transition(this.get(key))
+    )
   }
 
   /**
@@ -56,13 +64,14 @@ export default class Cache {
    *
    * @memberof Cache
    * @param  {string} key
+   * @param  {*}      defaultValue
    * @return {Observable}
    */
-  observe (key) {
+  observe (key, defaultValue) {
     return this.changes.filter(
       (change) => change.key === key
     ).map(
       (change) => change.value
-    )
+    ).startWith(this.get(key, defaultValue))
   }
 }
