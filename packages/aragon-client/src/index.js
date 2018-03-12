@@ -109,7 +109,7 @@ class AppProxy {
       .publishReplay(1)
     store$.connect()
 
-    return store()
+    return store$
   }
 
   /**
