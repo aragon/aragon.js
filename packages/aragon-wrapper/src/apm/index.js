@@ -1,7 +1,7 @@
 import ipfs from './providers/ipfs'
 import * as ens from '../ens'
 
-module.exports = (web3, opts = {
+export default (web3, opts = {
   ensRegistryAddress: null
 }) => {
   // Set up providers

@@ -3,12 +3,14 @@
   "version": "2.0.0-beta.11",
   "description": "Library for Aragon Wrappers",
   "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.browser.js",
   "scripts": {
     "flow": "flow src",
     "lint": "standard src",
     "postlint": "documentation lint src",
     "test": "nyc --silent --all ava",
-    "build": "babel -d dist src",
+    "build": "rollup -c",
     "prepublish": "env NODE_ENV=production npm run build"
   },
   "repository": {
@@ -43,6 +45,12 @@
     "eslint-plugin-flowtype": "^2.41.0",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
+    "rollup": "^0.56.5",
+    "rollup-plugin-babel": "^3.0.3",
+    "rollup-plugin-commonjs": "^9.1.0",
+    "rollup-plugin-json": "^2.3.0",
+    "rollup-plugin-node-resolve": "^3.2.0",
+    "rollup-plugin-progress": "^0.4.0",
     "standard": "^10.0.3"
   },
   "publishConfig": {
@@ -60,6 +68,7 @@
   },
   "dependencies": {
     "@aragon/messenger": "^1.0.0-beta.3",
+    "babel-plugin-external-helpers": "^6.22.0",
     "date-fns": "^2.0.0-alpha.7",
     "dot-prop": "^4.2.0",
     "ethereum-ens": "^0.7.3",
