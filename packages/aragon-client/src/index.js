@@ -48,9 +48,13 @@ class AppProxy {
       events: (fromBlock = 0) => {
         return this.rpc.sendAndObserveResponses(
           'external_events',
-          [jsonInterface.filter(
-            (item) => item.type === 'event'
-          ), fromBlock]
+          [
+            address,
+            jsonInterface.filter(
+              (item) => item.type === 'event'
+            ),
+            fromBlock
+          ]
         )
       }
     }
