@@ -86,7 +86,7 @@ class AppProxy {
    * @return {Observable} An observable of the resulting state from reducing events
    */
   store (reducer) {
-    const initialState = this.state().take(1)
+    const initialState = this.state().first()
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
@@ -100,12 +100,16 @@ class AppProxy {
         Promise.resolve(reducer(state, event))
       )
 
-    return initialState
+    const store$ = initialState
       .switchMap((initialState) =>
         this.events()
           .mergeScan(wrappedReducer, initialState, 1)
           .map((state) => this.cache('state', state))
       )
+      .publishReplay(1)
+    store$.connect()
+
+    return store$
   }
 
   /**
