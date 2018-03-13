@@ -640,5 +640,7 @@ export default class Aragon {
   }
 }
 
+export { isNameUsed } from './templates'
+
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/messenger'

@@ -1,5 +1,5 @@
 import { templates as templateArtifacts } from '@aragon/templates-beta'
-import { resolve as ensResolve } from '../ens'
+import { resolve as ensResolve } from '../ens'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 
@@ -33,7 +33,7 @@ const templates = {
 
 const sleep = t => new Promise(r => setTimeout(() => r(), 1000 * t))
 
-module.exports = (web3, apm, from) => {
+const Templates = (web3, apm, from) => {
   const newToken = async (template, name) => {
     const receipt = await template.methods.newToken(name, name).send({ from, gas: 4e6 })
     return receipt.events.DeployToken.returnValues
@@ -65,14 +65,21 @@ module.exports = (web3, apm, from) => {
         newInstance(template, organizationName, params),
       ])
     },
-
-    isNameUsed: async (name) => {
-      try {
-        const addr = await ensResolve(`${name}.aragonid.eth`)
-        return addr !== zeroAddress
-      } catch (e) {
-        return false
-      }
-    },
   }
 }
+
+// opts will be passed to the ethjs-ens constructor and
+// should at least contain `provider` and `registryAddress`.
+export const isNameUsed = async (name, opts = {} ) => {
+  try {
+    const addr = await ensResolve(`${name}.aragonid.eth`, opts)
+    return addr !== zeroAddress
+  } catch (err) {
+    if (err.message === 'ENS name not defined.') {
+      return false
+    }
+    throw new Error(`ENS couldn’t resolve the domain: ${name}.aragonid.eth`)
+  }
+}
+
+export default Templates
