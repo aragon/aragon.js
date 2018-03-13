@@ -1,6 +1,6 @@
 import ipfsAPI from 'ipfs-api'
 
-module.exports = (opts = {}) => {
+export default (opts = {}) => {
   const ipfs = ipfsAPI(opts.rpc)
 
   return {

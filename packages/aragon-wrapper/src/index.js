@@ -7,7 +7,7 @@ import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
 // APM
-import { keccak256 } from 'js-sha3'
+const keccak256 = require('js-sha3').keccak256
 import apm from './apm'
 
 // RPC
