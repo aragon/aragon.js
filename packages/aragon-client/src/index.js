@@ -37,6 +37,41 @@ class AppProxy {
   }
 
   /**
+   * Create a handle to an external contract.
+   *
+   * @param  {string} address The address of the external contract
+   * @param  {Array<Object>} jsonInterface The JSON interface of the external contract
+   * @return {Object}
+   */
+  external (address, jsonInterface) {
+    let contract = {
+      events: () => {
+        return this.rpc.sendAndObserveResponses(
+          'external_events',
+          jsonInterface.filter(
+            (item) => item.type === 'event'
+          )
+        )
+      }
+    }
+
+    // Bind calls
+    const callMethods = jsonInterface.filter(
+      (item) => item.type === 'function' && item.constant
+    )
+    for (let methodABI of callMethods) {
+      contract[methodABI.name] = (...params) => {
+        return this.rpc.sendAndObserveResponse(
+          'external_call',
+          [address, methodABI, ...params]
+        )
+      }
+    }
+
+    return contract
+  }
+
+  /**
    * Cache a value for the application.
    *
    * @memberof AppProxy
