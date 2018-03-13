@@ -45,12 +45,12 @@ class AppProxy {
    */
   external (address, jsonInterface) {
     let contract = {
-      events: () => {
+      events: (fromBlock = 0) => {
         return this.rpc.sendAndObserveResponses(
           'external_events',
-          jsonInterface.filter(
+          [jsonInterface.filter(
             (item) => item.type === 'event'
-          )
+          ), fromBlock]
         )
       }
     }
