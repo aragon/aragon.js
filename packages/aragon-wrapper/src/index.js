@@ -238,7 +238,7 @@ export default class Aragon {
       date,
       id,
       title,
-      read: false,
+      read: false
     }
     this.notifications.next({
       modifier: (notifications, notification) => {
@@ -247,9 +247,9 @@ export default class Aragon {
         const newNotificationIndex = notifications.findIndex(
           notification => !isBefore(new Date(notification.date), date)
         )
-        return newNotificationIndex === -1 ?
-          [...notifications, notification] :
-          [
+        return newNotificationIndex === -1
+          ? [...notifications, notification]
+          : [
             ...notifications.slice(0, newNotificationIndex),
             notification,
             ...notifications.slice(newNotificationIndex)
@@ -257,8 +257,8 @@ export default class Aragon {
       },
       notification: {
         ...notification,
-        acknowledge: () => this.acknowledgeNotification(id),
-      },
+        acknowledge: () => this.acknowledgeNotification(id)
+      }
     })
   }
 
