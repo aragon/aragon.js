@@ -9,7 +9,7 @@ export const encodeRequest = (method, params = []) => {
   }
 }
 
-export const encodeResponse = (id, result) => {
+export const encodeResponse = (id, result = null) => {
   let response = {
     jsonrpc: '2.0',
     id

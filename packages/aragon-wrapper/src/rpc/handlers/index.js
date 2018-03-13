@@ -1,6 +1,6 @@
 import { Observable } from 'rxjs/Rx'
 
-export function createResponse ({ request: { id } }, { error, value }) {
+export function createResponse ({ request: { id } }, { error, value = null }) {
   if (error) {
     return { id, payload: error }
   }
@@ -20,7 +20,7 @@ export function createRequestHandler (request$, requestType, handler) {
     ).materialize(),
     createResponse
   ).filter(
-    (response) => response.payload !== undefined
+    (response) => response.payload !== undefined || response.error !== undefined
   )
 }
 
