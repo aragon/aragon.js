@@ -20,7 +20,7 @@ export function createRequestHandler (request$, requestType, handler) {
     ).materialize(),
     createResponse
   ).filter(
-    (response) => response.hasOwnProperty('payload')
+    (response) => response.payload
   )
 }
 
