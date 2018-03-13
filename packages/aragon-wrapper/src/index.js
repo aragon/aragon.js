@@ -82,7 +82,7 @@ export default class Aragon {
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
-    // this.cache = new Cache(daoAddress)
+    this.cache = new Cache(daoAddress)
   }
 
   /**
