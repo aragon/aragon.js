@@ -27,7 +27,7 @@ import Cache from './cache'
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
-    ? web3.currentProvider
+    ? web3.currentProvider // eslint-disable-line
     : 'ws://rinkeby.aragon.network:8546'
 
 // Returns a template creator instance that can be used independently.
@@ -64,7 +64,7 @@ export const setupTemplates = (
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: detectProvider(),
+      provider: detectProvider()
     }
     options = Object.assign(defaultOptions, options)
 
@@ -73,7 +73,8 @@ export default class Aragon {
 
     // Set up APM
     this.apm = apm(this.web3, Object.assign(options.apm, {
-      registryAddress: options.ensRegistryAddress
+      registryAddress: options.ensRegistryAddress,
+      provider: options.provider
     }))
 
     this.templates = Templates(this.web3, this.apm, options.from)
