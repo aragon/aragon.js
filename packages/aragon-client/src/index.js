@@ -55,7 +55,7 @@ class AppProxy {
             ),
             fromBlock
           ]
-        )
+        ).pluck('result')
       }
     }
 
@@ -68,7 +68,7 @@ class AppProxy {
         return this.rpc.sendAndObserveResponse(
           'external_call',
           [address, methodABI, ...params]
-        )
+        ).pluck('result')
       }
     }
 
