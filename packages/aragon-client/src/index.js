@@ -209,3 +209,6 @@ export default class AragonApp {
     )
   }
 }
+
+// Re-export the Aragon RPC providers
+export { providers } from '@aragon/messenger'
