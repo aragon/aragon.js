@@ -25,6 +25,25 @@ class AppProxy {
   }
 
   /**
+   * Set the app identifier.
+   *
+   * An app identifier is a way to distinguish multiple instances
+   * of the same app.
+   *
+   * Examples include: the name of a token that the app manages,
+   * the type of content that a TCR is curating, the name of a group etc.
+   *
+   * @param  {string} identifier
+   * @return {void}
+   */
+  identify (identifier) {
+    this.rpc.send(
+      'identify',
+      [identifier]
+    )
+  }
+
+  /**
    * Get events from the application contract.
    *
    * @memberof AppProxy

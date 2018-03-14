@@ -1,6 +1,6 @@
 // Externals
 import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
-import { isBefore } from 'date-fns/esm'
+import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import dotprop from 'dot-prop'
@@ -18,8 +18,27 @@ import * as handlers from './rpc/handlers'
 import { encodeCallScript } from './evmscript'
 import { makeProxy, makeProxyFromABI } from './utils'
 
+// Templates
+import Templates from './templates'
+
 // Cache
 import Cache from './cache'
+
+// Try to get an injected web3 provider, return a public one otherwise.
+export const detectProvider = () =>
+  typeof web3 !== 'undefined'
+    ? web3.currentProvider // eslint-disable-line
+    : 'ws://rinkeby.aragon.network:8546'
+
+// Returns a template creator instance that can be used independently.
+export const setupTemplates = (
+  provider,
+  registryAddress,
+  from
+) => {
+  const web3 = new Web3(provider)
+  return Templates(web3, apm(web3, { provider, registryAddress }), from)
+}
 
 /**
  * An Aragon wrapper.
@@ -45,9 +64,7 @@ import Cache from './cache'
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: (typeof web3 !== 'undefined')
-        ? web3.currentProvider
-        : 'ws://rinkeby.aragon.network:8546'
+      provider: detectProvider()
     }
     options = Object.assign(defaultOptions, options)
 
@@ -56,9 +73,11 @@ export default class Aragon {
 
     // Set up APM
     this.apm = apm(this.web3, Object.assign(options.apm, {
-      provider: options.provider,
-      registryAddress: options.ensRegistryAddress
+      registryAddress: options.ensRegistryAddress,
+      provider: options.provider
     }))
+
+    this.templates = Templates(this.web3, this.apm, options.from)
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -156,7 +175,9 @@ export default class Aragon {
    */
   initApps () {
     // TODO: Only includes apps in the namespace `keccak256("app")`
-    this.apps = this.permissions
+    // TODO: Refactor this a bit because it's pretty much an eye sore
+    this.identifiers = new Subject()
+    this.appsWithoutIdentifiers = this.permissions
       .map(Object.keys)
       .switchMap(
         (appAddresses) => Promise.all(
@@ -175,8 +196,41 @@ export default class Aragon {
           ))
         )
       )
+    this.apps = this.appsWithoutIdentifiers
+      .combineLatest(
+        this.identifiers.scan(
+          (identifiers, { address, identifier }) =>
+            Object.assign(identifiers, { [address]: identifier }),
+          {}
+        ).startWith({}),
+        function attachIdentifiers (apps, identifiers) {
+          return apps.map(
+            (app) => {
+              if (identifiers[app.proxyAddress]) {
+                return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
+              }
+
+              return app
+            }
+          )
+        }
+      )
       .publishReplay(1)
     this.apps.connect()
+  }
+
+  /**
+   * Set the identifier of an app.
+   *
+   * @param {string} address The proxy address of the app
+   * @param {string} identifier The identifier of the app
+   * @return {void}
+   */
+  setAppIdentifier (address, identifier) {
+    this.identifiers.next({
+      address,
+      identifier
+    })
   }
 
   /**
@@ -238,7 +292,7 @@ export default class Aragon {
       date,
       id,
       title,
-      read: false,
+      read: false
     }
     this.notifications.next({
       modifier: (notifications, notification) => {
@@ -247,9 +301,9 @@ export default class Aragon {
         const newNotificationIndex = notifications.findIndex(
           notification => !isBefore(new Date(notification.date), date)
         )
-        return newNotificationIndex === -1 ?
-          [...notifications, notification] :
-          [
+        return newNotificationIndex === -1
+          ? [...notifications, notification]
+          : [
             ...notifications.slice(0, newNotificationIndex),
             notification,
             ...notifications.slice(newNotificationIndex)
@@ -257,8 +311,8 @@ export default class Aragon {
       },
       notification: {
         ...notification,
-        acknowledge: () => this.acknowledgeNotification(id),
-      },
+        acknowledge: () => this.acknowledgeNotification(id)
+      }
     })
   }
 
@@ -277,7 +331,7 @@ export default class Aragon {
         newNotifications[notificationIndex] = {
           ...notifications[notificationIndex],
           read: true,
-          acknowledge: () => {},
+          acknowledge: () => {}
         }
         return newNotifications
       }
@@ -350,7 +404,8 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'call', handlers.call),
       handlers.createRequestHandler(request$, 'notification', handlers.notifications),
       handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
-      handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents)
+      handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+      handlers.createRequestHandler(request$, 'identify', handlers.identifier)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
@@ -623,6 +678,8 @@ export default class Aragon {
     return []
   }
 }
+
+export { isNameUsed } from './templates'
 
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/messenger'
