@@ -44,7 +44,7 @@ class AppProxy {
    * @return {Object}
    */
   external (address, jsonInterface) {
-    let contract = {
+    const contract = {
       events: (fromBlock = 0) => {
         return this.rpc.sendAndObserveResponses(
           'external_events',
@@ -63,14 +63,14 @@ class AppProxy {
     const callMethods = jsonInterface.filter(
       (item) => item.type === 'function' && item.constant
     )
-    for (let methodABI of callMethods) {
-      contract[methodABI.name] = (...params) => {
+    callMethods.forEach((methodJsonInterface) => {
+      contract[methodJsonInterface.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_call',
-          [address, methodABI, ...params]
+          [address, methodJsonInterface, ...params]
         ).pluck('result')
       }
-    }
+    })
 
     return contract
   }
