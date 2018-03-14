@@ -31,8 +31,6 @@ const templates = {
   },
 }
 
-const sleep = t => new Promise(r => setTimeout(() => r(), 1000 * t))
-
 const Templates = (web3, apm, from) => {
   const newToken = async (template, name) => {
     const receipt = await template.methods.newToken(name, name).send({ from, gas: 4e6 })
@@ -40,7 +38,6 @@ const Templates = (web3, apm, from) => {
   }
 
   const newInstance = async (template, name, params) => {
-    await sleep(2) // ensure newToken is submitted before
     const receipt = await template.methods.newInstance(name, ...params).send({ from, gas: 6.9e6 })
     return receipt.events.DeployInstance.returnValues
   }
@@ -60,10 +57,10 @@ const Templates = (web3, apm, from) => {
         contractAddress
       )
 
-      return await Promise.all([
-        newToken(template, organizationName),
-        newInstance(template, organizationName, params),
-      ])
+      const token = await newToken(template, organizationName)
+      const instance = await newInstance(template, organizationName, params)
+
+      return [token, instance]
     },
   }
 }
