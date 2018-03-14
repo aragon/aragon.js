@@ -158,12 +158,6 @@ export default class Aragon {
     // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
-      .scan(
-        (identifiers, { address, identifier }) =>
-          Object.assign(identifiers, { [address]: identifier }),
-        {}
-      )
-      .startWith({})
     this.appsWithoutIdentifiers = this.permissions
       .map(Object.keys)
       .switchMap(
@@ -184,13 +178,18 @@ export default class Aragon {
         )
       )
     this.apps = this.appsWithoutIdentifiers
-      .withLatestFrom(
-        this.identifiers,
+      .combineLatest(
+        this.identifiers.scan(
+          (identifiers, { address, identifier }) =>
+            Object.assign(identifiers, { [address]: identifier }),
+          {}
+        ).startWith({}),
         function attachIdentifiers (apps, identifiers) {
+          console.log(apps, identifiers)
           return apps.map(
             (app) => {
-              if (identifiers[apps.proxyAddress]) {
-                return Object.assign(app, { identifier: identifiers[apps.proxyAddress] })
+              if (identifiers[app.proxyAddress]) {
+                return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
               }
 
               return app
