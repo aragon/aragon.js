@@ -156,7 +156,15 @@ export default class Aragon {
    */
   initApps () {
     // TODO: Only includes apps in the namespace `keccak256("app")`
-    this.apps = this.permissions
+    // TODO: Refactor this a bit because it's pretty much an eye sore
+    this.identifiers = new Subject()
+      .scan(
+        (identifiers, { address, identifier }) =>
+          Object.assign(identifiers, { [address]: identifier }),
+        {}
+      )
+      .startWith({})
+    this.appsWithoutIdentifiers = this.permissions
       .map(Object.keys)
       .switchMap(
         (appAddresses) => Promise.all(
@@ -175,8 +183,37 @@ export default class Aragon {
           ))
         )
       )
+    this.apps = this.appsWithoutIdentifiers
+      .withLatestFrom(
+        this.identifiers,
+        function attachIdentifiers (apps, identifiers) {
+          return apps.map(
+            (app) => {
+              if (identifiers[apps.proxyAddress]) {
+                return Object.assign(app, { identifier: identifiers[apps.proxyAddress] })
+              }
+
+              return app
+            }
+          )
+        }
+      )
       .publishReplay(1)
     this.apps.connect()
+  }
+
+  /**
+   * Set the identifier of an app.
+   *
+   * @param {string} address The proxy address of the app
+   * @param {string} identifier The identifier of the app
+   * @return {void}
+   */
+  setAppIdentifier (address, identifier) {
+    this.identifiers.next({
+      address,
+      identifier
+    })
   }
 
   /**
@@ -277,7 +314,7 @@ export default class Aragon {
         newNotifications[notificationIndex] = {
           ...notifications[notificationIndex],
           read: true,
-          acknowledge: () => {},
+          acknowledge: () => {}
         }
         return newNotifications
       }
@@ -348,7 +385,8 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'events', handlers.events),
       handlers.createRequestHandler(request$, 'intent', handlers.intent),
       handlers.createRequestHandler(request$, 'call', handlers.call),
-      handlers.createRequestHandler(request$, 'notification', handlers.notifications)
+      handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+      handlers.createRequestHandler(request$, 'identify', handlers.identifier)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
