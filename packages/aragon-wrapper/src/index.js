@@ -1,6 +1,6 @@
 // Externals
 import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
-import { isBefore } from 'date-fns/esm'
+import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import dotprop from 'dot-prop'
