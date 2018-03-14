@@ -1,10 +1,12 @@
 import jsonrpc from './jsonrpc'
 import MessagePortMessage from './providers/MessagePortMessage'
 import WindowMessage from './providers/WindowMessage'
+import DevMessage from './providers/DevMessage'
 
 export const providers = {
   MessagePortMessage,
   WindowMessage,
+  DevMessage
 }
 
 /**
