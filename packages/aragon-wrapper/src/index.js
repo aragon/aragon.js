@@ -18,8 +18,27 @@ import * as handlers from './rpc/handlers'
 import { encodeCallScript } from './evmscript'
 import { makeProxy, makeProxyFromABI } from './utils'
 
+// Templates
+import Templates from './templates'
+
 // Cache
 import Cache from './cache'
+
+// Try to get an injected web3 provider, return a public one otherwise.
+export const detectProvider = () =>
+  typeof web3 !== 'undefined'
+    ? web3.currentProvider
+    : 'ws://rinkeby.aragon.network:8546'
+
+// Returns a template creator instance that can be used independently.
+export const setupTemplates = (
+  provider,
+  registryAddress,
+  from
+) => {
+  const web3 = new Web3(provider)
+  return Templates(web3, apm(web3, { provider, registryAddress }), from)
+}
 
 /**
  * An Aragon wrapper.
@@ -45,9 +64,7 @@ import Cache from './cache'
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: (typeof web3 !== 'undefined')
-        ? web3.currentProvider
-        : 'ws://rinkeby.aragon.network:8546'
+      provider: detectProvider(),
     }
     options = Object.assign(defaultOptions, options)
 
@@ -56,9 +73,10 @@ export default class Aragon {
 
     // Set up APM
     this.apm = apm(this.web3, Object.assign(options.apm, {
-      provider: options.provider,
       registryAddress: options.ensRegistryAddress
     }))
+
+    this.templates = Templates(this.web3, this.apm, options.from)
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -621,6 +639,8 @@ export default class Aragon {
     return []
   }
 }
+
+export { isNameUsed } from './templates'
 
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/messenger'

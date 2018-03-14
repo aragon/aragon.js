@@ -1,7 +1,7 @@
 import ENS from 'ethjs-ens'
 const debug = require('debug')('aragon.ens')
 
-export function resolve (nameOrNode: string, opts = {}): Promise<string> {
+export function resolve (nameOrNode: string, opts = { provider: {}}): Promise<string> {
   const isName = nameOrNode.includes('.')
 
   // Stupid hack for ethjs-ens
