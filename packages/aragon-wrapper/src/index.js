@@ -185,7 +185,6 @@ export default class Aragon {
           {}
         ).startWith({}),
         function attachIdentifiers (apps, identifiers) {
-          console.log(apps, identifiers)
           return apps.map(
             (app) => {
               if (identifiers[app.proxyAddress]) {
