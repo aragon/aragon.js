@@ -3,4 +3,6 @@ export default function (request, proxy, wrapper) {
     proxy.address,
     request.params[0]
   )
+
+  return Promise.resolve()
 }
