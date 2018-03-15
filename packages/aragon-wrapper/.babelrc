@@ -20,7 +20,8 @@
     "transform-flow-strip-types",
     "transform-function-bind",
     ["transform-object-rest-spread", { "useBuiltIns": true }],
-    "transform-pipeline"
+    "transform-pipeline",
+    "transform-runtime"
   ],
   "env": {
     "production": {
