@@ -168,7 +168,8 @@ class AppProxy {
     const wrappedReducer = (state, event) =>
       fromPromise(
         Promise.resolve(reducer(state, event))
-      ).do(cacheStateAtCursor(event))
+          .then(cacheStateAtCursor(event))
+      )
 
     const store$ = initialState
       .switchMap((initialState) =>
