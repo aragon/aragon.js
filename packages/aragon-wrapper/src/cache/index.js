@@ -1,5 +1,5 @@
 import low from 'lowdb'
-// import FileAsync from 'lowdb/adapters/FileAsync'
+import Memory from 'lowdb/adapters/Memory'
 import LocalStorage from 'lowdb/adapters/LocalStorage'
 import { Subject } from 'rxjs/Rx'
 
@@ -16,11 +16,14 @@ export default class Cache {
       // TODO: Support caching on the file system
       // const path = require('path')
       // const os = require('os')
+      // const FileAsync = require('lowdb/adapters/FileAsync')
+
       // adapter = new FileAsync(
       //   path.resolve(
       //     os.homedir(), '.aragon', 'cache.json'
       //   )
       // )
+      adapter = new Memory()
     } else {
       adapter = new LocalStorage()
     }

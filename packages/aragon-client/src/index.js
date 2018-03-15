@@ -1,5 +1,8 @@
-import Messenger from '@aragon/messenger'
+import Messenger, { providers } from '@aragon/messenger'
+import { defer } from 'rxjs/observable/defer'
+import { empty } from 'rxjs/observable/empty'
 import { fromPromise } from 'rxjs/observable/fromPromise'
+import { merge } from 'rxjs/observable/merge'
 
 const AppProxyHandler = {
   get (target, name, receiver) {
@@ -20,8 +23,8 @@ const AppProxyHandler = {
  * A JavaScript proxy that wraps RPC calls to the wrapper.
  */
 class AppProxy {
-  constructor (rpc = new Messenger()) {
-    this.rpc = rpc
+  constructor (provider) {
+    this.rpc = new Messenger(provider)
   }
 
   /**
@@ -50,9 +53,11 @@ class AppProxy {
    * @return {Observable} An observable of contract events (as defined in Web3)
    */
   events () {
-    return this.rpc.sendAndObserveResponses(
-      'events'
-    ).pluck('result')
+    return defer(
+      () => this.rpc.sendAndObserveResponses(
+        'events'
+      ).pluck('result')
+    )
   }
 
   /**
@@ -65,16 +70,18 @@ class AppProxy {
   external (address, jsonInterface) {
     const contract = {
       events: (fromBlock = 0) => {
-        return this.rpc.sendAndObserveResponses(
-          'external_events',
-          [
-            address,
-            jsonInterface.filter(
-              (item) => item.type === 'event'
-            ),
-            fromBlock
-          ]
-        ).pluck('result')
+        return defer(
+          () => this.rpc.sendAndObserveResponses(
+            'external_events',
+            [
+              address,
+              jsonInterface.filter(
+                (item) => item.type === 'event'
+              ),
+              fromBlock
+            ]
+          ).pluck('result')
+        )
       }
     }
 
@@ -139,11 +146,14 @@ class AppProxy {
    *
    * The reducer takes the signature `(state, event)` a lá Redux.
    *
+   * Optionally takes an array of other web3 event observables to merge with this app's events
+   *
    * @memberof AppProxy
-   * @param  {reducer} reducer
-   * @return {Observable} An observable of the resulting state from reducing events
+   * @param  {reducer}      reducer
+   * @param  {Observable[]} [events]
+   * @return {Observable}   An observable of the resulting state from reducing events
    */
-  store (reducer) {
+  store (reducer, events = [empty()]) {
     const initialState = this.state().first()
 
     // Wrap the reducer in another reducer that
@@ -160,7 +170,10 @@ class AppProxy {
 
     const store$ = initialState
       .switchMap((initialState) =>
-        this.events()
+        merge(
+          this.events(),
+          ...events
+        )
           .mergeScan(wrappedReducer, initialState, 1)
           .map((state) => this.cache('state', state))
       )
@@ -238,13 +251,16 @@ class AppProxy {
  * will result in an intent to send a transaction to the application proxy,
  * invoking the contract function `transfer` with the parameters `foo` and `bar`.
  *
- * @param {Object} [rpc=] An RPC provider (will default to using the PostMessage API)
+ * @param {Object} [provider=MessagePortMessage] An RPC provider (will default to using the MessagePort API)
  */
 export default class AragonApp {
-  constructor (rpc) {
+  constructor (provider =  new providers.MessagePortMessage()) {
     return new Proxy(
-      new AppProxy(rpc),
+      new AppProxy(provider),
       AppProxyHandler
     )
   }
 }
+
+// Re-export the Aragon RPC providers
+export { providers }

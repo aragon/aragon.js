@@ -8,7 +8,7 @@ import radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
-import apm from './apm'
+import apm from '@aragon/apm'
 
 // RPC
 import Messenger from '@aragon/messenger'
@@ -73,11 +73,9 @@ export default class Aragon {
 
     // Set up APM
     this.apm = apm(this.web3, Object.assign(options.apm, {
-      registryAddress: options.ensRegistryAddress,
+      ensRegistryAddress: options.ensRegistryAddress,
       provider: options.provider
     }))
-
-    this.templates = Templates(this.web3, this.apm, options.from)
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -381,7 +379,7 @@ export default class Aragon {
     )
 
     // Get the application proxy
-    const proxy = this.apps
+    const proxy = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
         (app) => app.proxyAddress === proxyAddress)
       )
