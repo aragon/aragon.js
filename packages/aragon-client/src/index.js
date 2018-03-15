@@ -146,6 +146,18 @@ class AppProxy {
   store (reducer) {
     const initialState = this.state().first()
 
+    const cacheStateAtCursor = ({ blockNumber, transactionIndex, logIndex }) =>
+      (state) => {
+        // Cache cursor
+        this.cache('cursor', {
+          blockNumber,
+          transactionIndex,
+          logIndex
+        })
+
+        return state
+      }
+
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
     // in our reducer. That's a lot of reducing.
@@ -156,7 +168,7 @@ class AppProxy {
     const wrappedReducer = (state, event) =>
       fromPromise(
         Promise.resolve(reducer(state, event))
-      )
+      ).do(cacheStateAtCursor(event))
 
     const store$ = initialState
       .switchMap((initialState) =>
