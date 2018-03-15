@@ -8,7 +8,7 @@ import radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
-import apm from './apm'
+import apm from '@aragon/apm'
 
 // RPC
 import Messenger from '@aragon/messenger'
@@ -73,7 +73,7 @@ export default class Aragon {
 
     // Set up APM
     this.apm = apm(this.web3, Object.assign(options.apm, {
-      registryAddress: options.ensRegistryAddress,
+      ensRegistryAddress: options.ensRegistryAddress,
       provider: options.provider
     }))
 
