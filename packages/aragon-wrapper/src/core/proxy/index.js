@@ -1,12 +1,13 @@
 import { Observable } from 'rxjs/Rx'
 
 export default class Proxy {
-  constructor (address, jsonInterface, web3) {
+  constructor (address, jsonInterface, wrapper) {
     this.address = address
-    this.contract = new web3.eth.Contract(
+    this.contract = new wrapper.web3.eth.Contract(
       jsonInterface,
       address
     )
+    this.wrapper = wrapper
   }
 
   async streamingPredicate () {

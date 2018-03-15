@@ -80,7 +80,7 @@ export default class Aragon {
     this.templates = Templates(this.web3, this.apm, options.from)
 
     // Set up the kernel proxy
-    this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
+    this.kernelProxy = makeProxy(daoAddress, 'Kernel', this)
 
     // Set up cache
     this.cache = new Cache(daoAddress)
@@ -107,7 +107,7 @@ export default class Aragon {
   async initAcl () {
     // Set up ACL proxy
     const aclAddress = await this.kernelProxy.call('acl')
-    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3)
+    this.aclProxy = makeProxy(aclAddress, 'ACL', this)
 
     // Set up permissions observable
     this.permissions = this.aclProxy.events('SetPermission')
@@ -141,7 +141,7 @@ export default class Aragon {
    * @return {Promise<Object>}
    */
   getAppProxyValues (proxyAddress) {
-    const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
+    const appProxy = makeProxy(proxyAddress, 'AppProxy', this)
 
     return Promise.all([
       appProxy.call('kernel'),
@@ -386,7 +386,7 @@ export default class Aragon {
         (app) => app.proxyAddress === proxyAddress)
       )
       .map(
-        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this)
       )
 
     // Wrap requests with the application proxy

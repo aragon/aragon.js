@@ -1,17 +1,17 @@
 import Proxy from '../core/proxy'
 
-export function makeProxy (address, interfaceName, web3) {
+export function makeProxy (address, interfaceName, wrapper) {
   return makeProxyFromABI(
     address,
     require(`../../abi/aragon/${interfaceName}.json`),
-    web3
+    wrapper
   )
 }
 
-export function makeProxyFromABI (address, abi, web3) {
+export function makeProxyFromABI (address, abi, wrapper) {
   return new Proxy(
     address,
     abi,
-    web3
+    wrapper
   )
 }
