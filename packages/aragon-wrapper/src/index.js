@@ -379,7 +379,7 @@ export default class Aragon {
     )
 
     // Get the application proxy
-    const proxy = this.apps
+    const proxy = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
         (app) => app.proxyAddress === proxyAddress)
       )
