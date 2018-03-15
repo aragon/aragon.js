@@ -77,8 +77,6 @@ export default class Aragon {
       provider: options.provider
     }))
 
-    this.templates = Templates(this.web3, this.apm, options.from)
-
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
