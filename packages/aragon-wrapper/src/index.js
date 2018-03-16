@@ -420,11 +420,25 @@ export default class Aragon {
   }
 
   /**
+   * Set the available accounts for the current user.
+   *
+   * @param {Array<string>} accounts
+   * @return {void}
+   */
+  setAccounts (accounts) {
+    this.accounts = accounts
+  }
+
+  /**
    * Get the available accounts for the current user.
    *
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
+    if (this.accounts) {
+      return this.accounts
+    }
+
     return this.web3.eth.getAccounts()
   }
 
