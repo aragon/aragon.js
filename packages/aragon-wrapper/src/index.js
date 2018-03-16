@@ -37,7 +37,7 @@ export const setupTemplates = (
   from
 ) => {
   const web3 = new Web3(provider)
-  return Templates(web3, apm(web3, { provider, registryAddress }), from)
+  return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
 }
 
 /**
