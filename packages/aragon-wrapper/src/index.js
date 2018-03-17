@@ -87,9 +87,14 @@ export default class Aragon {
   /**
    * Initialise the wrapper.
    *
+   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async init () {
+  async init (accounts = null) {
+    if (accounts !== null) {
+      this.accounts = accounts
+    }
+
     await this.initAcl()
     this.initApps()
     this.initForwarders()
@@ -420,21 +425,11 @@ export default class Aragon {
   }
 
   /**
-   * Set the available accounts for the current user.
-   *
-   * @param {Array<string>} accounts
-   * @return {void}
-   */
-  setAccounts (accounts) {
-    this.accounts = accounts
-  }
-
-  /**
    * Get the available accounts for the current user.
    *
    * @return {Promise<Array<string>>} An array of addresses
    */
-  getAccounts () {
+  async getAccounts () {
     if (this.accounts) {
       return this.accounts
     }
