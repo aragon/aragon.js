@@ -678,6 +678,7 @@ export default class Aragon {
 }
 
 export { isNameUsed } from './templates'
+export { resolve as ensResolve } from './ens'
 
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/messenger'
