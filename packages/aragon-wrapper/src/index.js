@@ -1,5 +1,5 @@
 // Externals
-import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -91,15 +91,28 @@ export default class Aragon {
    * @return {Promise<void>}
    */
   async init (accounts = null) {
-    if (accounts !== null) {
-      this.accounts = accounts
-    }
-
+    await this.initAccounts(accounts)
     await this.initAcl()
     this.initApps()
     this.initForwarders()
     this.initNotifications()
     this.transactions = new Subject()
+  }
+
+  /**
+   * Initialise the accounts observable.
+   *
+   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @return {Promise<void>}
+   */
+  async initAccounts (accounts) {
+    this.accounts = new ReplaySubject(1)
+
+    if (accounts === null) {
+      accounts = await this.web3.eth.getAccounts()
+    }
+
+    this.setAccounts(accounts)
   }
 
   /**
@@ -425,16 +438,24 @@ export default class Aragon {
   }
 
   /**
+   * Set the available accounts for the current user.
+   *
+   * @param {Array<string>} accounts
+   * @return {void}
+   */
+  setAccounts (accounts) {
+    this.accounts.next(accounts)
+  }
+
+  /**
    * Get the available accounts for the current user.
    *
    * @return {Promise<Array<string>>} An array of addresses
    */
-  async getAccounts () {
-    if (this.accounts) {
-      return this.accounts
-    }
-
-    return this.web3.eth.getAccounts()
+  getAccounts () {
+    return this.accounts
+      .take(1)
+      .toPromise()
   }
 
   /**
