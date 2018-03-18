@@ -194,6 +194,11 @@ export default class Aragon {
           ))
         )
       )
+      // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
+      // this entire operator chain on identifier emits (doing so causes unnecessary apm fetches)
+      .publishReplay(1)
+    this.appsWithoutIdentifiers.connect()
+
     this.apps = this.appsWithoutIdentifiers
       .combineLatest(
         this.identifiers.scan(
@@ -379,6 +384,7 @@ export default class Aragon {
     )
 
     // Get the application proxy
+    // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
     const proxy = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
         (app) => app.proxyAddress === proxyAddress)
