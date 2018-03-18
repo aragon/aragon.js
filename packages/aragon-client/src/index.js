@@ -28,6 +28,17 @@ class AppProxy {
   }
 
   /**
+   * Get an array of the accounts the user currently controls over time.
+   *
+   * @return {Observable}
+   */
+  accounts () {
+    return this.rpc.sendAndObserveResponses(
+      'accounts'
+    ).pluck('result')
+  }
+
+  /**
    * Set the app identifier.
    *
    * An app identifier is a way to distinguish multiple instances
