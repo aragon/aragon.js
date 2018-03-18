@@ -646,7 +646,8 @@ export default class Aragon {
     const createForwarderTransaction = (forwarderAddress, script) => ({
       from: sender,
       to: forwarderAddress,
-      data: forwardMethod(script).encodeABI()
+      data: forwardMethod(script).encodeABI(),
+      gasPrice: 20
     })
 
     // Check if one of the forwarders that has permission to perform an action
