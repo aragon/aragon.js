@@ -647,7 +647,7 @@ export default class Aragon {
       from: sender,
       to: forwarderAddress,
       data: forwardMethod(script).encodeABI(),
-      gasPrice: this.web3.utils.toHex(web3.utils.toWei('20', 'gwei'))
+      gasPrice: this.web3.utils.toHex(this.web3.utils.toWei('20', 'gwei'))
     })
 
     // Check if one of the forwarders that has permission to perform an action
