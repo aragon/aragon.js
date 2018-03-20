@@ -428,7 +428,8 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
       handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
       handlers.createRequestHandler(request$, 'identify', handlers.identifier),
-      handlers.createRequestHandler(request$, 'accounts', handlers.accounts)
+      handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
+      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
