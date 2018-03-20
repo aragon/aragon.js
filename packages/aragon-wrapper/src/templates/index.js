@@ -38,7 +38,7 @@ const Templates = (web3, apm, from) => {
   }
 
   const newInstance = async (template, name, params) => {
-    const receipt = await template.methods.newInstance(name, ...params).send({ from, gas: 6.9e6 })
+    const receipt = await template.methods.newInstance(name, ...params).send({ from, gas: 6.6e6 })
     return receipt.events.DeployInstance.returnValues
   }
 
