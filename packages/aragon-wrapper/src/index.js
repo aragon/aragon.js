@@ -547,6 +547,8 @@ export default class Aragon {
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params) {
+    const minGasPrice = this.web3.utils.toWei('20', 'gwei')
+
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.apps.map(
       (apps) => apps.find((app) => app.proxyAddress === destination)
@@ -588,7 +590,8 @@ export default class Aragon {
           (method) => method.name === methodName
         ),
         params
-      )
+      ),
+      gasPrice: minGasPrice
     }
 
     // If the method has no ACL requirements, we assume we
@@ -643,11 +646,12 @@ export default class Aragon {
     const forwardMethod = new this.web3.eth.Contract(
       require('../abi/aragon/Forwarder.json')
     ).methods['forward']
+
     const createForwarderTransaction = (forwarderAddress, script) => ({
       from: sender,
       to: forwarderAddress,
       data: forwardMethod(script).encodeABI(),
-      gasPrice: this.web3.utils.toHex(this.web3.utils.toWei('20', 'gwei'))
+      gasPrice: minGasPrice
     })
 
     // Check if one of the forwarders that has permission to perform an action
