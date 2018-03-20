@@ -243,6 +243,19 @@ class AppProxy {
       .filter((request) => request.method === 'context')
       .map((request) => request.params[0])
   }
+
+  /**
+   * Describes the transaction path that an EVM callscript encodes.
+   *
+   * @param  {string} script
+   * @return {Observable} An observable that emits the transaction path the script encodes
+   */
+  describeScript (script) {
+    return this.rpc.sendAndObserveResponse(
+      'describe_script',
+      [script]
+    )
+  }
 }
 
 /**
