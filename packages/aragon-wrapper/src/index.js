@@ -15,7 +15,7 @@ import Messenger from '@aragon/messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
-import { encodeCallScript } from './evmscript'
+import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import { makeProxy, makeProxyFromABI } from './utils'
 
 // Templates
@@ -466,6 +466,53 @@ export default class Aragon {
   }
 
   /**
+   * Decodes an EVM callscript and returns the transaction path it describes.
+   *
+   * @param  {string} script
+   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   */
+  decodeTransactionPath (script) {
+    // TODO: Support callscripts with multiple transactions in one (i.e. one ID, multiple destinations)
+    function decodePathSegment (script) {
+      // Remove script identifier
+      script = script.substr(10)
+
+      // Get address
+      const destination = `0x${script.substr(0, 40)}`
+      script = script.substr(40)
+
+      // Get data
+      const dataLength = parseInt(`0x${script.substr(0, 8)}`) * 2
+      script = script.substr(8)
+      const data = `0x${script.substr(0, dataLength)}`
+      script = script.substr(dataLength)
+
+      return {
+        to: destination,
+        data
+      }
+    }
+
+    let scriptId = script.substr(0, 10)
+    if (scriptId !== CALLSCRIPT_ID) {
+      throw new Error(`Unknown script ID ${scriptId}`)
+    }
+
+    let path = []
+    while (script.startsWith(CALLSCRIPT_ID)) {
+      const segment = decodePathSegment(script)
+
+      // Set script
+      script = segment.data
+
+      // Push segment
+      path.push(segment)
+    }
+
+    return path
+  }
+
+  /**
    * Calculate the transaction path for a transaction to `destination`
    * that invokes `methodName` with `params`.
    *
@@ -496,7 +543,7 @@ export default class Aragon {
   async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       const app = await this.apps.map(
-        (apps) => apps.find((app) => app.proxyAddress === step.to)
+        (apps) => apps.find((app) => app.proxyAddress.toLowerCase() === step.to.toLowerCase())
       ).take(1).toPromise()
 
       // No app artifact
