@@ -570,7 +570,9 @@ export default class Aragon {
         description: await radspec.evaluate(expression, {
           abi: app.abi,
           transaction: step
-        })
+        }),
+        name: app.name,
+        identifier: app.identifier
       })
     }))
   }
