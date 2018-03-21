@@ -254,7 +254,7 @@ class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'describe_script',
       [script]
-    )
+    ).pluck('result')
   }
 }
 
