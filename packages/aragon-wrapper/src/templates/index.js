@@ -32,13 +32,14 @@ const templates = {
 }
 
 const Templates = (web3, apm, from) => {
+  const minGasPrice = web3.utils.toWei('20', 'gwei')
   const newToken = async (template, name) => {
-    const receipt = await template.methods.newToken(name, name).send({ from, gas: 4e6 })
+    const receipt = await template.methods.newToken(name, name).send({ from, gas: 4e6, gasPrice: minGasPrice })
     return receipt.events.DeployToken.returnValues
   }
 
   const newInstance = async (template, name, params) => {
-    const receipt = await template.methods.newInstance(name, ...params).send({ from, gas: 6.6e6 })
+    const receipt = await template.methods.newInstance(name, ...params).send({ from, gas: 6.6e6, gasPrice: minGasPrice })
     return receipt.events.DeployInstance.returnValues
   }
 
