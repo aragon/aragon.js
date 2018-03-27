@@ -33,9 +33,10 @@ const templates = {
 }
 
 const Templates = (web3, apm, from) => {
+  const minGasPrice = web3.utils.toWei('20', 'gwei')
   const newToken = async (template, name) => {
     const progress = new Subject()
-    const events = template.methods.newToken(name, name).send({ from, gas: 4e6 })
+    const events = template.methods.newToken(name, name).send({ from, gas: 4e6, gasPrice: minGasPrice })
 
     events.on('transactionHash', (transactionHash) => {
       progress.next({
@@ -73,7 +74,7 @@ const Templates = (web3, apm, from) => {
 
   const newInstance = async (template, name, params) => {
     const progress = new Subject()
-    const events = template.methods.newInstance(name, ...params).send({ from, gas: 6.9e6 })
+    const events = template.methods.newInstance(name, ...params).send({ from, gas: 6.9e6, gasPrice: minGasPrice })
 
     events.on('transactionHash', (transactionHash) => {
       progress.next({
