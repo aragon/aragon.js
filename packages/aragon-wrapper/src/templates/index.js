@@ -37,7 +37,7 @@ const Templates = (web3, apm, from) => {
     const call = template.methods.newToken(name, name)
     const receipt = await call.send({
       from,
-      gas: 6500000,
+      gas: 6700000,
       gasPrice: minGasPrice
     })
     return receipt.events.DeployToken.returnValues
@@ -47,7 +47,7 @@ const Templates = (web3, apm, from) => {
     const call = template.methods.newInstance(name, ...params)
     const receipt = await call.send({
       from,
-      gas: 6500000,
+      gas: 6700000,
       gasPrice: minGasPrice
     })
     return receipt.events.DeployInstance.returnValues
