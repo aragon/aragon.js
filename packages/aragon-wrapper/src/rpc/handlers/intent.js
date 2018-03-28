@@ -13,8 +13,8 @@ export default async function (request, proxy, wrapper) {
       accept (transactionHash) {
         resolve(transactionHash)
       },
-      reject () {
-        reject(new Error('The transaction was not signed'))
+      reject (err) {
+        reject(err || new Error('The transaction was not signed'))
       }
     })
   })
