@@ -1,6 +1,6 @@
 {
   "name": "@aragon/wrapper",
-  "version": "2.0.0-beta.30",
+  "version": "2.0.0-beta.31",
   "description": "Library for Aragon Wrappers",
   "main": "dist/index.js",
   "scripts": {
@@ -72,7 +72,7 @@
     "ipfs-api": "^17.5.0",
     "js-sha3": "^0.7.0",
     "lowdb": "^1.0.0",
-    "radspec": "^1.0.0-beta.5",
+    "radspec": "^1.0.0-beta.6",
     "rxjs": "^5.5.6",
     "uuid": "^3.2.1",
     "web3": "1.0.0-beta.21",
