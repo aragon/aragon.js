@@ -1,5 +1,5 @@
 // Externals
-import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -15,7 +15,7 @@ import Messenger from '@aragon/messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
-import { encodeCallScript } from './evmscript'
+import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import { makeProxy, makeProxyFromABI } from './utils'
 
 // Templates
@@ -87,14 +87,32 @@ export default class Aragon {
   /**
    * Initialise the wrapper.
    *
+   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async init () {
+  async init (accounts = null) {
+    await this.initAccounts(accounts)
     await this.initAcl()
     this.initApps()
     this.initForwarders()
     this.initNotifications()
     this.transactions = new Subject()
+  }
+
+  /**
+   * Initialise the accounts observable.
+   *
+   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @return {Promise<void>}
+   */
+  async initAccounts (accounts) {
+    this.accounts = new ReplaySubject(1)
+
+    if (accounts === null) {
+      accounts = await this.web3.eth.getAccounts()
+    }
+
+    this.setAccounts(accounts)
   }
 
   /**
@@ -194,6 +212,11 @@ export default class Aragon {
           ))
         )
       )
+      // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
+      // this entire operator chain on identifier emits (doing so causes unnecessary apm fetches)
+      .publishReplay(1)
+    this.appsWithoutIdentifiers.connect()
+
     this.apps = this.appsWithoutIdentifiers
       .combineLatest(
         this.identifiers.scan(
@@ -379,6 +402,7 @@ export default class Aragon {
     )
 
     // Get the application proxy
+    // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
     const proxy = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
         (app) => app.proxyAddress === proxyAddress)
@@ -403,7 +427,9 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'notification', handlers.notifications),
       handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
       handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-      handlers.createRequestHandler(request$, 'identify', handlers.identifier)
+      handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+      handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
+      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
@@ -420,12 +446,71 @@ export default class Aragon {
   }
 
   /**
+   * Set the available accounts for the current user.
+   *
+   * @param {Array<string>} accounts
+   * @return {void}
+   */
+  setAccounts (accounts) {
+    this.accounts.next(accounts)
+  }
+
+  /**
    * Get the available accounts for the current user.
    *
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return this.web3.eth.getAccounts()
+    return this.accounts
+      .take(1)
+      .toPromise()
+  }
+
+  /**
+   * Decodes an EVM callscript and returns the transaction path it describes.
+   *
+   * @param  {string} script
+   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   */
+  decodeTransactionPath (script) {
+    // TODO: Support callscripts with multiple transactions in one (i.e. one ID, multiple destinations)
+    function decodePathSegment (script) {
+      // Remove script identifier
+      script = script.substr(10)
+
+      // Get address
+      const destination = `0x${script.substr(0, 40)}`
+      script = script.substr(40)
+
+      // Get data
+      const dataLength = parseInt(`0x${script.substr(0, 8)}`) * 2
+      script = script.substr(8)
+      const data = `0x${script.substr(0, dataLength)}`
+      script = script.substr(dataLength)
+
+      return {
+        to: destination,
+        data
+      }
+    }
+
+    let scriptId = script.substr(0, 10)
+    if (scriptId !== CALLSCRIPT_ID) {
+      throw new Error(`Unknown script ID ${scriptId}`)
+    }
+
+    let path = []
+    while (script.startsWith(CALLSCRIPT_ID)) {
+      const segment = decodePathSegment(script)
+
+      // Set script
+      script = segment.data
+
+      // Push segment
+      path.push(segment)
+    }
+
+    return path
   }
 
   /**
@@ -459,7 +544,7 @@ export default class Aragon {
   async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       const app = await this.apps.map(
-        (apps) => apps.find((app) => app.proxyAddress === step.to)
+        (apps) => apps.find((app) => app.proxyAddress.toLowerCase() === step.to.toLowerCase())
       ).take(1).toPromise()
 
       // No app artifact
@@ -485,7 +570,9 @@ export default class Aragon {
         description: await radspec.evaluate(expression, {
           abi: app.abi,
           transaction: step
-        })
+        }),
+        name: app.name,
+        identifier: app.identifier
       })
     }))
   }
@@ -510,6 +597,8 @@ export default class Aragon {
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params) {
+    const minGasPrice = this.web3.utils.toWei('20', 'gwei')
+
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.apps.map(
       (apps) => apps.find((app) => app.proxyAddress === destination)
@@ -551,7 +640,8 @@ export default class Aragon {
           (method) => method.name === methodName
         ),
         params
-      )
+      ),
+      gasPrice: minGasPrice
     }
 
     // If the method has no ACL requirements, we assume we
@@ -606,10 +696,12 @@ export default class Aragon {
     const forwardMethod = new this.web3.eth.Contract(
       require('../abi/aragon/Forwarder.json')
     ).methods['forward']
+
     const createForwarderTransaction = (forwarderAddress, script) => ({
       from: sender,
       to: forwarderAddress,
-      data: forwardMethod(script).encodeABI()
+      data: forwardMethod(script).encodeABI(),
+      gasPrice: minGasPrice
     })
 
     // Check if one of the forwarders that has permission to perform an action

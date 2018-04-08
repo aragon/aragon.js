@@ -28,6 +28,17 @@ class AppProxy {
   }
 
   /**
+   * Get an array of the accounts the user currently controls over time.
+   *
+   * @return {Observable}
+   */
+  accounts () {
+    return this.rpc.sendAndObserveResponses(
+      'accounts'
+    ).pluck('result')
+  }
+
+  /**
    * Set the app identifier.
    *
    * An app identifier is a way to distinguish multiple instances
@@ -231,6 +242,19 @@ class AppProxy {
     return this.rpc.requests()
       .filter((request) => request.method === 'context')
       .map((request) => request.params[0])
+  }
+
+  /**
+   * Describes the transaction path that an EVM callscript encodes.
+   *
+   * @param  {string} script
+   * @return {Observable} An observable that emits the transaction path the script encodes
+   */
+  describeScript (script) {
+    return this.rpc.sendAndObserveResponse(
+      'describe_script',
+      [script]
+    ).pluck('result')
   }
 }
 
