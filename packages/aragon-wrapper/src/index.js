@@ -162,7 +162,7 @@ export default class Aragon {
     return Promise.all([
       appProxy.call('kernel'),
       appProxy.call('appId'),
-      appProxy.call('getCode'),
+      appProxy.call('implementation'),
       appProxy.call('isForwarder').catch(() => false)
     ]).then((values) => ({
       proxyAddress,

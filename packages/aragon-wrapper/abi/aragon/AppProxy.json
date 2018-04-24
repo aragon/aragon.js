@@ -142,7 +142,7 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "getCode",
+    "name": "implementation",
     "outputs": [
       {
         "name": "",
