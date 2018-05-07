@@ -54,6 +54,8 @@
 </div>
 
 ## Basic Overview
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Faragon%2Faragon.js.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Faragon%2Faragon.js?ref=badge_shield)
+
 The layer between [Aragon Core](https://github.com/aragon/aragon-core) and the Aragon web- and desktop [application](https://github.com/aragon/aragon). Use it to build third-party apps for Aragon, or to roll your own front-end.
 
 ## Install
@@ -111,3 +113,7 @@ For apps, see [here](docs/APP.md).
 
 ## Contributing
 Please take a look at our [contributing](https://github.com/aragon/aragon.js/blob/master/CONTRIBUTING.md) guidelines if you're interested in helping!
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Faragon%2Faragon.js.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Faragon%2Faragon.js?ref=badge_large)
