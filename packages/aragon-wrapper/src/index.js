@@ -16,7 +16,7 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { makeProxy, makeProxyFromABI } from './utils'
+import { addressesEqual, makeProxy, makeProxyFromABI } from './utils'
 
 // Templates
 import Templates from './templates'
@@ -160,9 +160,15 @@ export default class Aragon {
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
 
     return Promise.all([
-      appProxy.call('kernel'),
-      appProxy.call('appId'),
-      appProxy.call('getCode'),
+      appProxy.call('kernel').catch(() => null),
+      appProxy.call('appId').catch(() => null),
+      appProxy
+        .call('implementation')
+        .catch(() => appProxy
+          // Fallback to old non-ERC897 proxy implementation
+          .call('getCode')
+          .catch(() => null)
+        ),
       appProxy.call('isForwarder').catch(() => false)
     ]).then((values) => ({
       proxyAddress,
@@ -170,7 +176,7 @@ export default class Aragon {
       appId: values[1],
       codeAddress: values[2],
       isForwarder: values[3]
-    })).catch(() => ({ kernelAddress: null }))
+    }))
   }
 
   /**
@@ -181,7 +187,7 @@ export default class Aragon {
    */
   isApp (app) {
     return app.kernelAddress &&
-      app.kernelAddress.toLowerCase() === this.kernelProxy.address.toLowerCase()
+      addressesEqual(app.kernelAddress, this.kernelProxy.address)
   }
 
   /**
@@ -195,6 +201,9 @@ export default class Aragon {
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
       .map(Object.keys)
+      .map((addresses) =>
+        addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
+      )
       .switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getAppProxyValues(app))
@@ -544,7 +553,7 @@ export default class Aragon {
   async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       const app = await this.apps.map(
-        (apps) => apps.find((app) => app.proxyAddress.toLowerCase() === step.to.toLowerCase())
+        (apps) => apps.find((app) => addressesEqual(app.proxyAddress, step.to))
       ).take(1).toPromise()
 
       // No app artifact
