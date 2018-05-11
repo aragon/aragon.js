@@ -2,7 +2,7 @@
 
 # Aragon App
 
-An Aragon app.
+## An Aragon app.
 
 This class handles communicating with the wrapper using Aragon RPC.
 
@@ -18,7 +18,7 @@ app.transfer('foo', 'bar')
 will result in an intent to send a transaction to the application proxy,
 invoking the contract function `transfer` with the parameters `foo` and `bar`.
 
-**Parameters**
+### **Parameters**
 
 -   `rpc` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)?** An RPC provider (will default to using the PostMessage API)
 
@@ -32,7 +32,7 @@ Returns **Observable** An observable of contract events (as defined in Web3)
 
 Cache a value for the application.
 
-**Parameters**
+### **Parameters**
 
 -   `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The cache key
 -   `value` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The value to cache
@@ -43,7 +43,7 @@ Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/G
 
 Send a notification.
 
-**Parameters**
+### **Parameters**
 
 -   `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The notification title
 -   `body` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The notification body
@@ -65,7 +65,7 @@ and returns that state.
 
 The reducer takes the signature `(state, event)` a lá Redux.
 
-**Parameters**
+### **Parameters**
 
 -   `reducer` **[reducer](#reducer)**
 
@@ -75,7 +75,7 @@ Returns **Observable** An observable of the resulting state from reducing events
 
 Perform a call to the application contract.
 
-**Parameters**
+### **Parameters**
 
 -   `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The method to call
 -   `params` **...any** Parameters for the call
@@ -88,7 +88,7 @@ A state reducer a lá Redux.
 
 Type: [Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)
 
-**Parameters**
+### **Parameters**
 
 -   `state` **any**
 -   `event` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**

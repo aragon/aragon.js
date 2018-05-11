@@ -53,7 +53,7 @@
   </h4>
 </div>
 
-## Basic Overview
+# aragon.js Basic Overview
 The layer between [Aragon Core](https://github.com/aragon/aragon-core) and the Aragon web- and desktop [application](https://github.com/aragon/aragon). Use it to build third-party apps for Aragon, or to roll your own front-end.
 
 ## Install
@@ -77,11 +77,11 @@ app.identify(Math.random())
 const state$ = app.store((state, event) => {
   // Initial state
   if (state === null) state = 0
-  
+
   // Build state
   if (event.event === 'Decrement') {
     state--
-    
+
     // Send notification
     app.notify('Counter decremented', `The counter was decremented to ${state}`)
   }
@@ -89,7 +89,7 @@ const state$ = app.store((state, event) => {
     state++
     app.notify('Counter incremented', `The counter was incremented to ${state}`)
   }
-  
+
   return state
 })
 
@@ -110,4 +110,4 @@ For wrappers, see [here](docs/WRAPPER.md).
 For apps, see [here](docs/APP.md).
 
 ## Contributing
-Please take a look at our [contributing](https://github.com/aragon/aragon.js/blob/master/CONTRIBUTING.md) guidelines if you're interested in helping!
+Please take a look at our [contributing](CONTRIBUTING.md) guidelines if you're interested in helping!

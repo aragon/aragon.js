@@ -89,7 +89,7 @@ Unsure where to begin contributing? You can start by looking through these `good
 * Reference issues and pull requests liberally after the first line
 
 >A good rule of thumb is that your commit message follows these rules if you can prefix it with "This commit will ..." and it makes sense.
->
+
 >For example, "This commit will **add a feature**" vs "This commit will **added a feature**".
 
 ### JavaScript
@@ -98,7 +98,8 @@ All JavaScript must adhere to [JavaScript Standard Style](https://standardjs.com
 
 * Prefer the object spread operator (`{...anotherObj}`) to `Object.assign()`
 * Inline `export`s with expressions whenever possible
-  ```js
+```
+  js
   // Use this:
   export default class ClassName {
 
@@ -109,4 +110,4 @@ All JavaScript must adhere to [JavaScript Standard Style](https://standardjs.com
 
   }
   export default ClassName
-  ```
+```

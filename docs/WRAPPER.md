@@ -1,15 +1,15 @@
 # Aragon Wrapper
 
-An Aragon wrapper.
+## An Aragon wrapper.
 
-**Parameters**
+### **Parameters**
 
 -   `daoAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the DAO.
 -   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Wrapper options. (optional, default `{}`)
     -   `options.provider` **any** The Web3 provider to use for blockchain communication (optional, default `ws://rinkeby.aragon.network:8546`)
     -   `options.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry (optional, default `null`)
 
-**Examples**
+### **Examples**
 
 ```javascript
 const aragon = new Aragon('0xdeadbeef')
@@ -22,73 +22,73 @@ aragon.init(() => {
 })
 ```
 
-### init
+## init
 
 Initialise the wrapper.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-### initAcl
+## initAcl
 
 Initialise the ACL.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-### getAppProxyValues
+## getAppProxyValues
 
 Get proxy metadata (`appId`, address of the kernel, ...).
 
-**Parameters**
+### **Parameters**
 
 -   `proxyAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the proxy to get metadata from
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>**
 
-### isApp
+## isApp
 
 Check if an object is an app.
 
-**Parameters**
+### **Parameters**
 
 -   `app` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
 
 Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)**
 
-### initApps
+## initApps
 
 Initialise apps observable.
 
 Returns **void**
 
-### initForwarders
+## initForwarders
 
 Initialise forwarder observable.
 
 Returns **void**
 
-### runApp
+## runApp
 
 Run an app.
 
-**Parameters**
+### **Parameters**
 
 -   `sandbox` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An object that is compatible with the PostMessage API.
 -   `proxyAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the app proxy.
 
 Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
 
-### getAccounts
+## getAccounts
 
 Get the available accounts for the current user.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** An array of addresses
 
-### getTransactionPath
+## getTransactionPath
 
 Calculate the transaction path for a transaction to `destination`
 that invokes `methodName` with `params`.
 
-**Parameters**
+### **Parameters**
 
 -   `destination` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
 -   `methodName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
@@ -96,12 +96,12 @@ that invokes `methodName` with `params`.
 
 Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** An array of Ethereum transactions that describe each step in the path
 
-### calculateTransactionPath
+## calculateTransactionPath
 
 Calculate the transaction path for a transaction to `destination`
 that invokes `methodName` with `params`.
 
-**Parameters**
+### **Parameters**
 
 -   `sender` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
 -   `destination` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
