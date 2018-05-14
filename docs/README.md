@@ -9,4 +9,5 @@ These documents describe how to use Aragon.js for building front-ends for Aragon
 ## References
 
 - [App API Reference](APP.md)
+- [Wrapper API Reference](WRAPPER.md)
 
