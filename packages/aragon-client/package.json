@@ -6,7 +6,6 @@
   "scripts": {
     "flow": "flow src",
     "lint": "standard src",
-    "postlint": "documentation lint src",
     "test": "nyc --silent --all ava",
     "build": "babel -d dist src",
     "prepublish": "env NODE_ENV=production npm run build"
@@ -38,7 +37,6 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-minify": "^0.3.0",
     "debug": "^3.1.0",
-    "documentation": "^5.3.5",
     "eslint-plugin-flowtype": "^2.41.0",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
