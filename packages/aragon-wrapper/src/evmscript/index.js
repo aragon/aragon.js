@@ -15,13 +15,3 @@ export function encodeCallScript (actions: Array<CallScriptAction>): string {
     return script + address.slice(26) + dataLength.slice(58) + data.slice(2)
   }, CALLSCRIPT_ID)
 }
-
-export const DELEGATESCRIPT_ID = '0x00000002'
-export function encodeDelegateScript (address: string): string {
-  return DELEGATESCRIPT_ID + address.slice(2)
-}
-
-export const DEPLOYSCRIPT_ID = '0x00000003'
-export function encodeDeployScript (contractBytecode) {
-  return DEPLOYSCRIPT_ID + contractBytecode.slice(2)
-}

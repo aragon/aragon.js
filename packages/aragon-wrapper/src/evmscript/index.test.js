@@ -46,19 +46,3 @@ test('encodeCallScript', (t) => {
     'sixth part of callscript should be data for tx 2'
   )
 })
-
-test('encodeDelegateScript', (t) => {
-  t.is(
-    script.encodeDelegateScript('0xdeadbeefbabe'),
-    script.DELEGATESCRIPT_ID + 'deadbeefbabe',
-    'should strip 0x from address'
-  )
-})
-
-test('encodeDeployScript', (t) => {
-  t.is(
-    script.encodeDeployScript('0xfoo'),
-    script.DEPLOYSCRIPT_ID + 'foo',
-    'should strip 0x from bytecode'
-  )
-})
