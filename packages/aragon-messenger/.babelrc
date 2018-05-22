@@ -13,16 +13,20 @@
         },
         "useBuiltIns": false
       }
-    ]
+    ],
+    "stage-2"
   ],
   "plugins": [
     "transform-flow-strip-types",
-    "transform-function-bind",
-    "transform-pipeline"
+    "transform-runtime"
   ],
   "env": {
     "production": {
-      "presets": ["minify"]
+      "presets": [
+        ["minify", {
+          "mangle": false
+        }]
+      ]
     }
   }
 }
