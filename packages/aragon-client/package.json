@@ -9,7 +9,7 @@
     "postlint": "documentation lint src",
     "test": "nyc --silent --all ava",
     "build": "babel -d dist src",
-    "prepublish": "env NODE_ENV=production npm run build"
+    "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
     "type": "git",
