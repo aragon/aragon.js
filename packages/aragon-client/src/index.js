@@ -256,6 +256,20 @@ class AppProxy {
       [script]
     ).pluck('result')
   }
+
+  /**
+   * Invoke a whitelisted web3.eth function.
+   *
+   * @param  {string} method The method to call. Must be in the whitelisted group (mostly getters).
+   * @param  {...*} params Parameters for the call
+   * @return {Observable} An observable that emits the return value(s) of the call.
+   */
+  web3Eth (method, ...params) {
+    return this.rpc.sendAndObserveResponse(
+      'web3_eth',
+      [method, ...params]
+    ).pluck('result')
+  }
 }
 
 /**
