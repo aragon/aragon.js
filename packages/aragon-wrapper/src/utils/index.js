@@ -1,7 +1,10 @@
 import Proxy from '../core/proxy'
 
-export function addressesEqual (address1, address2) {
-  return address1.toLowerCase() === address2.toLowerCase()
+// Check address equality without checksums
+export function addressesEqual (first, second) {
+  first = first && first.toLowerCase()
+  second = second && second.toLowerCase()
+  return first === second
 }
 
 export function makeProxy (address, interfaceName, web3) {
