@@ -42,7 +42,7 @@ This class is used to communicate with the wrapper in which the app is run.
 
 Every method in this class sends an RPC message to the wrapper.
 
-The app communicates with the wrapper using a messaging provider. The default provider uses the [Worker PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage), but you may specify another provider to use (see the exported [providers](#providers) to learn more about them).
+The app communicates with the wrapper using a messaging provider. The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), but you may specify another provider to use (see the exported [providers](#providers) to learn more about them). You will most likely want to use the [`WindowMessage` provider](#windowmessage) in your frontend.
 
 To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
 
@@ -58,7 +58,7 @@ app.increment()
 
 **Parameters**
 
-1. [`provider`] (`Provider`): A provider used to send and receive messages to and from the wrapper. Defaults to a provider that uses the [Worker PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage).
+1. [`provider`] (`Provider`): A provider used to send and receive messages to and from the wrapper. Defaults to a provider that uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), which is suitable for use in [background scripts](BACKGROUND_SCRIPTS.md) as WebWorkers are natively compatible with the MessageChannel API. However, front-ends connected through an iframe should use the [`WindowMessage provider](#windowmessage) as the iframe's PostMessage API is slightly different.
 
 **Example**
 
@@ -68,7 +68,7 @@ import AragonApp, { providers } from '@aragon/client'
 // The default provider should be used in background scripts
 const backgroundScriptOfApp = new AragonApp()
 
-// This instance uses a provider that should be used for front-ends
+// The WindowMessage provider should be used for front-ends
 const frontendOfApp = new AragonApp(
   new providers.WindowMessage(window.parent)
 )
@@ -152,7 +152,7 @@ Set a value in the application cache.
 
 **Returns**
 
-(`any`): This method passes through `value` 
+(`any`): This method passes through `value`
 
 ### state
 
@@ -172,18 +172,18 @@ None.
 
 Listens for events, passes them through `reducer`, caches the resulting state and re-emits that state for easy chaining.
 
-This is in fact suger on top of [`state`](#state), [`events`](#events) and [`cache`](#cache).
+This is in fact sugar on top of [`state`](#state), [`events`](#events) and [`cache`](#cache).
 
-The reducer takes the signature `(state, event)` a lá Redux. Note that is *must always* return a state, even if it is unaltered by the event.
+The reducer takes the signature `(state, event)` a lá Redux. Note that it *must always* return a state, even if it is unaltered by the event.
 
 Also note that the initial state is always `null`, not `undefined`, because of JSONRPC limitations.
 
-Optionally takes an array of other Web3 event observables to merge with this app's events, for example you might use an external contract's events.
+Optionally takes an array of other `Observable`s to merge with this app's events; for example you might use an external contract's Web3 events.
 
 **Parameters**
 
 1. `reducer` (`Function`): A function that reduces events to a state. This can return a Promise that resolves to a new state.
-2. [`events`] (`Array<Observable>`): An optional array of observables to merge in with the internal events observable.
+2. [`events`] (`Array<Observable>`): An optional array of `Observable`s to merge in with the internal events observable.
 
 **Returns**
 
@@ -197,7 +197,7 @@ A simple reducer for a counter app
 const state$ = app.store((state, event) => {
   // Initial state is always null
   if (state === null) state = 0
-  
+
   switch (event.event) {
     case 'Increment':
       state++
@@ -206,7 +206,7 @@ const state$ = app.store((state, event) => {
       state--
       return state
   }
-  
+
   // We must always return a state, even if unaltered
   return state
 })
@@ -224,7 +224,7 @@ const state$ = app.store((state, event) => {
 
 ### call
 
-Perform a call on the app's smart contract.
+Perform a read-only call on the app's smart contract.
 
 **Parameters**
 
@@ -296,11 +296,11 @@ Decodes an EVM callscript and tries to describe the transaction path that the sc
 
 ### MessagePortMessage
 
-A provider that communicates through the [`WebWorker PostMessage API`](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage).
+A provider that communicates through the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage).
 
 **Parameters**
 
-1. [`target`] (`Object`): The object (that implements the [Worker PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage)) to send messages to.
+1. [`target`] (`Object`): The object (that implements the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage)) to send messages to.
 
 ### WindowMessage
 

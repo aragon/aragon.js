@@ -6,7 +6,7 @@ Background scripts are parts of your app that are always run as soon as the Arag
 
 This is hugely useful if you want to keep your app up to date every time a user opens your app, since you can build out your application state in the background.
 
-Furthermore, background scripts create a nice seperation of concern - your background script handles all of the state building and your app front-end is simply presentational.
+Furthermore, background scripts create a nice separation of concerns - your background script handles all of the state building and your app front-end is simply presentational.
 
 ## Setup
 
@@ -19,9 +19,9 @@ const app = new Aragon()
 
 Next, you need to specify that your app has a background script.
 
-In your `manifest.json` file you simply specify the `script` key. The value should be the path to your background script.
+In your `manifest.json` file, simply specify the `script` key. The value should be the path to your built background script.
 
-For example, if our background script was in `dist/script.js`, we would specify it like so:
+For example, if our built background script was located at `dist/script.js`, we would specify it like so:
 
 ```js
 {
@@ -32,13 +32,13 @@ For example, if our background script was in `dist/script.js`, we would specify 
 
 ## Building State
 
-All of the [`AragonApp`](APP.md#aragonapp) methods are available to you. We highly recommend that you use  [`AragonApp#store`](APP.md#store) as it is a super useful sugar method that handles caching state and listening for events.
+All of the [`AragonApp`](APP.md#aragonapp) methods are available to you. We highly recommend that you use  [`AragonApp#store`](APP.md#store) as it handles state caching and events subscriptions for you.
 
 ```js
 const state$ = app.store((state, event) => {
   // Initial state is always null
   if (state === null) state = 0
-  
+
   switch (event.event) {
     case 'Increment':
       state++
@@ -47,7 +47,7 @@ const state$ = app.store((state, event) => {
       state--
       return state
   }
-  
+
   // We must always return a state, even if unaltered
   return state
 })
@@ -55,7 +55,4 @@ const state$ = app.store((state, event) => {
 
 ## Sharing State
 
-If you use [`AragonApp#store`](APP.md#store) then state should automatically be shared with your front-end in real-time.
-
-To access the shared state, you can use [`AragonApp#state`](APP.md#state) in your front-end.
-
+If you use [`AragonApp#store`](APP.md#store), then state will be automatically shared with your front-end in real-time (via [`AragonApp#state](APP.md#state)).
