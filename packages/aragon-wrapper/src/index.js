@@ -414,7 +414,7 @@ export default class Aragon {
     // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
     const proxy = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
-        (app) => app.proxyAddress === proxyAddress)
+        (app) => addressesEqual(app.proxyAddress, proxyAddress))
       )
       .map(
         (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
@@ -438,7 +438,8 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
       handlers.createRequestHandler(request$, 'identify', handlers.identifier),
       handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript)
+      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+      handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
@@ -610,7 +611,7 @@ export default class Aragon {
 
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.apps.map(
-      (apps) => apps.find((app) => app.proxyAddress === destination)
+      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, destination))
     ).take(1).toPromise()
     let forwarders = await this.forwarders.take(1).toPromise().then(
       (forwarders) => forwarders.map(
