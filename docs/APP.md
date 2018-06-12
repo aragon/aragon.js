@@ -58,7 +58,7 @@ app.increment()
 
 **Parameters**
 
-1. [`provider`] (`Provider`): A provider used to send and receive messages to and from the wrapper. Defaults to a provider that uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), which is suitable for use in [background scripts](BACKGROUND_SCRIPTS.md) as WebWorkers are natively compatible with the MessageChannel API. However, front-ends connected through an iframe should use the [`WindowMessage provider](#windowmessage) as the iframe's PostMessage API is slightly different.
+1. [`provider`] (`Provider`): A provider used to send and receive messages to and from the wrapper. Defaults to a provider that uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), which is suitable for use in [background scripts](BACKGROUND_SCRIPTS.md) as WebWorkers are natively compatible with the MessageChannel API. However, front-ends connected through an iframe should use the [`WindowMessage` provider](#windowmessage) as the iframe's PostMessage API is slightly different.
 
 **Example**
 
@@ -304,7 +304,7 @@ A provider that communicates through the [MessageChannel PostMessage API](https:
 
 ### WindowMessage
 
-A provider that communicates through the [`Window PostMessage API`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage).
+A provider that communicates through the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage).
 
 **Parameters**
 
