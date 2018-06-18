@@ -92,6 +92,7 @@ export default class Aragon {
    */
   async init (accounts = null) {
     await this.initAccounts(accounts)
+    await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
     this.initForwarders()
@@ -123,7 +124,7 @@ export default class Aragon {
   async initAcl () {
     // Set up ACL proxy
     const aclAddress = await this.kernelProxy.call('acl')
-    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3)
+    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
 
     // Set up permissions observable
     this.permissions = this.aclProxy.events('SetPermission')
@@ -157,7 +158,7 @@ export default class Aragon {
    * @return {Promise<Object>}
    */
   getAppProxyValues (proxyAddress) {
-    const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
+    const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
     return Promise.all([
       appProxy.call('kernel').catch(() => null),
@@ -417,7 +418,7 @@ export default class Aragon {
         (app) => addressesEqual(app.proxyAddress, proxyAddress))
       )
       .map(
-        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
       )
 
     // Wrap requests with the application proxy
