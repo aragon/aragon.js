@@ -7,18 +7,11 @@ export function addressesEqual (first, second) {
   return first === second
 }
 
-export function makeProxy (address, interfaceName, web3) {
-  return makeProxyFromABI(
-    address,
-    require(`../../abi/aragon/${interfaceName}.json`),
-    web3
-  )
+export function makeProxy (address, interfaceName, web3, initializationBlock) {
+  const abi = require(`../../abi/aragon/${interfaceName}.json`)
+  return makeProxyFromABI(address, abi, web3, initializationBlock)
 }
 
-export function makeProxyFromABI (address, abi, web3) {
-  return new Proxy(
-    address,
-    abi,
-    web3
-  )
+export function makeProxyFromABI (address, abi, web3, initializationBlock) {
+  return new Proxy(address, abi, web3, initializationBlock)
 }

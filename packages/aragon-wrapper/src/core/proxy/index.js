@@ -1,12 +1,14 @@
 import { Observable } from 'rxjs/Rx'
 
 export default class Proxy {
-  constructor (address, jsonInterface, web3) {
+  constructor (address, jsonInterface, web3, initializationBlock = 0) {
     this.address = address
     this.contract = new web3.eth.Contract(
       jsonInterface,
       address
     )
+    this.web3 = web3
+    this.initializationBlock = initializationBlock
   }
 
   // TODO: Make this a hot observable
@@ -26,12 +28,12 @@ export default class Proxy {
     if (eventNames.length === 1) {
       // Get a specific event
       eventSource = Observable.fromEvent(
-        this.contract.events[eventNames[0]]({ fromBlock: 0 }), 'data'
+        this.contract.events[eventNames[0]]({ fromBlock: this.initializationBlock }), 'data'
       )
     } else {
       // Get multiple events
       eventSource = Observable.fromEvent(
-        this.contract.events.allEvents({ fromBlock: 0 }), 'data'
+        this.contract.events.allEvents({ fromBlock: this.initializationBlock }), 'data'
       ).filter(
         (event) => eventNames.includes(event.event)
       )
@@ -46,5 +48,10 @@ export default class Proxy {
     }
 
     return this.contract.methods[method](...params).call()
+  }
+
+  async updateInitializationBlock() {
+    const initBlock = await this.contract.methods.getInitializationBlock().call()
+    this.initializationBlock = initBlock
   }
 }
