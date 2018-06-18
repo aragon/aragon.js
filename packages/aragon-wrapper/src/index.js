@@ -196,6 +196,11 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
+    const delayExec = async (time, execPromise) => {
+      await new Promise((resolve) => { setTimeout(() => resolve(), time) })
+      return execPromise()
+    }
+
     // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
@@ -214,10 +219,13 @@ export default class Aragon {
       )
       .flatMap(
         (apps) => Promise.all(
-          apps.map(async (app) => Object.assign(
+          apps.map(async (app, i) => Object.assign(
             app,
-            await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
+            // TODO: Remove ASAP apm.js uses gateway api for fetching content and we aren't throttled
+            // Issue: https://github.com/aragon/apm.js/issues/15
+            await delayExec(300 * i, () => this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
               .catch(() => ({}))
+              )
           ))
         )
       )
