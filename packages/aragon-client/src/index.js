@@ -1,8 +1,6 @@
 import Messenger, { providers } from '@aragon/messenger'
-import { defer } from 'rxjs/observable/defer'
-import { empty } from 'rxjs/observable/empty'
-import { fromPromise } from 'rxjs/observable/fromPromise'
-import { merge } from 'rxjs/observable/merge'
+import { defer, empty, from } from 'rxjs'
+import { map, filter, merge, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
 
 const AppProxyHandler = {
   get (target, name, receiver) {
@@ -14,7 +12,9 @@ const AppProxyHandler = {
       return target.rpc.sendAndObserveResponse(
         'intent',
         [name, ...params]
-      ).pluck('result')
+      ).pipe(
+        pluck('result')
+      )
     }
   }
 }
@@ -35,7 +35,9 @@ class AppProxy {
   accounts () {
     return this.rpc.sendAndObserveResponses(
       'accounts'
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -67,7 +69,9 @@ class AppProxy {
     return defer(
       () => this.rpc.sendAndObserveResponses(
         'events'
-      ).pluck('result')
+      ).pipe(
+        pluck('result')
+      )
     )
   }
 
@@ -91,7 +95,9 @@ class AppProxy {
               ),
               fromBlock
             ]
-          ).pluck('result')
+          ).pipe(
+            pluck('result')
+          )
         )
       }
     }
@@ -105,7 +111,9 @@ class AppProxy {
         return this.rpc.sendAndObserveResponse(
           'external_call',
           [address, methodJsonInterface, ...params]
-        ).pluck('result')
+        ).pipe(
+          pluck('result')
+        )
       }
     })
 
@@ -139,7 +147,9 @@ class AppProxy {
     return this.rpc.sendAndObserveResponses(
       'cache',
       ['get', 'state']
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -175,20 +185,22 @@ class AppProxy {
     // Also, this supports both sync and async code
     // (because of the `Promise.resolve`).
     const wrappedReducer = (state, event) =>
-      fromPromise(
+      from(
         Promise.resolve(reducer(state, event))
       )
 
-    const store$ = initialState
-      .switchMap((initialState) =>
+    const store$ = initialState.pipe(
+      switchMap((initialState) =>
         merge(
           this.events(),
           ...events
+        ).pipe(
+          mergeScan(wrappedReducer, initialState, 1),
+          map((state) => this.cache('state', state))
         )
-          .mergeScan(wrappedReducer, initialState, 1)
-          .map((state) => this.cache('state', state))
-      )
-      .publishReplay(1)
+      ),
+      publishReplay(1)
+    )
     store$.connect()
 
     return store$
@@ -206,7 +218,9 @@ class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'call',
       [method, ...params]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -239,9 +253,10 @@ class AppProxy {
    * @return {Observable} An observable of incoming app contexts
    */
   context () {
-    return this.rpc.requests()
-      .filter((request) => request.method === 'context')
-      .map((request) => request.params[0])
+    return this.rpc.requests().pipe(
+      filter((request) => request.method === 'context'),
+      map((request) => request.params[0])
+    )
   }
 
   /**
@@ -254,7 +269,9 @@ class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'describe_script',
       [script]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -268,7 +285,9 @@ class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'web3_eth',
       [method, ...params]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 }
 
@@ -292,7 +311,7 @@ class AppProxy {
  * @param {Object} [provider=MessagePortMessage] An RPC provider (will default to using the MessagePort API)
  */
 export default class AragonApp {
-  constructor (provider =  new providers.MessagePortMessage()) {
+  constructor (provider = new providers.MessagePortMessage()) {
     return new Proxy(
       new AppProxy(provider),
       AppProxyHandler
