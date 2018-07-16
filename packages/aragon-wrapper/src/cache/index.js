@@ -1,7 +1,8 @@
 import low from 'lowdb'
 import Memory from 'lowdb/adapters/Memory'
 import LocalStorage from 'lowdb/adapters/LocalStorage'
-import { Subject } from 'rxjs/Rx'
+import { Subject } from 'rxjs'
+import { filter, map, startWith } from 'rxjs/operators'
 
 /**
  * A cache.
@@ -71,10 +72,10 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    return this.changes.filter(
-      (change) => change.key === key
-    ).map(
-      (change) => change.value
-    ).startWith(this.get(key, defaultValue))
+    return this.changes.pipe(
+      filter((change) => change.key === key),
+      map((change) => change.value),
+      startWith(this.get(key, defaultValue))
+    )
   }
 }

@@ -1,5 +1,6 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { ReplaySubject, Subject, BehaviorSubject, combineLatest } from 'rxjs'
+import { map, pluck, scan, tap, publishReplay, switchMap, flatMap, filter, take } from 'rxjs/operators'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -62,7 +63,7 @@ export const setupTemplates = (
  * })
  */
 export default class Aragon {
-  constructor (daoAddress, options = {}) {
+  constructor(daoAddress, options = {}) {
     const defaultOptions = {
       provider: detectProvider()
     }
@@ -127,9 +128,9 @@ export default class Aragon {
     this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
 
     // Set up permissions observable
-    this.permissions = this.aclProxy.events('SetPermission')
-      .pluck('returnValues')
-      .scan((permissions, event) => {
+    this.permissions = this.aclProxy.events('SetPermission').pipe(
+      pluck('returnValues'),
+      scan((permissions, event) => {
         const currentPermissionsForRole = dotprop.get(
           permissions,
           `${event.app}.${event.role}`,
@@ -145,8 +146,9 @@ export default class Aragon {
           `${event.app}.${event.role}`,
           newPermissionsForRole
         )
-      }, {})
-      .publishReplay(1)
+      }, {}),
+      publishReplay(1)
+    )
     this.permissions.connect()
   }
 
@@ -200,20 +202,20 @@ export default class Aragon {
     // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
-    this.appsWithoutIdentifiers = this.permissions
-      .map(Object.keys)
-      .map((addresses) =>
+    this.appsWithoutIdentifiers = this.permissions.pipe(
+      map(Object.keys),
+      map((addresses) =>
         addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
-      )
-      .switchMap(
+      ),
+      switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getAppProxyValues(app))
         )
-      )
-      .map(
+      ),
+      map(
         (appMetadata) => appMetadata.filter((app) => this.isApp(app))
-      )
-      .flatMap(
+      ),
+      flatMap(
         (apps) => Promise.all(
           apps.map(async (app) => Object.assign(
             app,
@@ -221,32 +223,35 @@ export default class Aragon {
               .catch(() => ({}))
           ))
         )
-      )
+      ),
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
       // this entire operator chain on identifier emits (doing so causes unnecessary apm fetches)
-      .publishReplay(1)
+      publishReplay(1)
+    )
     this.appsWithoutIdentifiers.connect()
 
-    this.apps = this.appsWithoutIdentifiers
-      .combineLatest(
-        this.identifiers.scan(
-          (identifiers, { address, identifier }) =>
-            Object.assign(identifiers, { [address]: identifier }),
-          {}
-        ).startWith({}),
-        function attachIdentifiers (apps, identifiers) {
-          return apps.map(
-            (app) => {
-              if (identifiers[app.proxyAddress]) {
-                return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
-              }
-
-              return app
+    this.apps = combineLatest(
+      this.appsWithoutIdentifiers,
+      this.identifiers.pipe(scan(
+        (identifiers, { address, identifier }) =>
+          Object.assign(identifiers, { [address]: identifier }),
+        {}
+      )),
+      startWith({}),
+      function attachIdentifiers (apps, identifiers) {
+        return apps.map(
+          (app) => {
+            if (identifiers[app.proxyAddress]) {
+              return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
             }
-          )
-        }
-      )
-      .publishReplay(1)
+
+            return app
+          }
+        )
+      }
+    ).pipe(
+      publishReplay(1)
+    )
     this.apps.connect()
   }
 
@@ -270,11 +275,12 @@ export default class Aragon {
    * @return {void}
    */
   initForwarders () {
-    this.forwarders = this.apps
-      .map(
+    this.forwarders = this.apps.pipe(
+      map(
         (apps) => apps.filter((app) => app.isForwarder)
-      )
-      .publishReplay(1)
+      ),
+      publishReplay(1)
+    )
     this.forwarders.connect()
   }
 
@@ -297,10 +303,11 @@ export default class Aragon {
       })
     }
 
-    this.notifications = new BehaviorSubject(cached)
-      .scan((notifications, { modifier, notification }) => modifier(notifications, notification))
-      .do((notifications) => this.cache.set('notifications', notifications))
-      .publishReplay(1)
+    this.notifications = new BehaviorSubject(cached).pipe(
+      scan((notifications, { modifier, notification }) => modifier(notifications, notification)),
+      tap((notifications) => this.cache.set('notifications', notifications)),
+      publishReplay(1)
+    )
     this.notifications.connect()
   }
 
@@ -362,7 +369,7 @@ export default class Aragon {
         newNotifications[notificationIndex] = {
           ...notifications[notificationIndex],
           read: true,
-          acknowledge: () => {}
+          acknowledge: () => { }
         }
         return newNotifications
       }
@@ -378,7 +385,9 @@ export default class Aragon {
   clearNotification (id) {
     this.notifications.next({
       modifier: (notifications) => {
-        return notifications.filter(notification => notification.id !== id)
+        return notifications.pipe(
+          filter(notification => notification.id !== id)
+        )
       }
     })
   }
@@ -413,16 +422,17 @@ export default class Aragon {
 
     // Get the application proxy
     // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const proxy = this.appsWithoutIdentifiers
-      .map((apps) => apps.find(
-        (app) => addressesEqual(app.proxyAddress, proxyAddress))
-      )
-      .map(
+    const proxy = this.appsWithoutIdentifiers.pipe(
+      map((apps) => apps.pipe(
+        find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+      )),
+      map(
         (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
       )
+    )
 
     // Wrap requests with the application proxy
-    const request$ = Observable.combineLatest(
+    const request$ = combineLatest(
       messenger.requests(),
       proxy,
       (request, proxy) => ({ request, proxy, wrapper: this })
@@ -472,9 +482,9 @@ export default class Aragon {
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return this.accounts
-      .take(1)
-      .toPromise()
+    return this.accounts.pipe(
+      take(1)
+    ).toPromise()
   }
 
   /**
@@ -554,9 +564,12 @@ export default class Aragon {
 
   async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
-      const app = await this.apps.map(
-        (apps) => apps.find((app) => addressesEqual(app.proxyAddress, step.to))
-      ).take(1).toPromise()
+      const app = await this.apps.pipe(
+        map((apps) => apps.pipe(
+          find((app) => addressesEqual(app.proxyAddress, step.to))
+        )),
+        take(1)
+      ).toPromise()
 
       // No app artifact
       if (!app) return step
@@ -610,11 +623,13 @@ export default class Aragon {
   async calculateTransactionPath (sender, destination, methodName, params) {
     const minGasPrice = this.web3.utils.toWei('20', 'gwei')
 
-    const permissions = await this.permissions.take(1).toPromise()
-    const app = await this.apps.map(
-      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, destination))
-    ).take(1).toPromise()
-    let forwarders = await this.forwarders.take(1).toPromise().then(
+    const permissions = await this.permissions.pipe(take(1)).toPromise()
+    const app = await this.apps.pipe(
+      map((apps) => apps.find((app) => addressesEqual(app.proxyAddress, destination))),
+      take(1)
+    ).toPromise()
+
+    let forwarders = await this.forwarders.pipe(take(1)).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
       )

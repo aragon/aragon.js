@@ -1,4 +1,5 @@
-import { Observable } from 'rxjs/Rx'
+import { from, merge } from 'rxjs'
+import { filter, mergeMap, materialize } from 'rxjs/operators'
 
 export function createResponse ({ request: { id } }, { error, value = null }) {
   if (error) {
@@ -10,22 +11,23 @@ export function createResponse ({ request: { id } }, { error, value = null }) {
 
 export function createRequestHandler (request$, requestType, handler) {
   // Filter request types to match provided params
-  const filteredRequest$ = request$
-    .filter(({ request }) => request.method === requestType)
+  const filteredRequest$ = request$.pipe(
+    filter(({ request }) => request.method === requestType)
+  )
 
   // Send request to handler and return response
-  return filteredRequest$.mergeMap(
-    ({ request, proxy, wrapper }) => Observable.from(
-      handler(request, proxy, wrapper)
-    ).materialize(),
-    createResponse
-  ).filter(
-    (response) => response.payload !== undefined || response.error !== undefined
+  return filteredRequest$.pipe(
+    mergeMap(
+      ({ request, proxy, wrapper }) => from(handler(request, proxy, wrapper)),
+      materialize(),
+      createResponse
+    ),
+    filter((response) => response.payload !== undefined || response.error !== undefined)
   )
 }
 
 export function combineRequestHandlers (...handlers) {
-  return Observable.merge(
+  return merge(
     ...handlers
   )
 }

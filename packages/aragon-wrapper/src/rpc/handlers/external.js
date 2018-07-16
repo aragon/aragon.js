@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs/Rx'
+import { fromEvent } from 'rxjs'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
@@ -29,7 +29,7 @@ export function events (request, proxy, wrapper) {
     address
   )
 
-  return Observable.fromEvent(
+  return fromEvent(
     contract.events.allEvents({
       fromBlock
     }), 'data'
