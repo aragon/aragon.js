@@ -46,14 +46,11 @@ export default class Proxy {
     if (!this.contract.methods[method]) {
       throw new Error(`No method named ${method} on ${this.address}`)
     }
-
-    const { from } = params[params.length - 1]
+    
+    const lastParam = params[params.length - 1] 
 
     if (typeof lastParam === 'object' && lastParam !== null) {
-      // Add `from` to call params only if it's defined, can be easily extended for more params
-      return this.contract.methods[method](...params.slice(0,-1)).call({ 
-        ...(from && { from }) 
-      })
+      return this.contract.methods[method](...params.slice(0,-1)).call(lastParam)
     }
     else {
       return this.contract.methods[method](...params).call()
