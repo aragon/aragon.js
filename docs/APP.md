@@ -230,6 +230,10 @@ Perform a read-only call on the app's smart contract.
 
 1. `method` (`String`): The name of the method to call.
 2. `...params` (*arguments*): An optional variadic number of parameters.
+3. `options` (`Object`): Call options (Optional).
+    * `from` (`String`): The address the call “transaction” should be made from (Optional).
+    * `gasPrice` (`String`): The gas price in wei to use for this call “transaction” (Optional).
+    * `gas` (`Number`): The maximum gas provided for this call “transaction” (Optional).
 
 **Returns**
 
