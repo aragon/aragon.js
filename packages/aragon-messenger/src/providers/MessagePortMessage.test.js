@@ -3,18 +3,27 @@ import sinon from 'sinon'
 import { EventEmitter } from 'events'
 
 import MessagePortMessage from './MessagePortMessage'
+import Provider from './Provider'
 
-test('should send the payload through postMessage', (t) => {
-    // arrange
-    const postMessageMock = sinon.spy()
-    const instance = new MessagePortMessage({ postMessage: postMessageMock })
-    // act
-    instance.send('payload-example')
-    // assert
-    t.is(postMessageMock.getCall(0).args[0], 'payload-example')
+test.afterEach.always(() => {
+    global.self = undefined
+    sinon.restore()
 })
 
-test('should forward the messages data emitted from the given target', (t) => {
+test('should extend Provider', (t) => {
+    t.true(MessagePortMessage.prototype instanceof Provider) 
+})
+
+test('should assign self if target is undefined', (t) => {
+    // arrange
+    global.self = sinon.spy()
+    // act
+    const instance = new MessagePortMessage()
+    // assert
+    t.is(instance.target, global.self)
+})
+
+test('should forward the messages\' data emitted from the given target', (t) => {
     // arrange
     const target = new EventEmitter()
     const instance = new MessagePortMessage(target)
@@ -29,13 +38,12 @@ test('should forward the messages data emitted from the given target', (t) => {
     target.emit('message', { data: 'pass', source: target })
 })
 
-test('should assign self if target is undefined', (t) => {
+test('should send the payload through postMessage', (t) => {
     // arrange
-    global.self = sinon.spy()
+    const postMessageMock = sinon.spy()
+    const instance = new MessagePortMessage({ postMessage: postMessageMock })
     // act
-    const instance = new MessagePortMessage()
+    instance.send('payload-example')
     // assert
-    t.is(instance.target, global.self)
-    // cleanup
-    global.self = undefined
+    t.is(postMessageMock.getCall(0).args[0], 'payload-example')
 })
