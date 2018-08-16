@@ -49,12 +49,10 @@ export default class Proxy {
     
     const lastParam = params[params.length - 1] 
 
-    if (typeof lastParam === 'object' && lastParam !== null) {
-      return this.contract.methods[method](...params.slice(0,-1)).call(lastParam)
-    }
-    else {
-      return this.contract.methods[method](...params).call()
-    }
+    return (typeof lastParam === 'object' && lastParam !== null)
+      ? this.contract.methods[method](...params.slice(0,-1)).call(lastParam)
+      : this.contract.methods[method](...params).call()
+    
   }
 
   async updateInitializationBlock() {
