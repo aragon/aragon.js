@@ -54,12 +54,8 @@ export const setupTemplates = (
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
- * // Initialises the wrapper and logs the installed apps
- * aragon.init(() => {
- *   aragon.apps.subscribe(
- *     (apps) => console.log(apps)
- *   )
- * })
+ * // Initialises the wrapper
+ * aragon.init(["0xbeefdead", "0xbeefbeef"], {withAccounts: false}})
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
@@ -88,10 +84,11 @@ export default class Aragon {
    * Initialise the wrapper.
    *
    * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {Object} options An optional options object that contains 'withAccounts' that specifies whether or not we should fetch accounts from the Web3 instance
    * @return {Promise<void>}
    */
-  async init (accounts = null) {
-    await this.initAccounts(accounts)
+  async init (accounts = null, options = null) {
+    await this.initAccounts(accounts, options ? options.withAccounts : false)
     await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
@@ -103,13 +100,14 @@ export default class Aragon {
   /**
    * Initialise the accounts observable.
    *
-   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {?Array<string>} accounts An array of accounts that the user controls
+   * @param {boolean} withAccounts An optionnal boolean value that specifies whether or not we should fetch accounts from the Web3 instance
    * @return {Promise<void>}
    */
-  async initAccounts (accounts) {
+  async initAccounts (accounts, withAccounts) {
     this.accounts = new ReplaySubject(1)
 
-    if (accounts === null) {
+    if (accounts === null && withAccounts === true) {
       accounts = await this.web3.eth.getAccounts()
     }
 
