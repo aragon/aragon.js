@@ -14,17 +14,21 @@
 ```javascript
 const aragon = new Aragon('0xdeadbeef')
 
-// Initialises the wrapper and logs the installed apps
-aragon.init(() => {
-  aragon.apps.subscribe(
-    (apps) => console.log(apps)
-  )
-})
+// Initialises the wrapper
+aragon.init(["0xbeefdead", "0xbeefbeef"], {withAccounts: false}})
 ```
 
 ## init
 
 Initialise the wrapper.
+
+### **Parameters**
+
+-   `accounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
+      An optional array of accounts that the user controls
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+      An optional options object that contains 'withAccounts' that specifies whether or not we should fetch accounts from the Web3 instance.
+      Ex: ```aragon.init(["0xbeefbeef"], { withAccounts: true })```
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
