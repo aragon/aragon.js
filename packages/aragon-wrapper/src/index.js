@@ -55,7 +55,7 @@ export const setupTemplates = (
  * const aragon = new Aragon('0xdeadbeef')
  *
  * // Initialises the wrapper
- * aragon.init(["0xbeefdead", "0xbeefbeef"], {withAccounts: false}})
+ * await aragon.init(["0xbeefdead", "0xbeefbeef"], {withAccounts: false}})
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
@@ -83,12 +83,13 @@ export default class Aragon {
   /**
    * Initialise the wrapper.
    *
-   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
-   * @param {Object} options An optional options object that contains 'withAccounts' that specifies whether or not we should fetch accounts from the Web3 instance
+   * @param {Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {Object} [options={withAccounts: false}] An optional options object
+   * @param {boolean} options.withAccounts Boolean value that specifies whether or not we should fetch accounts from the Web3 instance
    * @return {Promise<void>}
    */
-  async init (accounts = null, options = null) {
-    await this.initAccounts(accounts, options ? options.withAccounts : false)
+  async init (accounts = null, options = {withAccounts: false}) {
+    await this.initAccounts(accounts, options.withAccounts)
     await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
