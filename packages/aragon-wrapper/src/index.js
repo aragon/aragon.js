@@ -126,25 +126,44 @@ export default class Aragon {
     const aclAddress = await this.kernelProxy.call('acl')
     this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
 
+    const SET_PERMISSION_EVENT = 'SetPermission'
+    const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
+    const SET_PERMISSION_PARAMS = 'SetPermissionParams'
+
+    const aclObservables = [
+      SET_PERMISSION_EVENT,
+      CHANGE_PERMISSION_MANAGER_EVENT,
+      SET_PERMISSION_PARAMS,
+    ].map(event =>
+      this.aclProxy.events(event)
+    )
+
     // Set up permissions observable
-    this.permissions = this.aclProxy.events('SetPermission')
-      .pluck('returnValues')
+    this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
-        const currentPermissionsForRole = dotprop.get(
-          permissions,
-          `${event.app}.${event.role}`,
-          []
-        )
+        const eventData = event.returnValues
+        const baseKey = `${eventData.app}.${eventData.role}`
+        const paramsKey = `${baseKey}.paramHashes.${eventData.entity}`
 
-        const newPermissionsForRole = event.allowed
-          ? currentPermissionsForRole.concat(event.entity)
-          : currentPermissionsForRole.filter((entity) => entity !== event.entity)
+        if (event.event == SET_PERMISSION_EVENT) {
+          const key = `${baseKey}.allowedEntities`
+          const currentPermissionsForRole = dotprop.get(permissions, key , [])
 
-        return dotprop.set(
-          permissions,
-          `${event.app}.${event.role}`,
-          newPermissionsForRole
-        )
+          const newPermissionsForRole = eventData.allowed
+            ? currentPermissionsForRole.concat(eventData.entity)
+            : currentPermissionsForRole.filter((entity) => entity !== eventData.entity)
+
+          dotprop.delete(permissions, paramsKey) // reset param hash on set permissions
+          return dotprop.set(permissions, key, newPermissionsForRole)
+        }
+
+        if (event.event == CHANGE_PERMISSION_MANAGER_EVENT) {
+          return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
+        }
+
+        if (event.event == SET_PERMISSION_PARAMS) {
+          return dotprop.set(permissions, paramsKey, eventData.paramsHash)
+        }
       }, {})
       .publishReplay(1)
     this.permissions.connect()
@@ -668,7 +687,7 @@ export default class Aragon {
 
     const permissionsForMethod = dotprop.get(
       permissions,
-      `${destination}.${roleSig}`,
+      `${destination}.${roleSig}.allowedEntities`,
       []
     )
 
