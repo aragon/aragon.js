@@ -139,6 +139,9 @@ export default class Aragon {
     )
 
     // Set up permissions observable
+    
+    // Permissions Object:
+    // app -> role -> { manager, allowedEntities -> [ entities with permission ], paramHashes -> { entity -> param hash } } 
     this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
         const eventData = event.returnValues
