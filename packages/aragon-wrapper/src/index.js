@@ -128,25 +128,22 @@ export default class Aragon {
 
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
-    const SET_PERMISSION_PARAMS = 'SetPermissionParams'
 
     const aclObservables = [
       SET_PERMISSION_EVENT,
       CHANGE_PERMISSION_MANAGER_EVENT,
-      SET_PERMISSION_PARAMS,
     ].map(event =>
       this.aclProxy.events(event)
     )
 
     // Set up permissions observable
-    
+
     // Permissions Object:
     // app -> role -> { manager, allowedEntities -> [ entities with permission ], paramHashes -> { entity -> param hash } } 
     this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
         const eventData = event.returnValues
         const baseKey = `${eventData.app}.${eventData.role}`
-        const paramsKey = `${baseKey}.paramHashes.${eventData.entity}`
 
         if (event.event == SET_PERMISSION_EVENT) {
           const key = `${baseKey}.allowedEntities`
@@ -156,16 +153,11 @@ export default class Aragon {
             ? currentPermissionsForRole.concat(eventData.entity)
             : currentPermissionsForRole.filter((entity) => entity !== eventData.entity)
 
-          dotprop.delete(permissions, paramsKey) // reset param hash on set permissions
           return dotprop.set(permissions, key, newPermissionsForRole)
         }
 
         if (event.event == CHANGE_PERMISSION_MANAGER_EVENT) {
           return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
-        }
-
-        if (event.event == SET_PERMISSION_PARAMS) {
-          return dotprop.set(permissions, paramsKey, eventData.paramsHash)
         }
       }, {})
       .publishReplay(1)
