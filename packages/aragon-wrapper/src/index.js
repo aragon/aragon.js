@@ -232,7 +232,7 @@ export default class Aragon {
           apps.map(async (app) => Object.assign(
             app,
             await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => ({}))
+              .catch(() => { console.log('caught', app.appId); return {} })
           ))
         )
       )
@@ -545,9 +545,10 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
+   * @param  {Array<*>} finalForwarder that will perform the action
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
-  async getTransactionPath (destination, methodName, params) {
+  async getTransactionPath (destination, methodName, params, finalForwarder) {
     const accounts = await this.getAccounts()
 
     for (let account of accounts) {
@@ -555,7 +556,8 @@ export default class Aragon {
         account,
         destination,
         methodName,
-        params
+        params,
+        finalForwarder,
       )
 
       if (path.length > 0) {
@@ -619,9 +621,13 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
+   * @param  {string} finalForwarder: address of the final forwarder that can perfom the action
+   *                  needed for actions that aren't in the ACL but their execution depends on other factors
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
-  async calculateTransactionPath (sender, destination, methodName, params) {
+  async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
+    const finalForwarderProvided = this.web3.utils.isAddress(finalForwarder)
+
     const minGasPrice = this.web3.utils.toWei('20', 'gwei')
 
     const permissions = await this.permissions.take(1).toPromise()
@@ -643,19 +649,6 @@ export default class Aragon {
       throw new Error(`No ABI specified in artifact for ${destination}`)
     }
 
-    const methods = app.functions
-    if (!methods) {
-      throw new Error(`No functions specified in artifact for ${destination}`)
-    }
-
-    // Find method description from the function signatures
-    const method = methods.find(
-      (method) => method.sig.split('(')[0] === methodName
-    )
-    if (!method) {
-      throw new Error(`No method named ${methodName} on ${destination}`)
-    }
-
     // The direct transaction we eventually want to perform
     const directTransaction = {
       from: sender,
@@ -669,48 +662,73 @@ export default class Aragon {
       gasPrice: minGasPrice
     }
 
-    // If the method has no ACL requirements, we assume we
-    // can perform the action directly
-    if (method.roles.length === 0) {
-      return [directTransaction]
-    }
+    let permissionsForMethod = []
 
-    // TODO: Support multiple needed roles?
-    const roleSig = app.roles.find(
-      (role) => role.id === method.roles[0]
-    ).bytes
+    // If finalForwarder is provided, don't try to perform direct transaction
+    if (!finalForwarderProvided) {
+      const methods = app.functions
 
-    const permissionsForMethod = dotprop.get(
-      permissions,
-      `${destination}.${roleSig}.allowedEntities`,
-      []
-    )
+      if (!methods) {
+        throw new Error(`No functions specified in artifact for ${destination}`)
+      }
 
-    // No one has access
-    if (permissionsForMethod.length === 0) {
-      return []
-    }
+      // Find method description from the function signatures
+      const method = methods.find(
+        (method) => method.sig.split('(')[0] === methodName
+      )
+      if (!method) {
+        throw new Error(`No method named ${methodName} on ${destination}`)
+      }
 
-    // Check if we have direct access
-    try {
-      // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
-      // so this is a hack to make sure checksums are not destroyed
-      // Also, at the same time it's a hack for checking if the call will revert,
-      // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
-      // So yeah...
-      await this.web3.eth.estimateGas(
-        Object.assign({}, directTransaction)
+      // If the method has no ACL requirements, we assume we
+      // can perform the action directly
+      if (method.roles.length === 0) {
+        return [directTransaction]
+      }
+
+      // TODO: Support multiple needed roles?
+      const roleSig = app.roles.find(
+        (role) => role.id === method.roles[0]
+      ).bytes
+
+      permissionsForMethod = dotprop.get(
+        permissions,
+        `${destination}.${roleSig}.allowedEntities`,
+        []
       )
 
-      return [directTransaction]
-    } catch (_) {}
+      // No one has access
+      if (permissionsForMethod.length === 0) {
+        return []
+      }
 
-    // Find forwarders with permission to perform the action
-    const forwardersWithPermission = forwarders
-      .filter(
-        (forwarder) => permissionsForMethod.includes(forwarder)
-      )
+      // Check if we have direct access
+      try {
+        // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
+        // so this is a hack to make sure checksums are not destroyed
+        // Also, at the same time it's a hack for checking if the call will revert,
+        // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
+        // So yeah...
+        await this.web3.eth.estimateGas(
+          Object.assign({}, directTransaction)
+        )
 
+        return [directTransaction]
+      } catch (_) { }
+    }
+
+    let forwardersWithPermission
+
+    if (finalForwarderProvided) {
+      forwardersWithPermission = [finalForwarder]
+    } else {
+      // Find forwarders with permission to perform the action
+      forwardersWithPermission = forwarders
+        .filter(
+          (forwarder) => permissionsForMethod.includes(forwarder)
+        )
+    }
+    
     // No forwarders can perform the requested action
     if (forwardersWithPermission.length === 0) {
       return []
