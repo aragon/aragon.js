@@ -18,6 +18,8 @@ import * as handlers from './rpc/handlers'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import { addressesEqual, makeProxy, makeProxyFromABI } from './utils'
 
+import { getAragonOSAppInfo } from './core/aragonOS'
+
 // Templates
 import Templates from './templates'
 
@@ -232,7 +234,7 @@ export default class Aragon {
           apps.map(async (app) => Object.assign(
             app,
             await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => { console.log('caught', app.appId); return {} })
+              .catch(() => getAragonOSAppInfo(app.appId)) // for unpublished apps we check local mapping
           ))
         )
       )
@@ -492,6 +494,85 @@ export default class Aragon {
   }
 
   /**
+  * @param {Array<Object>} An array of Ethereum transactions that describe each step in the path
+  * @return {Promise<string>} transaction hash
+  */
+  performTransactionPath(transactionPath) {
+    return new Promise((resolve, reject) => {
+      this.transactions.next({
+        transaction: transactionPath[0],
+        path: transactionPath,
+        accept (transactionHash) {
+          resolve(transactionHash)
+        },
+        reject (err) {
+          reject(err || new Error('The transaction was not signed'))
+        }
+      })
+    })
+  }
+
+   /**
+  * Performs an action on the ACL using transaction pathing
+  *
+  * @param {string} method
+  * @param {Array<*>} params
+  * @return {Promise<string>} transaction hash
+  */
+  async performACLIntent(method, params) {
+    const aclAddr = this.aclProxy.address
+
+    if (method == 'createPermission') {
+      // createPermission can be done with regular transaction pathing (it has a regular ACL role)
+      const path = await this.getTransactionPath(aclAddr, method, params)
+      return this.performTransactionPath(path)
+    } else {
+      // All other ACL functions don't have a role, the manager needs to be provided to aid transaciton pathing
+      const acl = await this.getApp(aclAddr)
+
+      // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
+      const methodABI = acl.abi.find(
+        (item) => item.name == method && item.type == 'function'
+      )
+
+      if (!methodABI) {
+        throw new Error(`Method ${method} not found on ACL ABI`)
+      }
+
+      const inputNames = methodABI.inputs.map((input) => input.name)
+      const appIndex = inputNames.indexOf('_app')
+      const roleIndex = inputNames.indexOf('_role')
+
+      if (appIndex == -1 || roleIndex == -1) {
+        throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
+      }
+
+      const manager = await this.getPermissionManager(params[appIndex], params[roleIndex])
+
+      const path = await this.getTransactionPath(aclAddr, method, params, manager)
+      return this.performTransactionPath(path)
+    }
+  }
+
+  async getPermissionManager (app, role) {
+    const permissions = await this.permissions.take(1).toPromise()
+
+    return dotprop.get(permissions, `${app}.${role}.manager`)
+  }
+
+  /**
+  * Looks for app with the provided proxyAddress and returns its app object if found
+  *
+  * @param {string} proxyAddress
+  * @return {<Object>} The app object
+  */
+  async getApp(proxyAddress) {
+    return await this.apps.map(
+      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+    ).take(1).toPromise()
+  }
+
+  /**
    * Decodes an EVM callscript and returns the transaction path it describes.
    *
    * @param  {string} script
@@ -569,10 +650,8 @@ export default class Aragon {
   }
 
   async describeTransactionPath (path) {
-    return Promise.all(path.map(async (step) => {
-      const app = await this.apps.map(
-        (apps) => apps.find((app) => addressesEqual(app.proxyAddress, step.to))
-      ).take(1).toPromise()
+    return await Promise.all(path.map(async (step) => {
+      const app = await this.getApp(step.to)
 
       // No app artifact
       if (!app) return step
@@ -631,9 +710,7 @@ export default class Aragon {
     const minGasPrice = this.web3.utils.toWei('20', 'gwei')
 
     const permissions = await this.permissions.take(1).toPromise()
-    const app = await this.apps.map(
-      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, destination))
-    ).take(1).toPromise()
+    const app = await this.getApp(destination)
     let forwarders = await this.forwarders.take(1).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
