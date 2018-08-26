@@ -494,9 +494,9 @@ export default class Aragon {
   }
 
   /**
-  * @param {Array<Object>} An array of Ethereum transactions that describe each step in the path
-  * @return {Promise<string>} transaction hash
-  */
+   * @param {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @return {Promise<string>} transaction hash
+   */
   performTransactionPath(transactionPath) {
     return new Promise((resolve, reject) => {
       this.transactions.next({
@@ -512,13 +512,13 @@ export default class Aragon {
     })
   }
 
-   /**
-  * Performs an action on the ACL using transaction pathing
-  *
-  * @param {string} method
-  * @param {Array<*>} params
-  * @return {Promise<string>} transaction hash
-  */
+  /**
+   * Performs an action on the ACL using transaction pathing
+   *
+   * @param {string} method
+   * @param {Array<*>} params
+   * @return {Promise<string>} transaction hash
+   */
   async performACLIntent(method, params) {
     const aclAddr = this.aclProxy.address
 
@@ -561,11 +561,11 @@ export default class Aragon {
   }
 
   /**
-  * Looks for app with the provided proxyAddress and returns its app object if found
-  *
-  * @param {string} proxyAddress
-  * @return {<Object>} The app object
-  */
+   * Looks for app with the provided proxyAddress and returns its app object if found
+   *
+   * @param {string} proxyAddress
+   * @return {<Object>} The app object
+   */
   async getApp(proxyAddress) {
     return await this.apps.map(
       (apps) => apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
