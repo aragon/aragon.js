@@ -77,8 +77,14 @@ export default class Aragon {
       provider: options.provider
     }))
 
+
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
+    
+    // Check if address is kernal
+    const aclAddress = await this.kernelProxy.call('acl')
+    if ( aclAddress === "0x0")
+      throw Error("Provided Address is not a Dao")
 
     // Set up cache
     this.cache = new Cache(daoAddress)
