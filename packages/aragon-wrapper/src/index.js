@@ -132,9 +132,18 @@ export default class Aragon {
     }
     options = Object.assign(defaultOptions, options)
 
+    // Check for required options
+    if(options.apm === undefined){
+      options.apm = []
+    }
+
+    if(options.ensRegistryAddress === undefined){
+      options.ensRegistryAddress = []
+    }
+
     // Set up Web3
     this.web3 = new Web3(options.provider)
-
+    
     // Set up APM
     this.apm = apm(this.web3, options.apm)
 
