@@ -26,6 +26,9 @@ import Templates from './templates'
 // Cache
 import Cache from './cache'
 
+// Interfaces
+import { getAbi } from './interfaces'
+
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
@@ -685,7 +688,7 @@ export default class Aragon {
 
   async canForward (forwarder, sender, script) {
     const canForward = new this.web3.eth.Contract(
-      require('../abi/aragon/Forwarder.json'),
+      getAbi('aragon/Forwarder'),
       forwarder
     ).methods['canForward']
 
@@ -814,7 +817,7 @@ export default class Aragon {
     // TODO: No need for contract?
     // A helper method to create a transaction that calls `forward` on a forwarder with `script`
     const forwardMethod = new this.web3.eth.Contract(
-      require('../abi/aragon/Forwarder.json')
+      getAbi('aragon/Forwarder')
     ).methods['forward']
 
     const createForwarderTransaction = (forwarderAddress, script) => ({
