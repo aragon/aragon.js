@@ -230,6 +230,7 @@ Perform a read-only call on the app's smart contract.
 
 1. `method` (`String`): The name of the method to call.
 2. `...params` (*arguments*): An optional variadic number of parameters.
+3. `options` (`Object`): Call options (Optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details. 
 
 **Returns**
 
