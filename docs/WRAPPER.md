@@ -8,6 +8,7 @@
 -   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Wrapper options. (optional, default `{}`)
     -   `options.provider` **any** The Web3 provider to use for blockchain communication (optional, default `ws://rinkeby.aragon.network:8546`)
     -   `options.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry (optional, default `null`)
+    -   `options.apm` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Primarily used to set an alternative ipfs provider (optional, default `null`)
 
 ### **Examples**
 
