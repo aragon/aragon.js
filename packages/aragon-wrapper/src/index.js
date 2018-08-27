@@ -786,9 +786,7 @@ export default class Aragon {
         // Also, at the same time it's a hack for checking if the call will revert,
         // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
         // So yeah...
-        await this.web3.eth.estimateGas(
-          Object.assign({}, directTransaction)
-        )
+        await this.web3.eth.estimateGas({ ...directTransaction })
 
         return [directTransaction]
       } catch (_) { }
