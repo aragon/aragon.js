@@ -554,17 +554,24 @@ export default class Aragon {
     }
   }
 
-  async getPermissionManager (app, role) {
+  /**
+   * Get the permission manager for an `app`'s and `role`.
+   *
+   * @param {string} appAddress
+   * @param {string} roleHash
+   * @return {Promise<string>} The permission manager
+   */
+  async getPermissionManager (appAddress, roleHash) {
     const permissions = await this.permissions.take(1).toPromise()
 
-    return dotprop.get(permissions, `${app}.${role}.manager`)
+    return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
   }
 
   /**
    * Looks for app with the provided proxyAddress and returns its app object if found
    *
    * @param {string} proxyAddress
-   * @return {<Object>} The app object
+   * @return {Promise<Object>} The app object
    */
   async getApp(proxyAddress) {
     return await this.apps.map(
@@ -626,8 +633,8 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
-   * @param  {Array<*>} finalForwarder that will perform the action
-   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @param  {Array<*>} [finalForwarder] Address of the final forwarder that can perfom the action
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async getTransactionPath (destination, methodName, params, finalForwarder) {
     const accounts = await this.getAccounts()
@@ -649,8 +656,14 @@ export default class Aragon {
     return []
   }
 
-  async describeTransactionPath (path) {
-    return await Promise.all(path.map(async (step) => {
+  /**
+   * Use radspec to create a human-readable description for each transaction in the given `path`
+   *
+   * @param  {Array<object>} path
+   * @return {Promise<Array<object>>} The given `path`, with descriptions included at each step
+   */
+  describeTransactionPath (path) {
+    return Promise.all(path.map(async (step) => {
       const app = await this.getApp(step.to)
 
       // No app artifact
@@ -683,7 +696,15 @@ export default class Aragon {
     }))
   }
 
-  async canForward (forwarder, sender, script) {
+  /**
+   * Whether the `sender` can use the `forwarder` to invoke `script`.
+   *
+   * @param  {string} forwarder
+   * @param  {string} sender
+   * @param  {string} script
+   * @return {Promise<bool>}
+   */
+  canForward (forwarder, sender, script) {
     const canForward = new this.web3.eth.Contract(
       require('../abi/aragon/Forwarder.json'),
       forwarder
@@ -700,9 +721,9 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
-   * @param  {string} finalForwarder: address of the final forwarder that can perfom the action
-   *                  needed for actions that aren't in the ACL but their execution depends on other factors
-   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action.
+   *                  Needed for actions that aren't in the ACL but whose execution depends on other factors
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
     const finalForwarderProvided = this.web3.utils.isAddress(finalForwarder)
@@ -803,7 +824,7 @@ export default class Aragon {
           (forwarder) => permissionsForMethod.includes(forwarder)
         )
     }
-    
+
     // No forwarders can perform the requested action
     if (forwardersWithPermission.length === 0) {
       return []
