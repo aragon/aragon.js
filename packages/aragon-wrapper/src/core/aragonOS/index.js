@@ -1,4 +1,5 @@
 import { hash as namehash } from 'eth-ens-namehash'
+import { getAbi, getArtifact } from '../../interfaces'
 
 const aragonpmName = appName => namehash(`${appName}.aragonpm.eth`)
 
@@ -13,8 +14,8 @@ function getAragonOSAppInfo(appId) {
     return {}
   }
 
-  const abi = require(`../../../abi/aragon/${appName}.json`)
-  const artifact = require(`../../../artifacts/aragon/${appName}.json`)
+  const abi = getAbi(`aragon/${appName}`)
+  const artifact = getArtifact(`aragon/${appName}`)
 
   return { abi, name: appName, ...artifact }
 }

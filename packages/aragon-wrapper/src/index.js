@@ -26,6 +26,9 @@ import Templates from './templates'
 // Cache
 import Cache from './cache'
 
+// Interfaces
+import { getAbi } from './interfaces'
+
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
@@ -141,13 +144,13 @@ export default class Aragon {
     // Set up permissions observable
 
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ], paramHashes -> { entity -> param hash } }
+    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
     this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
         const eventData = event.returnValues
         const baseKey = `${eventData.app}.${eventData.role}`
 
-        if (event.event == SET_PERMISSION_EVENT) {
+        if (event.event === SET_PERMISSION_EVENT) {
           const key = `${baseKey}.allowedEntities`
           const currentPermissionsForRole = dotprop.get(permissions, key, [])
 
@@ -158,7 +161,7 @@ export default class Aragon {
           return dotprop.set(permissions, key, newPermissionsForRole)
         }
 
-        if (event.event == CHANGE_PERMISSION_MANAGER_EVENT) {
+        if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
           return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
         }
       }, {})
@@ -706,7 +709,7 @@ export default class Aragon {
    */
   canForward (forwarder, sender, script) {
     const canForward = new this.web3.eth.Contract(
-      require('../abi/aragon/Forwarder.json'),
+      getAbi('aragon/Forwarder'),
       forwarder
     ).methods['canForward']
 
@@ -833,7 +836,7 @@ export default class Aragon {
     // TODO: No need for contract?
     // A helper method to create a transaction that calls `forward` on a forwarder with `script`
     const forwardMethod = new this.web3.eth.Contract(
-      require('../abi/aragon/Forwarder.json')
+      getAbi('aragon/Forwarder')
     ).methods['forward']
 
     const createForwarderTransaction = (forwarderAddress, script) => ({

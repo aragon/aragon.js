@@ -1,4 +1,5 @@
 import Proxy from '../core/proxy'
+import { getAbi } from '../interfaces'
 
 // Check address equality without checksums
 export function addressesEqual (first, second) {
@@ -8,7 +9,7 @@ export function addressesEqual (first, second) {
 }
 
 export function makeProxy (address, interfaceName, web3, initializationBlock) {
-  const abi = require(`../../abi/aragon/${interfaceName}.json`)
+  const abi = getAbi(`aragon/${interfaceName}`)
   return makeProxyFromABI(address, abi, web3, initializationBlock)
 }
 
