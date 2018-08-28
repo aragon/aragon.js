@@ -6,7 +6,7 @@ import WindowMessage from './WindowMessage'
 import Provider from './Provider'
 
 test.afterEach.always(() => {
-    global.window = null
+    global.window = undefined
     sinon.restore()
 })
 

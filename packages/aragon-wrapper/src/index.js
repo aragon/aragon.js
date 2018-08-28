@@ -1,5 +1,5 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -67,9 +67,10 @@ export const setupTemplates = (
  * })
  */
 export default class Aragon {
-  constructor (daoAddress, options = {}) {
+  constructor(daoAddress, options = {}) {
     const defaultOptions = {
-      provider: detectProvider()
+      provider: detectProvider(),
+      apm: {}
     }
     options = Object.assign(defaultOptions, options)
 
@@ -111,9 +112,7 @@ export default class Aragon {
    * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async initAccounts (accounts) {
-    this.accounts = new ReplaySubject(1)
-
+  async initAccounts (accounts = null) {
     if (accounts === null) {
       accounts = await this.web3.eth.getAccounts()
     }
@@ -122,7 +121,7 @@ export default class Aragon {
   }
 
   /**
-   * Initialise the ACL.
+   * Initialise the ACL (Access Control List).
    *
    * @return {Promise<void>}
    */
@@ -381,7 +380,7 @@ export default class Aragon {
         newNotifications[notificationIndex] = {
           ...notifications[notificationIndex],
           read: true,
-          acknowledge: () => {}
+          acknowledge: () => { }
         }
         return newNotifications
       }
@@ -482,7 +481,7 @@ export default class Aragon {
    * @return {void}
    */
   setAccounts (accounts) {
-    this.accounts.next(accounts)
+    this.accounts = accounts
   }
 
   /**
@@ -491,9 +490,7 @@ export default class Aragon {
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return this.accounts
-      .take(1)
-      .toPromise()
+    return Promise.resolve(this.accounts)
   }
 
   /**

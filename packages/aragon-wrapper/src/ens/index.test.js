@@ -1,21 +1,46 @@
 import test from 'ava'
-import Web3 from 'web3'
-import * as ens from './'
+import sinon from 'sinon'
+import proxyquire from 'proxyquire'
 
-test.beforeEach((t) => {
-  t.context.provider = new Web3.providers.HttpProvider('https://mainnet.infura.io')
+const ethjsEnsStub = sinon.stub()
+const ens = proxyquire.noCallThru().load('./index', {
+  'ethjs-ens': ethjsEnsStub,
 })
 
-test('should resolve names (nobodywantsthisdomain.eth)', (t) => {
-  return t.notThrows(() => ens.resolve('nobodywantsthisdomain.eth', {
-    provider: t.context.provider,
-    network: 1
-  }))
+test.afterEach.always(() => {
+  sinon.restore()
+  // restore the history of this stub, which is shared between tests for some reason
+  ethjsEnsStub.reset()
 })
 
-test('should resolve nodes', (t) => {
-  return t.notThrows(() => ens.resolve('0x184c792a4f08913715911620c811cf60210bf2a6731643aa9c1d5ed936d90b35', {
-    provider: t.context.provider,
-    network: 1
-  }))
+test('should lookup name', (t) => {
+  // arrange
+  const options = {
+    provider: {
+      sendAsync: 2
+    }
+  }
+  ethjsEnsStub.prototype.lookup = sinon.stub().returns('0x01')
+  // act
+  const result = ens.resolve('aragon.eth', options)
+  // assert
+  t.is(result, '0x01')
+  t.is(ethjsEnsStub.prototype.lookup.getCall(0).args[0], 'aragon.eth')
+  t.is(ethjsEnsStub.getCall(0).args[0], options)
+})
+
+test('should resolve address for node', (t) => {
+  // arrange
+  const hackyOptions = {
+    provider: {
+      sendAsync: undefined
+    }
+  }
+  ethjsEnsStub.prototype.resolveAddressForNode = sinon.stub().returns('0x02')
+  // act
+  const result = ens.resolve('node')
+  // assert
+  t.is(result, '0x02')
+  t.is(ethjsEnsStub.prototype.resolveAddressForNode.getCall(0).args[0], 'node')
+  t.deepEqual(ethjsEnsStub.getCall(0).args[0], hackyOptions)
 })
