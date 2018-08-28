@@ -828,6 +828,10 @@ export default class Aragon {
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
+      if (!forwarders.includes(finalForwarder)) {
+        throw new Error("Provided final forwarder is not a forwarder")
+      }
+
       forwardersWithPermission = [finalForwarder]
     } else {
       // Find forwarders with permission to perform the action
