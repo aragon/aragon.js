@@ -133,7 +133,7 @@ export default class Aragon {
 
     const aclObservables = [
       SET_PERMISSION_EVENT,
-      CHANGE_PERMISSION_MANAGER_EVENT,
+      CHANGE_PERMISSION_MANAGER_EVENT
     ].map(event =>
       this.aclProxy.events(event)
     )
@@ -141,7 +141,7 @@ export default class Aragon {
     // Set up permissions observable
 
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ], paramHashes -> { entity -> param hash } } 
+    // app -> role -> { manager, allowedEntities -> [ entities with permission ], paramHashes -> { entity -> param hash } }
     this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
         const eventData = event.returnValues
@@ -149,7 +149,7 @@ export default class Aragon {
 
         if (event.event == SET_PERMISSION_EVENT) {
           const key = `${baseKey}.allowedEntities`
-          const currentPermissionsForRole = dotprop.get(permissions, key , [])
+          const currentPermissionsForRole = dotprop.get(permissions, key, [])
 
           const newPermissionsForRole = eventData.allowed
             ? currentPermissionsForRole.concat(eventData.entity)
@@ -497,7 +497,7 @@ export default class Aragon {
    * @param {Array<Object>} An array of Ethereum transactions that describe each step in the path
    * @return {Promise<string>} transaction hash
    */
-  performTransactionPath(transactionPath) {
+  performTransactionPath (transactionPath) {
     return new Promise((resolve, reject) => {
       this.transactions.next({
         transaction: transactionPath[0],
@@ -519,10 +519,10 @@ export default class Aragon {
    * @param {Array<*>} params
    * @return {Promise<string>} transaction hash
    */
-  async performACLIntent(method, params) {
+  async performACLIntent (method, params) {
     const aclAddr = this.aclProxy.address
 
-    if (method == 'createPermission') {
+    if (method === 'createPermission') {
       // createPermission can be done with regular transaction pathing (it has a regular ACL role)
       const path = await this.getTransactionPath(aclAddr, method, params)
       return this.performTransactionPath(path)
@@ -532,7 +532,7 @@ export default class Aragon {
 
       // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
       const methodABI = acl.abi.find(
-        (item) => item.name == method && item.type == 'function'
+        (item) => item.name === method && item.type === 'function'
       )
 
       if (!methodABI) {
@@ -543,7 +543,7 @@ export default class Aragon {
       const appIndex = inputNames.indexOf('_app')
       const roleIndex = inputNames.indexOf('_role')
 
-      if (appIndex == -1 || roleIndex == -1) {
+      if (appIndex === -1 || roleIndex === -1) {
         throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
       }
 
@@ -573,8 +573,8 @@ export default class Aragon {
    * @param {string} proxyAddress
    * @return {Promise<Object>} The app object
    */
-  async getApp(proxyAddress) {
-    return await this.apps.map(
+  getApp (proxyAddress) {
+    return this.apps.map(
       (apps) => apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
     ).take(1).toPromise()
   }
@@ -645,7 +645,7 @@ export default class Aragon {
         destination,
         methodName,
         params,
-        finalForwarder,
+        finalForwarder
       )
 
       if (path.length > 0) {
