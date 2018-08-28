@@ -60,7 +60,7 @@ export default class Messenger {
    *
    * @param {string} id The ID of the request being responded to.
    * @param {any} result The result of the request.
-   * @returns {void}
+   * @returns {string}
    * @memberof Messenger
    * @instance
    */

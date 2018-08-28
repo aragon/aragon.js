@@ -17,6 +17,7 @@
     "stage-2"
   ],
   "plugins": [
+    ["inline-json-import", { "extensions": [".json"] }],
     "transform-flow-strip-types",
     "transform-runtime"
   ],
