@@ -525,13 +525,22 @@ export default class Aragon {
   async performACLIntent (method, params) {
     const aclAddr = this.aclProxy.address
 
-    if (method === 'createPermission') {
+    const acl = await this.getApp(aclAddr)
+
+    const functionArtifact = acl.functions.find(
+      ({ sig }) => sig.split('(')[0] === method
+    )
+
+    if (!functionArtifact) {
+      throw new Error(`Method ${method} not found on ACL artifact`)
+    }
+
+    if (functionArtifact.roles && functionArtifact.roles.length !== 0) {
       // createPermission can be done with regular transaction pathing (it has a regular ACL role)
       const path = await this.getTransactionPath(aclAddr, method, params)
       return this.performTransactionPath(path)
     } else {
       // All other ACL functions don't have a role, the manager needs to be provided to aid transaciton pathing
-      const acl = await this.getApp(aclAddr)
 
       // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
       const methodABI = acl.abi.find(
