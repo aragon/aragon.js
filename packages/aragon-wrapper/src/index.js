@@ -144,13 +144,13 @@ export default class Aragon {
     // Set up permissions observable
 
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ], paramHashes -> { entity -> param hash } }
+    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
     this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
         const eventData = event.returnValues
         const baseKey = `${eventData.app}.${eventData.role}`
 
-        if (event.event == SET_PERMISSION_EVENT) {
+        if (event.event === SET_PERMISSION_EVENT) {
           const key = `${baseKey}.allowedEntities`
           const currentPermissionsForRole = dotprop.get(permissions, key, [])
 
@@ -161,7 +161,7 @@ export default class Aragon {
           return dotprop.set(permissions, key, newPermissionsForRole)
         }
 
-        if (event.event == CHANGE_PERMISSION_MANAGER_EVENT) {
+        if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
           return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
         }
       }, {})
