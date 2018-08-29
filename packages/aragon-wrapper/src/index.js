@@ -830,7 +830,7 @@ export default class Aragon {
 
     if (finalForwarderProvided) {
       if (!forwarders.includes(finalForwarder)) {
-        throw new Error("Provided final forwarder is not a forwarder")
+        return []
       }
 
       forwardersWithPermission = [finalForwarder]
