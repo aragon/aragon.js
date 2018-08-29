@@ -645,7 +645,7 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
-   * @param  {Array<*>} [finalForwarder] Address of the final forwarder that can perfom the action
+   * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async getTransactionPath (destination, methodName, params, finalForwarder) {
@@ -776,7 +776,7 @@ export default class Aragon {
 
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
-    if (!finalForwarderProvided || finalForwarderProvided === sender) {
+    if (!finalForwarderProvided || finalForwarder === sender) {
       const methods = app.functions
 
       if (!methods) {
