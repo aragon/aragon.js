@@ -774,8 +774,9 @@ export default class Aragon {
 
     let permissionsForMethod = []
 
-    // If finalForwarder is provided, don't try to perform direct transaction
-    if (!finalForwarderProvided) {
+    // Only try to perform direct transaction if no final forwarder is provided or
+    // if the final forwarder is the sender
+    if (!finalForwarderProvided || finalForwarderProvided === sender) {
       const methods = app.functions
 
       if (!methods) {
