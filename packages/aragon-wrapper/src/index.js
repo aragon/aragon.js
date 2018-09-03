@@ -523,60 +523,8 @@ export default class Aragon {
    * @return {Promise<string>} transaction hash
    */
   async performACLIntent (method, params) {
-    const aclAddr = this.aclProxy.address
-
-    const acl = await this.getApp(aclAddr)
-
-    const functionArtifact = acl.functions.find(
-      ({ sig }) => sig.split('(')[0] === method
-    )
-
-    if (!functionArtifact) {
-      throw new Error(`Method ${method} not found on ACL artifact`)
-    }
-
-    if (functionArtifact.roles && functionArtifact.roles.length !== 0) {
-      // createPermission can be done with regular transaction pathing (it has a regular ACL role)
-      const path = await this.getTransactionPath(aclAddr, method, params)
-      return this.performTransactionPath(path)
-    } else {
-      // All other ACL functions don't have a role, the manager needs to be provided to aid transaciton pathing
-
-      // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
-      const methodABI = acl.abi.find(
-        (item) => item.name === method && item.type === 'function'
-      )
-
-      if (!methodABI) {
-        throw new Error(`Method ${method} not found on ACL ABI`)
-      }
-
-      const inputNames = methodABI.inputs.map((input) => input.name)
-      const appIndex = inputNames.indexOf('_app')
-      const roleIndex = inputNames.indexOf('_role')
-
-      if (appIndex === -1 || roleIndex === -1) {
-        throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
-      }
-
-      const manager = await this.getPermissionManager(params[appIndex], params[roleIndex])
-
-      const path = await this.getTransactionPath(aclAddr, method, params, manager)
-      return this.performTransactionPath(path)
-    }
-  }
-
-  /**
-   * Get the permission manager for an `app`'s and `role`.
-   *
-   * @param {string} appAddress
-   * @param {string} roleHash
-   * @return {Promise<string>} The permission manager
-   */
-  async getPermissionManager (appAddress, roleHash) {
-    const permissions = await this.permissions.take(1).toPromise()
-
-    return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
+    const path = await this.calculareACLTransactionPath(method, params)
+    return this.performTransactionPath(path)
   }
 
   /**
@@ -666,6 +614,68 @@ export default class Aragon {
     }
 
     return []
+  }
+
+  /**
+   * Get the permission manager for an `app`'s and `role`.
+   *
+   * @param {string} appAddress
+   * @param {string} roleHash
+   * @return {Promise<string>} The permission manager
+   */
+  async getPermissionManager (appAddress, roleHash) {
+    const permissions = await this.permissions.take(1).toPromise()
+
+    return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
+  }
+
+  /**
+   * Calculates transaction path for performing a method on the ACL
+   *
+   * @param {string} method
+   * @param {Array<*>} params
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
+   */
+  async getACLTransactionPath (method, params) {
+    const aclAddr = this.aclProxy.address
+
+    const acl = await this.getApp(aclAddr)
+
+    const functionArtifact = acl.functions.find(
+      ({ sig }) => sig.split('(')[0] === method
+    )
+
+    if (!functionArtifact) {
+      throw new Error(`Method ${method} not found on ACL artifact`)
+    }
+
+    if (functionArtifact.roles && functionArtifact.roles.length !== 0) {
+      // createPermission can be done with regular transaction pathing (it has a regular ACL role)
+      return this.getTransactionPath(aclAddr, method, params)
+    } else {
+      // All other ACL functions don't have a role, the manager needs to be provided to aid transaciton pathing
+
+      // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
+      const methodABI = acl.abi.find(
+        (item) => item.name === method && item.type === 'function'
+      )
+
+      if (!methodABI) {
+        throw new Error(`Method ${method} not found on ACL ABI`)
+      }
+
+      const inputNames = methodABI.inputs.map((input) => input.name)
+      const appIndex = inputNames.indexOf('_app')
+      const roleIndex = inputNames.indexOf('_role')
+
+      if (appIndex === -1 || roleIndex === -1) {
+        throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
+      }
+
+      const manager = await this.getPermissionManager(params[appIndex], params[roleIndex])
+
+      return this.getTransactionPath(aclAddr, method, params, manager)
+    }
   }
 
   /**
