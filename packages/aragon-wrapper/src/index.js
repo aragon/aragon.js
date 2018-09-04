@@ -776,8 +776,6 @@ export default class Aragon {
       throw new Error(`No ABI specified in artifact for ${destination}`)
     }
 
-    let permissionsForMethod = []
-
     const methodABI = app.abi.find(
       (method) => method.name === methodName
     )
@@ -803,6 +801,8 @@ export default class Aragon {
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params),
     }
 
+    let permissionsForMethod = []
+    
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
     if (!finalForwarderProvided || finalForwarder === sender) {
