@@ -436,7 +436,7 @@ export default class Aragon {
 
     // Get the application proxy
     // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const proxy = this.appsWithoutIdentifiers
+    const proxy$ = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
         (app) => addressesEqual(app.proxyAddress, proxyAddress))
       )
@@ -447,9 +447,13 @@ export default class Aragon {
     // Wrap requests with the application proxy
     const request$ = Observable.combineLatest(
       messenger.requests(),
-      proxy,
+      proxy$,
       (request, proxy) => ({ request, proxy, wrapper: this })
     )
+      // Use the same request$ result in each handler
+      // Turns request$ into a subject
+      .publishReplay(1)
+    request$.connect()
 
     // Register request handlers
     const shutdown = handlers.combineRequestHandlers(
