@@ -55,7 +55,7 @@ export const setupTemplates = (
  * const aragon = new Aragon('0xdeadbeef')
  *
  * // Initialises the wrapper
- * await aragon.init(["0xbeefdead", "0xbeefbeef"], {withAccounts: false}})
+ * await aragon.init(["0xbeefdead", "0xbeefbeef"], {fetchAccountsFromWeb3: false}})
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
@@ -84,12 +84,12 @@ export default class Aragon {
    * Initialise the wrapper.
    *
    * @param {Array<string>} [accounts=null] An optional array of accounts that the user controls
-   * @param {Object} [options={withAccounts: false}] An optional options object
-   * @param {boolean} options.withAccounts Boolean value that specifies whether or not we should fetch accounts from the Web3 instance
+   * @param {Object} [options={fetchAccountsFromWeb3: false}] An optional options object
+   * @param {boolean} options.fetchAccountsFromWeb3 Boolean value that specifies whether or not we should fetch accounts from the Web3 instance
    * @return {Promise<void>}
    */
-  async init (accounts = null, options = {withAccounts: false}) {
-    await this.initAccounts(accounts, options.withAccounts)
+  async init (accounts = null, options = {fetchAccountsFromWeb3: false}) {
+    await this.initAccounts(accounts, options.fetchAccountsFromWeb3)
     await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
@@ -101,18 +101,21 @@ export default class Aragon {
   /**
    * Initialise the accounts observable.
    *
-   * @param {?Array<string>} accounts An array of accounts that the user controls
-   * @param {boolean} withAccounts An optionnal boolean value that specifies whether or not we should fetch accounts from the Web3 instance
+   * @param {Array<string>} accounts An array of accounts that the user controls
+   * @param {boolean} fetchAccountsFromWeb3 An optionnal boolean value that specifies whether or not we should fetch accounts from the Web3 instance
    * @return {Promise<void>}
    */
-  async initAccounts (accounts, withAccounts) {
+  async initAccounts (accounts, fetchAccountsFromWeb3) {
     this.accounts = new ReplaySubject(1)
 
-    if (accounts === null && withAccounts === true) {
-      accounts = await this.web3.eth.getAccounts()
+    if (fetchAccountsFromWeb3 === true) {
+      if(accounts != null) 
+        accounts.concat(await this.web3.eth.getAccounts())
+      else 
+        accounts = await this.web3.eth.getAccounts()
     }
 
-    this.setAccounts(accounts)
+    this.setAccounts(accounts || [])
   }
 
   /**
