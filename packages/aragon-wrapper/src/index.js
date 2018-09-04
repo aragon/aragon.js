@@ -778,6 +778,31 @@ export default class Aragon {
 
     let permissionsForMethod = []
 
+    const methodABI = app.abi.find(
+      (method) => method.name === methodName
+    )
+    if (!methodABI) {
+      throw new Error(`${methodName} not found on ABI for ${destination}`)
+    }
+
+    let transactionOptions = {
+      gasPrice: defaultGasPrice,
+    }
+
+    // If an extra parameter has been provided, it is the transaction options if it is an object
+    if (methodABI.inputs.length + 1 == params.length && typeof params[params.length - 1] === 'object') {
+      const options = params.pop()
+      transactionOptions = { ...transactionOptions, ...options }
+    }
+
+    // The direct transaction we eventually want to perform
+    const directTransaction = {
+      ...transactionOptions, // Options are overwriten by the values below
+      from: sender,
+      to: destination,
+      data: this.web3.eth.abi.encodeFunctionCall(methodABI, params),
+    }
+
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
     if (!finalForwarderProvided || finalForwarder === sender) {
@@ -793,35 +818,6 @@ export default class Aragon {
       )
       if (!method) {
         throw new Error(`No method named ${methodName} on ${destination}`)
-      }
-
-      const methodABI = app.abi.find(
-        (method) => method.name === methodName
-      )
-      if (!methodABI) {
-        throw new Error(`${methodName} not found on ABI for ${destination}`)
-      }
-
-      let transactionOptions = {
-        gasPrice: defaultGasPrice,
-      }
-
-      // If an extra parameter has been provided, it is the transaction options if it is an object
-      if (methodABI.inputs.length + 1 == params.length && typeof params[params.length - 1] === 'object') {
-        const options = params.pop()
-        transactionOptions = { ...transactionOptions, ...options }
-      }
-
-      if (methodABI.inputs.length != params.length) {
-        throw new Error(`Incorrect number of parameters for function ${methodABI.name}. Expected ${methodABI.input.length}, provided ${params.length}`)
-      }
-
-      // The direct transaction we eventually want to perform
-      const directTransaction = {
-        ...transactionOptions, // Options are overwriten by the values below
-        from: sender,
-        to: destination,
-        data: this.web3.eth.abi.encodeFunctionCall(methodABI, params),
       }
 
       // If the method has no ACL requirements, we assume we
