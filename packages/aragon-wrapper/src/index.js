@@ -152,13 +152,17 @@ export default class Aragon {
 
         if (event.event === SET_PERMISSION_EVENT) {
           const key = `${baseKey}.allowedEntities`
-          const currentPermissionsForRole = dotprop.get(permissions, key, [])
 
-          const newPermissionsForRole = eventData.allowed
-            ? currentPermissionsForRole.concat(eventData.entity)
-            : currentPermissionsForRole.filter((entity) => entity !== eventData.entity)
+          // Converts to and from a set to avoid duplicated entities
+          const permissionsForRole = new Set(dotprop.get(permissions, key, []))
 
-          return dotprop.set(permissions, key, newPermissionsForRole)
+          if (eventData.allowed) {
+            permissionsForRole.add(eventData.entity)
+          } else {
+            permissionsForRole.delete(eventData.entity)
+          }
+
+          return dotprop.set(permissions, key, Array.from(permissionsForRole))
         }
 
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
