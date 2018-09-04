@@ -523,7 +523,7 @@ export default class Aragon {
    * @return {Promise<string>} transaction hash
    */
   async performACLIntent (method, params) {
-    const path = await this.calculareACLTransactionPath(method, params)
+    const path = await this.getACLTransactionPath(method, params)
     return this.performTransactionPath(path)
   }
 
@@ -653,7 +653,7 @@ export default class Aragon {
       // createPermission can be done with regular transaction pathing (it has a regular ACL role)
       return this.getTransactionPath(aclAddr, method, params)
     } else {
-      // All other ACL functions don't have a role, the manager needs to be provided to aid transaciton pathing
+      // All other ACL functions don't have a role, the manager needs to be provided to aid transaction pathing
 
       // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
       const methodABI = acl.abi.find(
