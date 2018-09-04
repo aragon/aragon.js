@@ -56,7 +56,7 @@ const app = new AragonApp()
 app.increment(1)
 ```
 
-You can also pass an optional object after all the required function arguments specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
+You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
 
 ```js
 app.increment(1, { gas: 200000, gasPrice: 80000000 }) // careful: hardcoding the gas limit could break your app!
