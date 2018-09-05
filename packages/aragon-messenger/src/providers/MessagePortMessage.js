@@ -27,6 +27,13 @@ export default class MessagePortMessage extends Provider {
         // We can't use event.source in WebWorker messages as it seems to be null
         // However, the fallback to check the target should always be true
         (event.source || event.target) === this.target)
+      .map(value => {
+        if (value.error) {
+          throw new Error(value.error)
+        } else {
+          return value
+        }
+      })
       .pluck('data')
   }
 
