@@ -18,7 +18,7 @@ import * as handlers from './rpc/handlers'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import { addressesEqual, makeProxy, makeProxyFromABI } from './utils'
 
-import { getAragonOSAppInfo } from './core/aragonOS'
+import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
@@ -241,7 +241,7 @@ export default class Aragon {
           apps.map(async (app) => Object.assign(
             app,
             await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => getAragonOSAppInfo(app.appId)) // for unpublished apps we check local mapping
+              .catch(() => getAragonOsInternalAppInfo(app.appId)) // for internal apps we check local mapping
           ))
         )
       )

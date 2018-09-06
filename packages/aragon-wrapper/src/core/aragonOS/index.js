@@ -16,7 +16,7 @@ const APP_MAPPINGS = {
   [oldWrongAppId('evmreg')]: 'EVM Script Registry'
 }
 
-function getAragonOSAppInfo (appId) {
+function getAragonOsInternalAppInfo (appId) {
   const appName = APP_MAPPINGS[appId]
 
   if (!appName) {
@@ -26,7 +26,12 @@ function getAragonOSAppInfo (appId) {
   const abi = getAbi(`aragon/${appName}`)
   const artifact = getArtifact(`aragon/${appName}`)
 
-  return { abi, name: appName, ...artifact }
+  return {
+    abi,
+    name: appName,
+    isAragonOsInternalApp: true,
+    ...artifact
+  }
 }
 
-export { getAragonOSAppInfo }
+export { getAragonOsInternalAppInfo }
