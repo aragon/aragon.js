@@ -9,11 +9,11 @@ const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
 
 const APP_MAPPINGS = {
   [aragonpmAppId('acl')]: 'ACL',
-  [aragonpmAppId('evmreg')]: 'EVMScriptRegistry',
+  [aragonpmAppId('evmreg')]: 'EVM Script Registry',
 
   // TODO: Remove this when 0.5 Rinkeby DAOs are deprecated
   [oldWrongAppId('acl')]: 'ACL',
-  [oldWrongAppId('evmreg')]: 'EVMScriptRegistry'
+  [oldWrongAppId('evmreg')]: 'EVM Script Registry'
 }
 
 function getAragonOSAppInfo (appId) {

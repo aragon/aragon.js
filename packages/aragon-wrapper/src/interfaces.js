@@ -12,10 +12,12 @@ const ABIS = {
   'aragon/AppProxy': abiAragonAppProxy,
   'aragon/Forwarder': abiAragonForwarder,
   'aragon/Kernel': abiAragonKernel,
+  'aragon/EVM Script Registry': {} // TODO
 }
 
 const ARTIFACTS = {
   'aragon/ACL': artifactsAragonACL,
+  'aragon/EVM Script Registry': {} // TODO
 }
 
 export const getAbi = name => ABIS[name] || null
