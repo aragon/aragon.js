@@ -1,6 +1,6 @@
 import { Observable } from 'rxjs/Rx'
 
-export function createResponse ({ request: { id } }, { error, value = null }) {
+export function createResponse ({ request: { id } }, { error, value }) {
   if (error) {
     return { id, payload: error }
   }
@@ -20,8 +20,13 @@ export function createRequestHandler (request$, requestType, handler) {
     ).materialize(),
     createResponse
   ).filter(
-    (response) => response.payload !== undefined || response.error !== undefined
-  )
+    /**
+     * Because we materialize the promise returned by `handler`, if the promise is resolved,
+     * it will emit two Notifications, one of kind N (next), one of kind C (complete)
+     * causing duplicates. We can filter them out by checking payload === undefined.
+     */
+      (response) => response.payload !== undefined || response.error !== undefined
+    )
 }
 
 export function combineRequestHandlers (...handlers) {
