@@ -3,14 +3,14 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Observable } from 'rxjs/Rx'
 
-const makeProxyStub = sinon.stub()
-const Aragon = proxyquire.load('./index', {
-  '@aragon/messenger': {
-    '@noCallThru': true
-  },
-  './utils': {
-    makeProxy: makeProxyStub
-  }
+const messengerConstructorStub = sinon.stub()
+const utilsStub = {
+  makeProxy: sinon.stub(),
+  addressesEqual: Object.is
+}
+const Aragon = proxyquire.noCallThru().load('./index', {
+  '@aragon/messenger': messengerConstructorStub,
+  './utils': utilsStub
 }).default
 
 test.afterEach.always(() => {
@@ -101,7 +101,7 @@ test('should init the ACL correctly', async (t) => {
   }
   aclProxyStub.events.withArgs('SetPermission').returns(setPermissionEvents)
   aclProxyStub.events.withArgs('ChangePermissionManager').returns(changePermissionManagerEvents)
-  makeProxyStub.returns(aclProxyStub)
+  utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
   // assert
@@ -262,7 +262,7 @@ test('should send notifications correctly', async (t) => {
     t.is(value[0].context, null)
     // uuidv4
     t.is(value[0].id.length, 36)
-    
+
     t.is(value[1].app, 'counterApp')
     t.is(value[1].title, 'add')
     t.is(value[1].read, false)
@@ -272,9 +272,155 @@ test('should send notifications correctly', async (t) => {
   })
 })
 
-// runApp
-// getPermissionManager 
-// getApp 
-// calculateTransactionPath 
-// rpc/handlers/external.js
-// rpc/handlers/index
+test('should run the app and reply to a request', async (t) => {
+  // Note: This is not a "real" unit test because the rpc handlers are not mocked
+  t.plan(4)
+  // arrange
+  const requestsStub = Observable.create((observer) => {
+    observer.next({
+      id: 'uuid1',
+      method: 'cache',
+      params: ['get', 'settings'],
+    })
+  })
+  const messengerStub = {
+    sendResponse: sinon.stub(),
+    requests: () => requestsStub,
+  }
+  messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
+  const instance = new Aragon()
+  instance.cache.observe = sinon.stub()
+    .withArgs('0x789.settings')
+    .returns(Observable.create((observer) => {
+      observer.next('user settings for the voting app')
+    }))
+  instance.appsWithoutIdentifiers = Observable.create((observer) => {
+    observer.next([
+      {
+        appId: 'some other app with a different proxy',
+        proxyAddress: '0x456'
+      }, {
+        appId: 'votingApp',
+        kernelAddress: '0x123',
+        abi: 'abi for votingApp',
+        proxyAddress: '0x789'
+      }
+    ])
+  })
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({ address: proxyAddress })
+  instance.kernelProxy = { initializationBlock: 0 }
+  // act
+  const result = await instance.runApp('someMessageProvider', '0x789')
+  // assert
+  t.true(result.shutdown !== undefined)
+  t.true(result.setContext !== undefined)
+  /**
+   * What we're testing here is that the request for getting the cache (messenger.requests())
+   * is handled by the appropriate requestHandler.
+   */
+  t.is(messengerStub.sendResponse.getCall(0).args[0], 'uuid1')
+  t.is(messengerStub.sendResponse.getCall(0).args[1], 'user settings for the voting app')
+})
+
+test('should get the app from a proxy address', async (t) => {
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.apps = Observable.create((observer) => {
+    observer.next([
+      {
+        appId: 'some other app with a different proxy',
+        proxyAddress: '0x456'
+      }, {
+        appId: 'votingApp',
+        kernelAddress: '0x123',
+        abi: 'abi for votingApp',
+        proxyAddress: '0x789'
+      }
+    ])
+  })
+  // act
+  const result = await instance.getApp('0x789')
+  // assert
+  t.deepEqual(result, {
+    appId: 'votingApp',
+    kernelAddress: '0x123',
+    abi: 'abi for votingApp',
+    proxyAddress: '0x789'
+  })
+})
+
+test('should get the permission manager', async (t) => {
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.permissions = Observable.create(observer => {
+    observer.next({
+      counter: {
+        add: {
+          allowedEntities: ['0x1', '0x2']
+        },
+        subtract: {
+          allowedEntities: ['0x1'],
+          manager: 'im manager'
+        }
+      }
+    })
+  })
+  // act
+  const result = await instance.getPermissionManager('counter', 'subtract')
+  // assert
+  t.is(result, 'im manager')
+})
+
+test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.permissions = Observable.create(observer => {
+    observer.next({
+      counter: {
+        add: {
+          allowedEntities: ['0x1', '0x2']
+        },
+        subtract: {
+          allowedEntities: ['0x1'],
+          manager: 'im manager'
+        }
+      }
+    })
+  })
+  instance.forwarders = Observable.create(observer => {
+    observer.next([
+      {
+        appId: 'forwarderA',
+        proxyAddress: '0x999'
+      }
+    ])
+  })
+  instance.apps = Observable.create(observer => {
+    observer.next([
+      {
+        appId: 'counterApp',
+        kernelAddress: '0x123',
+        abi: 'abi for counterApp',
+        proxyAddress: '0x456'
+      }, {
+        appId: 'votingApp',
+        kernelAddress: '0x123',
+        // abi: 'abi for votingApp',
+        proxyAddress: '0x789'
+      }
+    ])
+  })
+  // act
+  return instance.calculateTransactionPath(null, '0x789')
+    .catch(err => {
+      // assert
+      t.is(err.message, 'No ABI specified in artifact for 0x789')
+      /**
+       * Note: This test also "asserts" that the permissions object, the app object and the 
+       * forwarders array does not throw any errors when they are being extracted from their observables.
+       */
+    })
+})

@@ -439,6 +439,7 @@ export default class Aragon {
       .map((apps) => apps.find(
         (app) => addressesEqual(app.proxyAddress, proxyAddress))
       )
+      // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
       .map(
         (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
       )
@@ -799,7 +800,7 @@ export default class Aragon {
     }
 
     let permissionsForMethod = []
-    
+
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
     if (!finalForwarderProvided || finalForwarder === sender) {

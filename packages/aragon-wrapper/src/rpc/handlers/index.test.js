@@ -26,40 +26,38 @@ test('should create a request handler', async (t) => {
       request: {
         id: 'uuid1',
         method: 'cache',
-        params: ['get'],
-        value: 'settings'
+        params: ['get', 'settings']
       }
     })
     observer.next({
       request: {
         id: 'uuid4',
         method: 'cache',
-        params: ['set'],
-        value: 'settings'
+        params: ['set', 'settings'],
+        value: { foo: 'bar' }
       }
     })
     observer.next({
       request: {
         id: 'uuid6',
         method: 'cache',
-        params: ['get'],
-        value: 'profile'
+        params: ['get', 'profile']
       }
     })
   })
   const handlerStub = (request) => {
     if (request.params[0] === 'set') {
-      return Promise.reject('no permissions!!')
+      return Promise.reject(`no permissions to change ${request.params[1]}!!`)
     }
 
-    return Promise.resolve(`resolved ${request.value}`)
+    return Promise.resolve(`resolved ${request.params[1]}`)
   }
   // act
   const result = createRequestHandler(requestStub, 'cache', handlerStub)
   // assert
   result.subscribe(value => {
     if (value.id === 'uuid1') return t.is(value.payload, 'resolved settings')
-    if (value.id === 'uuid4') return t.is(value.payload, 'no permissions!!')
+    if (value.id === 'uuid4') return t.is(value.payload, 'no permissions to change settings!!')
     if (value.id === 'uuid6') return t.is(value.payload, 'resolved profile')
   })
 })
