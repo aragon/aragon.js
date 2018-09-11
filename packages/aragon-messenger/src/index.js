@@ -2,6 +2,7 @@ import jsonrpc from './jsonrpc'
 import MessagePortMessage from './providers/MessagePortMessage'
 import WindowMessage from './providers/WindowMessage'
 import DevMessage from './providers/DevMessage'
+import { first, filter } from 'rxjs/operators'
 
 export const providers = {
   MessagePortMessage,
@@ -39,8 +40,9 @@ export default class Messenger {
    * @instance
    */
   requests () {
-    return this.bus()
-      .filter((message) => !jsonrpc.isValidResponse(message))
+    return this.bus().pipe(
+      filter(message => !jsonrpc.isValidResponse(message))
+    )
   }
 
   /**
@@ -51,8 +53,9 @@ export default class Messenger {
    * @instance
    */
   responses () {
-    return this.bus()
-      .filter(jsonrpc.isValidResponse)
+    return this.bus().pipe(
+      filter(jsonrpc.isValidResponse)
+    )
   }
 
   /**
@@ -99,8 +102,9 @@ export default class Messenger {
   sendAndObserveResponses (method, params = []) {
     const id = this.send(method, params)
 
-    return this.responses()
-      .filter((message) => message.id === id)
+    return this.responses().pipe(
+      filter((message) => message.id === id)
+    )
   }
 
   /**
@@ -113,7 +117,8 @@ export default class Messenger {
    * @instance
    */
   sendAndObserveResponse (method, params = []) {
-    return this.sendAndObserveResponses(method, params)
-      .first()
+    return this.sendAndObserveResponses(method, params).pipe(
+      first()
+    )
   }
 }
