@@ -16,7 +16,7 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeProxy, makeProxyFromABI } from './utils'
+import { addressesEqual, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -861,9 +861,14 @@ export default class Aragon {
         // Also, at the same time it's a hack for checking if the call will revert,
         // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
         // So yeah...
-        const gasLimit = await this.web3.eth.estimateGas({ ...directTransaction })
-        directTransaction.gasPrice = await this.getDefaultGasPrice(gasLimit)
+        const estimatedGasLimit = await this.web3.eth.estimateGas({ ...directTransaction })
+        const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
 
+        directTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+
+        if (!directTransaction.gas || directTransaction.gas < recommendedGasLimit) {
+          directTransaction.gas = recommendedGasLimit
+        }
         return [directTransaction]
       } catch (_) { }
     }
@@ -897,19 +902,29 @@ export default class Aragon {
       getAbi('aragon/Forwarder')
     ).methods['forward']
 
-    const createForwarderTransaction = (forwarderAddress, script) => ({
-      ...transactionOptions, // Options are overwriten by the values below
-      from: sender,
-      to: forwarderAddress,
-      data: forwardMethod(script).encodeABI(),
-    })
+    const createForwarderTransaction = async (forwarderAddress, script) => {
+      let forwarderTransaction = {
+        ...transactionOptions, // Options are overwriten by the values below
+        from: sender,
+        to: forwarderAddress,
+        data: forwardMethod(script).encodeABI()
+      }
+
+      const estimatedGasLimit = await this.web3.eth.estimateGas({ ...forwarderTransaction })
+      const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
+
+      forwarderTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+      forwarderTransaction.gas = recommendedGasLimit
+
+      return forwarderTransaction
+    }
 
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
-        return [createForwarderTransaction(forwarder, script), directTransaction]
+        return [await createForwarderTransaction(forwarder, script), directTransaction]
       }
     }
 
@@ -924,13 +939,14 @@ export default class Aragon {
     // In other words: it is an array of tuples, where the first index of the tuple
     // is the current path and the second index of the tuple is the
     // queue (a list of unexplored forwarder addresses) for that path
-    const queue = forwardersWithPermission.map(
-      (forwarderWithPermission) => [
-        [createForwarderTransaction(
-          forwarderWithPermission, encodeCallScript([directTransaction])
-        ), directTransaction], forwarders
+    const queue = forwardersWithPermission.map(async (forwarderWithPermission) => {
+      return [
+        [
+          await createForwarderTransaction(forwarderWithPermission, encodeCallScript([directTransaction])),
+          directTransaction
+        ], forwarders
       ]
-    )
+    })
 
     // Find the shortest path
     // TODO(onbjerg): Should we find and return multiple paths?
@@ -950,13 +966,13 @@ export default class Aragon {
         if (await this.canForward(forwarder, sender, script)) {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
-          return [createForwarderTransaction(forwarder, script), ...path]
+          return [await createForwarderTransaction(forwarder, script), ...path]
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
           // possible path in the queue for later exploration.
           // TODO(onbjerg): Should `forwarders` be filtered to exclude forwarders in the path already?
-          queue.push([[createForwarderTransaction(forwarder, script), ...path], forwarders])
+          queue.push([[await createForwarderTransaction(forwarder, script), ...path], forwarders])
         }
       }
 
