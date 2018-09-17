@@ -59,13 +59,13 @@ app.increment(1)
 You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
 
 ```js
-app.increment(1, { gas: 200000, gasPrice: 80000000 }) // careful: hardcoding the gas limit could break your app!
+app.increment(1, { gas: 200000, gasPrice: 80000000 })
 ```
 
 Some caveats to customizing transaction parameters:
 
 - `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
-- `gas`: The gas amount required for an action will vary depending on how the action ends up being executed (if it goes through a forwarder it will require more gas). Manually specifying the gas limit is not recommended as it could break your app depending on what DAOs it gets installed to.
+- `gas`: The gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because the intent may require performing a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
 
 
 **Parameters**

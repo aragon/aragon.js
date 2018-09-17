@@ -873,8 +873,6 @@ export default class Aragon {
       } catch (_) { }
     }
 
-    directTransaction.gasPrice = directTransaction.gasPrice || await this.geDefaultGasPrice()
-
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
@@ -914,7 +912,10 @@ export default class Aragon {
       const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
 
       forwarderTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
-      forwarderTransaction.gas = recommendedGasLimit
+
+      if (!forwarderTransaction.gas || forwarderTransaction.gas < recommendedGasLimit) {
+        forwarderTransaction.gas = recommendedGasLimit
+      }
 
       return forwarderTransaction
     }
