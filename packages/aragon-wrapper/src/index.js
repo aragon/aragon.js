@@ -114,7 +114,7 @@ export default class Aragon {
     this.accounts = new ReplaySubject(1)
 
     if (fetchAccountsFromWeb3 === true) {
-      if(accounts != null) 
+      if (accounts != null) 
         accounts.concat(await this.web3.eth.getAccounts())
       else 
         accounts = await this.web3.eth.getAccounts()
