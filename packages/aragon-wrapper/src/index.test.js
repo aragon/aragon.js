@@ -81,6 +81,16 @@ test('should init the ACL correctly', async (t) => {
         entity: '0x2'
       }
     })
+    // duplicate, should not affect the final result because we use a Set
+    observer.next({
+      event: 'SetPermission',
+      returnValues: {
+        app: 'counter',
+        role: 'subtract',
+        allowed: false,
+        entity: '0x2'
+      }
+    })
   })
   const changePermissionManagerEvents = Observable.create(observer => {
     observer.next({
