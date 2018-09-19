@@ -17,7 +17,7 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeProxy, makeProxyFromABI } from './utils'
+import { addressesEqual, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -57,6 +57,12 @@ export const setupTemplates = (
  *        The Web3 provider to use for blockchain communication
  * @param {String} [options.ensRegistryAddress=null]
  *        The address of the ENS registry
+ * @param {Function} [options.defaultGasPriceFn=function]
+ *        A factory function to provide the default gas price for transactions.
+ *        It can return a promise of number string or a number string. The function
+ *        has access to a recommended gas limit which can be used for custom
+ *        calculations. This function can also be used to get a good gas price
+ *        estimation from a 3rd party resource.
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
@@ -70,7 +76,10 @@ export const setupTemplates = (
 export default class Aragon {
   constructor(daoAddress, options = {}) {
     const defaultOptions = {
-      provider: detectProvider()
+      provider: detectProvider(),
+      defaultGasPriceFn: () => {
+        return this.web3.utils.toWei('20', 'gwei')
+      }
     }
     options = Object.assign(defaultOptions, options)
 
@@ -88,6 +97,8 @@ export default class Aragon {
 
     // Set up cache
     this.cache = new Cache(daoAddress)
+
+    this.defaultGasPriceFn = options.defaultGasPriceFn
   }
 
   /**
@@ -755,6 +766,10 @@ export default class Aragon {
     return canForward(sender, script).call().catch(() => false)
   }
 
+  async getDefaultGasPrice(gasLimit = null) {
+    return await this.defaultGasPriceFn(gasLimit)
+  }
+
   /**
    * Calculate the transaction path for a transaction to `destination`
    * that invokes `methodName` with `params`.
@@ -769,7 +784,6 @@ export default class Aragon {
    */
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
     const finalForwarderProvided = this.web3.utils.isAddress(finalForwarder)
-    const defaultGasPrice = this.web3.utils.toWei('20', 'gwei') // TODO: Get from ethgasstation.info or another source for legit gas values
 
     const permissions = await this.permissions.pipe(take(1)).toPromise()
     const app = await this.getApp(destination)
@@ -795,9 +809,7 @@ export default class Aragon {
       throw new Error(`${methodName} not found on ABI for ${destination}`)
     }
 
-    let transactionOptions = {
-      gasPrice: defaultGasPrice,
-    }
+    let transactionOptions = {}
 
     // If an extra parameter has been provided, it is the transaction options if it is an object
     if (methodABI.inputs.length + 1 == params.length && typeof params[params.length - 1] === 'object') {
@@ -861,8 +873,14 @@ export default class Aragon {
         // Also, at the same time it's a hack for checking if the call will revert,
         // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
         // So yeah...
-        await this.web3.eth.estimateGas({ ...directTransaction })
+        const estimatedGasLimit = await this.web3.eth.estimateGas({ ...directTransaction })
+        const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
 
+        directTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+
+        if (!directTransaction.gas || directTransaction.gas < recommendedGasLimit) {
+          directTransaction.gas = recommendedGasLimit
+        }
         return [directTransaction]
       } catch (_) { }
     }
@@ -894,19 +912,32 @@ export default class Aragon {
       getAbi('aragon/Forwarder')
     ).methods['forward']
 
-    const createForwarderTransaction = (forwarderAddress, script) => ({
-      ...transactionOptions, // Options are overwriten by the values below
-      from: sender,
-      to: forwarderAddress,
-      data: forwardMethod(script).encodeABI(),
-    })
+    const createForwarderTransaction = async (forwarderAddress, script) => {
+      let forwarderTransaction = {
+        ...transactionOptions, // Options are overwriten by the values below
+        from: sender,
+        to: forwarderAddress,
+        data: forwardMethod(script).encodeABI()
+      }
+
+      const estimatedGasLimit = await this.web3.eth.estimateGas({ ...forwarderTransaction })
+      const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
+
+      forwarderTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+
+      if (!forwarderTransaction.gas || forwarderTransaction.gas < recommendedGasLimit) {
+        forwarderTransaction.gas = recommendedGasLimit
+      }
+
+      return forwarderTransaction
+    }
 
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
-        return [createForwarderTransaction(forwarder, script), directTransaction]
+        return [await createForwarderTransaction(forwarder, script), directTransaction]
       }
     }
 
@@ -921,13 +952,14 @@ export default class Aragon {
     // In other words: it is an array of tuples, where the first index of the tuple
     // is the current path and the second index of the tuple is the
     // queue (a list of unexplored forwarder addresses) for that path
-    const queue = forwardersWithPermission.map(
-      (forwarderWithPermission) => [
-        [createForwarderTransaction(
-          forwarderWithPermission, encodeCallScript([directTransaction])
-        ), directTransaction], forwarders
+    const queue = forwardersWithPermission.map(async (forwarderWithPermission) => {
+      return [
+        [
+          await createForwarderTransaction(forwarderWithPermission, encodeCallScript([directTransaction])),
+          directTransaction
+        ], forwarders
       ]
-    )
+    })
 
     // Find the shortest path
     // TODO(onbjerg): Should we find and return multiple paths?
@@ -947,13 +979,13 @@ export default class Aragon {
         if (await this.canForward(forwarder, sender, script)) {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
-          return [createForwarderTransaction(forwarder, script), ...path]
+          return [await createForwarderTransaction(forwarder, script), ...path]
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
           // possible path in the queue for later exploration.
           // TODO(onbjerg): Should `forwarders` be filtered to exclude forwarders in the path already?
-          queue.push([[createForwarderTransaction(forwarder, script), ...path], forwarders])
+          queue.push([[await createForwarderTransaction(forwarder, script), ...path], forwarders])
         }
       }
 
