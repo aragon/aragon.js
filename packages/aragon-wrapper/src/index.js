@@ -768,7 +768,7 @@ export default class Aragon {
    * @param  {Object} transaction
    * @return {Object} transaction with gas limit and gas price
    */
-  async applyTransactionGas(transaction) {
+  async applyTransactionGas(transaction, isForwarding = false) {
     // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
     // so this is a hack to make sure checksums are not destroyed
     // Also, at the same time it's a hack for checking if the call will revert,
@@ -777,9 +777,13 @@ export default class Aragon {
     const estimatedGasLimit = await this.web3.eth.estimateGas({ ...transaction, gas: null })
     const recommendedGasLimit = await getRecommendedGasLimit(this.web3, estimatedGasLimit)
 
-    transaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+    if (!transaction.gasPrice) {
+      transaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+    }
 
-    if (!transaction.gas || transaction.gas < recommendedGasLimit) {
+    // If the gas provided in the intent is lower than the estimated gas, use the estimation
+    // when forwarding as it requires more gas and otherwise the transaction would go out of gas
+    if (!transaction.gas || (isForwarding && transaction.gas < recommendedGasLimit)) {
       transaction.gas = recommendedGasLimit
     }
 
