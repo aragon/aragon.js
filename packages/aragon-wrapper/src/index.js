@@ -761,6 +761,32 @@ export default class Aragon {
   }
 
   /**
+   * Calculates and applies the gas limit and gas price for a transaction
+   *
+   * This function will throw if the transaction fails which is checked by estimateGas
+   *
+   * @param  {Object} transaction
+   * @return {Object} transaction with gas limit and gas price
+   */
+  async applyTransactionGas(transaction) {
+    // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
+    // so this is a hack to make sure checksums are not destroyed
+    // Also, at the same time it's a hack for checking if the call will revert,
+    // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
+    // So yeah...
+    const estimatedGasLimit = await this.web3.eth.estimateGas({ ...transaction })
+    const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, transaction })
+
+    transaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
+
+    if (!transaction.gas || transaction.gas < recommendedGasLimit) {
+      transaction.gas = recommendedGasLimit
+    }
+
+    return transaction
+  }
+
+  /**
    * Calculate the transaction path for a transaction to `destination`
    * that invokes `methodName` with `params`.
    *
@@ -856,22 +882,10 @@ export default class Aragon {
         return []
       }
 
-      // Check if we have direct access
       try {
-        // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
-        // so this is a hack to make sure checksums are not destroyed
-        // Also, at the same time it's a hack for checking if the call will revert,
-        // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
-        // So yeah...
-        const estimatedGasLimit = await this.web3.eth.estimateGas({ ...directTransaction })
-        const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
-
-        directTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
-
-        if (!directTransaction.gas || directTransaction.gas < recommendedGasLimit) {
-          directTransaction.gas = recommendedGasLimit
-        }
-        return [directTransaction]
+        // `applyTransactionGas` can throw if the transaction will fail
+        // if that happens, we will try to find a transaction path through a forwarder
+        return [await this.applyTransactionGas(directTransaction)]
       } catch (_) { }
     }
 
@@ -902,32 +916,22 @@ export default class Aragon {
       getAbi('aragon/Forwarder')
     ).methods['forward']
 
-    const createForwarderTransaction = async (forwarderAddress, script) => {
-      let forwarderTransaction = {
+    const createForwarderTransaction = async (forwarderAddress, script) => (
+      {
         ...transactionOptions, // Options are overwriten by the values below
         from: sender,
         to: forwarderAddress,
         data: forwardMethod(script).encodeABI()
       }
-
-      const estimatedGasLimit = await this.web3.eth.estimateGas({ ...forwarderTransaction })
-      const recommendedGasLimit = await getRecommendedGasLimit({ web3: this.web3, estimatedGasLimit })
-
-      forwarderTransaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
-
-      if (!forwarderTransaction.gas || forwarderTransaction.gas < recommendedGasLimit) {
-        forwarderTransaction.gas = recommendedGasLimit
-      }
-
-      return forwarderTransaction
-    }
+    )
 
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
-        return [await createForwarderTransaction(forwarder, script), directTransaction]
+        const transaction = await createForwarderTransaction(forwarder, script)
+        return [await this.applyTransactionGas(transaction), directTransaction]
       }
     }
 
@@ -969,7 +973,9 @@ export default class Aragon {
         if (await this.canForward(forwarder, sender, script)) {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
-          return [await createForwarderTransaction(forwarder, script), ...path]
+          const transaction = await createForwarderTransaction(forwarder, script)
+          // `applyTransactionGas` is only done for the transaction that will be executed
+          return [await this.applyTransactionGas(transaction), ...path]
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
