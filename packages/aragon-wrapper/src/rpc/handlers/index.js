@@ -1,6 +1,10 @@
 import { Observable } from 'rxjs/Rx'
 
-export function createResponse ({ request: { id } }, { error, value }) {
+export function createResponse ({ request: { id } }, { error, value = null, kind }) {
+  if (kind === 'C') {
+    return {}
+  }
+
   if (error) {
     return { id, payload: error }
   }
@@ -15,18 +19,20 @@ export function createRequestHandler (request$, requestType, handler) {
 
   // Send request to handler and return response
   return filteredRequest$.mergeMap(
+    /**
+     * Turn the promise returned by the handler into an observable and materialize it, i.e:
+     * - if the promise rejects emit a Notification of kind 'E' with an error property
+     * - if the promise resolves emit a Notification of kind 'N' (next) with a value property AND 
+     * another one of kind 'C' (complete) which we should filter out
+     */
     ({ request, proxy, wrapper }) => Observable.from(
       handler(request, proxy, wrapper)
     ).materialize(),
     createResponse
   ).filter(
-    /**
-     * Because we materialize the promise returned by `handler`, if the promise is resolved,
-     * it will emit two Notifications, one of kind N (next), one of kind C (complete)
-     * causing duplicates. We can filter them out by checking payload === undefined.
-     */
-      (response) => response.payload !== undefined || response.error !== undefined
-    )
+    // filter empty responses caused by Notifications of kind 'C'
+    (response) => response.payload !== undefined || response.error !== undefined
+  )
 }
 
 export function combineRequestHandlers (...handlers) {

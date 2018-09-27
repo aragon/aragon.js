@@ -12,7 +12,7 @@ test.afterEach.always(() => {
 })
 
 test('should create a request handler', async (t) => {
-  t.plan(3)
+  t.plan(4)
   // arrange
   const requestStub = Observable.create((observer) => {
     observer.next({
@@ -44,8 +44,20 @@ test('should create a request handler', async (t) => {
         params: ['get', 'profile']
       }
     })
+    observer.next({
+      request: {
+        // this one should NOT get filtered away, but assigned a default response of null
+        id: 'uuid8',
+        method: 'cache'
+      }
+    })
   })
   const handlerStub = (request) => {
+    if (request.id === 'uuid8') {
+      // undefined result, this will get converted into null so it can be transmited over JSON RPC
+      return Promise.resolve()
+    }
+
     if (request.params[0] === 'set') {
       return Promise.reject(`no permissions to change ${request.params[1]}!!`)
     }
@@ -59,6 +71,7 @@ test('should create a request handler', async (t) => {
     if (value.id === 'uuid1') return t.is(value.payload, 'resolved settings')
     if (value.id === 'uuid4') return t.is(value.payload, 'no permissions to change settings!!')
     if (value.id === 'uuid6') return t.is(value.payload, 'resolved profile')
+    if (value.id === 'uuid8') return t.is(value.payload, null)
   })
 })
 
