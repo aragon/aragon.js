@@ -26,7 +26,7 @@ test('should get the accounts', async (t) => {
     }
   }
   // act
-  await instance.initAccounts()
+  await instance.initAccounts(null)
   const accounts = await instance.getAccounts()
   // assert
   t.deepEqual(accounts, ['0x01', '0x02'])

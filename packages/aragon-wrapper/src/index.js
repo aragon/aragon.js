@@ -1,5 +1,5 @@
 // Externals
-import { Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -123,7 +123,9 @@ export default class Aragon {
    * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async initAccounts (accounts = null) {
+  async initAccounts (accounts) {
+    this.accounts = new ReplaySubject(1)
+
     if (accounts === null) {
       accounts = await this.web3.eth.getAccounts()
     }
@@ -501,7 +503,7 @@ export default class Aragon {
    * @return {void}
    */
   setAccounts (accounts) {
-    this.accounts = accounts
+    this.accounts.next(accounts)
   }
 
   /**
@@ -510,7 +512,9 @@ export default class Aragon {
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return Promise.resolve(this.accounts)
+    return this.accounts
+      .take(1)
+      .toPromise()
   }
 
   /**
@@ -752,7 +756,7 @@ export default class Aragon {
     return canForward(sender, script).call().catch(() => false)
   }
 
-  async getDefaultGasPrice(gasLimit = null) {
+  async getDefaultGasPrice (gasLimit = null) {
     return await this.defaultGasPriceFn(gasLimit)
   }
 
