@@ -920,7 +920,7 @@ export default class Aragon {
       getAbi('aragon/Forwarder')
     ).methods['forward']
 
-    const createForwarderTransaction = async (forwarderAddress, script) => (
+    const createForwarderTransaction = (forwarderAddress, script) => (
       {
         ...transactionOptions, // Options are overwriten by the values below
         from: sender,
@@ -934,8 +934,8 @@ export default class Aragon {
     for (const forwarder of forwardersWithPermission) {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
-        const transaction = await createForwarderTransaction(forwarder, script)
-        return [await this.applyTransactionGas(transaction), directTransaction]
+        const transaction = createForwarderTransaction(forwarder, script)
+        return [await this.applyTransactionGas(transaction, true), directTransaction]
       }
     }
 
@@ -950,10 +950,10 @@ export default class Aragon {
     // In other words: it is an array of tuples, where the first index of the tuple
     // is the current path and the second index of the tuple is the
     // queue (a list of unexplored forwarder addresses) for that path
-    const queue = forwardersWithPermission.map(async (forwarderWithPermission) => {
+    const queue = forwardersWithPermission.map((forwarderWithPermission) => {
       return [
         [
-          await createForwarderTransaction(forwarderWithPermission, encodeCallScript([directTransaction])),
+          createForwarderTransaction(forwarderWithPermission, encodeCallScript([directTransaction])),
           directTransaction
         ], forwarders
       ]
@@ -977,15 +977,15 @@ export default class Aragon {
         if (await this.canForward(forwarder, sender, script)) {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
-          const transaction = await createForwarderTransaction(forwarder, script)
+          const transaction = createForwarderTransaction(forwarder, script)
           // `applyTransactionGas` is only done for the transaction that will be executed
-          return [await this.applyTransactionGas(transaction), ...path]
+          return [await this.applyTransactionGas(transaction, true), ...path]
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
           // possible path in the queue for later exploration.
           // TODO(onbjerg): Should `forwarders` be filtered to exclude forwarders in the path already?
-          queue.push([[await createForwarderTransaction(forwarder, script), ...path], forwarders])
+          queue.push([[createForwarderTransaction(forwarder, script), ...path], forwarders])
         }
       }
 
