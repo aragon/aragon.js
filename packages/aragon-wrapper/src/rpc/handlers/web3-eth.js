@@ -1,5 +1,3 @@
-import { Observable } from 'rxjs/Rx'
-
 const METHOD_WHITELIST = new Set([
   'estimateGas',
   'getAccounts',

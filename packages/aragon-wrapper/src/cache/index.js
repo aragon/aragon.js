@@ -40,14 +40,15 @@ export default class Cache {
     return `${this.prefix}.${key}`
   }
 
-  set (key, value) {
+  async set (key, value) {
     // Some lowdb adapters are synchronous while others are asynchronous so
     // let's always wrap it in a promise
-    return Promise.resolve(this.db.set(
+    await Promise.resolve(this.db.set(
       this.getCacheKeyPath(key),
       value
     ).write())
-      .then(() => this.changes.next({ key, value }))
+     
+    this.changes.next({ key, value })
   }
 
   get (key, defaultValue) {
@@ -71,10 +72,9 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    return this.changes.filter(
-      (change) => change.key === key
-    ).map(
-      (change) => change.value
-    ).startWith(this.get(key, defaultValue))
+    return this.changes
+      .filter((change) => change.key === key)
+      .map((change) => change.value)
+      .startWith(this.get(key, defaultValue))
   }
 }
