@@ -6,7 +6,7 @@
   "scripts": {
     "flow": "flow src",
     "lint": "standard src",
-    "test": "nyc --silent --all ava",
+    "test": "nyc --silent ava 'src/**/*.test.js'",
     "build": "babel -d dist src",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
@@ -41,6 +41,8 @@
     "eslint-plugin-flowtype": "^2.41.0",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
+    "proxyquire": "^2.0.1",
+    "sinon": "^6.1.4",
     "standard": "^10.0.3"
   },
   "publishConfig": {

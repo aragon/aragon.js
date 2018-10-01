@@ -77,6 +77,7 @@ export default class Aragon {
   constructor(daoAddress, options = {}) {
     const defaultOptions = {
       provider: detectProvider(),
+      apm: {},
       defaultGasPriceFn: () => {
         return this.web3.utils.toWei('20', 'gwei')
       }
@@ -134,7 +135,7 @@ export default class Aragon {
   }
 
   /**
-   * Initialise the ACL.
+   * Initialise the ACL (Access Control List).
    *
    * @return {Promise<void>}
    */
@@ -460,6 +461,7 @@ export default class Aragon {
       map((apps) => apps.find(
         (app) => addressesEqual(app.proxyAddress, proxyAddress))
       ),
+      // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
       map(
         (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
       )
@@ -766,7 +768,7 @@ export default class Aragon {
     return canForward(sender, script).call().catch(() => false)
   }
 
-  async getDefaultGasPrice(gasLimit = null) {
+  async getDefaultGasPrice (gasLimit = null) {
     return await this.defaultGasPriceFn(gasLimit)
   }
 

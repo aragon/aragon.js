@@ -1,8 +1,8 @@
 import Messenger, { providers } from '@aragon/messenger'
-import { defer, empty, from } from 'rxjs'
-import { map, filter, merge, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
+import { defer, empty, from, merge } from 'rxjs'
+import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
 
-const AppProxyHandler = {
+export const AppProxyHandler = {
   get (target, name, receiver) {
     if (name in target) {
       return target[name]
@@ -22,7 +22,7 @@ const AppProxyHandler = {
 /**
  * A JavaScript proxy that wraps RPC calls to the wrapper.
  */
-class AppProxy {
+export class AppProxy {
   constructor (provider) {
     this.rpc = new Messenger(provider)
   }
@@ -153,15 +153,6 @@ class AppProxy {
   }
 
   /**
-   * A state reducer a lá Redux.
-   *
-   * @callback reducer
-   * @param {*} state
-   * @param {Object} event
-   * @return {Object} The next state
-   */
-
-  /**
    * Listens for events, passes them through `reducer`, caches the resulting state
    * and returns that state.
    *
@@ -175,7 +166,7 @@ class AppProxy {
    * @return {Observable}   An observable of the resulting state from reducing events
    */
   store (reducer, events = [empty()]) {
-    const initialState = this.state().first()
+    const initialState = this.state().pipe(first())
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
