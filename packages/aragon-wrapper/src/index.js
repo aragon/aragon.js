@@ -1,6 +1,6 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, combineLatest } from 'rxjs'
-import { map, pluck, scan, tap, publishReplay, switchMap, flatMap, filter, take, merge } from 'rxjs/operators'
+import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import { map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, take } from 'rxjs/operators'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -239,19 +239,17 @@ export default class Aragon {
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions.pipe(
       map(Object.keys),
-      map((addresses) =>
+      map(addresses =>
         addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
       ),
-      switchMap(
-        (appAddresses) => Promise.all(
-          appAddresses.map((app) => this.getAppProxyValues(app))
-        )
+      switchMap(appAddresses =>
+        Promise.all(appAddresses.map(app => this.getAppProxyValues(app)))
       ),
-      map(
-        (appMetadata) => appMetadata.filter((app) => this.isApp(app))
+      map(appMetadata =>
+        appMetadata.filter((app) => this.isApp(app))
       ),
-      flatMap(
-        (apps) => Promise.all(
+      flatMap(apps =>
+        Promise.all(
           apps.map(async (app) => Object.assign(
             app,
             await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
@@ -267,12 +265,13 @@ export default class Aragon {
 
     this.apps = combineLatest(
       this.appsWithoutIdentifiers,
-      this.identifiers.pipe(scan(
-        (identifiers, { address, identifier }) =>
-          Object.assign(identifiers, { [address]: identifier }),
-        {}
-      )),
-      startWith({}),
+      this.identifiers.pipe(
+        scan(
+          (identifiers, { address, identifier }) =>
+            Object.assign(identifiers, { [address]: identifier }),
+          {}),
+        startWith({})
+      ),
       function attachIdentifiers (apps, identifiers) {
         return apps.map(
           (app) => {
@@ -657,7 +656,7 @@ export default class Aragon {
    * @return {Promise<string>} The permission manager
    */
   async getPermissionManager (appAddress, roleHash) {
-    const permissions = await this.permissions.take(1).toPromise()
+    const permissions = await this.permissions.pipe(take(1)).toPromise()
 
     return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
   }
