@@ -4,6 +4,7 @@ import abiAragonAppProxy from '../abi/aragon/AppProxy.json'
 import abiAragonForwarder from '../abi/aragon/Forwarder.json'
 import abiAragonKernel from '../abi/aragon/Kernel.json'
 import abiAragonEVMScriptRegistry from '../abi/aragon/EVMScriptRegistry.json'
+import abiERC20 from '../abi/standard/ERC20.json'
 
 // Artifacts
 import artifactsAragonACL from '../artifacts/aragon/ACL.json'
@@ -15,7 +16,8 @@ const ABIS = {
   'aragon/AppProxy': abiAragonAppProxy,
   'aragon/Forwarder': abiAragonForwarder,
   'aragon/Kernel': abiAragonKernel,
-  'aragon/EVM Script Registry': abiAragonEVMScriptRegistry
+  'aragon/EVM Script Registry': abiAragonEVMScriptRegistry,
+  'standard/ERC20': abiERC20
 }
 
 const ARTIFACTS = {

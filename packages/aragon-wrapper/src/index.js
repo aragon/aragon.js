@@ -769,6 +769,16 @@ export default class Aragon {
    * @return {Object} transaction with gas limit and gas price
    */
   async applyTransactionGas(transaction, isForwarding = false) {
+    // If a pretransaction is required for the main transaction to be performed,
+    // performing web3.eth.estimateGas could fail until the pretransaction is mined
+    // Example: erc20 approve (pretransaction) + deposit to vault (main transaction)
+    if (transaction.pretransaction && transaction.pretransaction.length > 0) {
+      // Calculate gas settings for pretransaction
+      transaction.pretransaction = await this.applyTransactionGas(transaction.pretransaction, false)
+      // Note: for transactions with pretransactions gas limit and price cannot be calculated
+      return transaction
+    }
+
     // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
     // so this is a hack to make sure checksums are not destroyed
     // Also, at the same time it's a hack for checking if the call will revert,
@@ -843,6 +853,27 @@ export default class Aragon {
       from: sender,
       to: destination,
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params),
+    }
+
+    if (!!transactionOptions.token) {
+      const { address: tokenAddress, value: tokenValue } = transactionOptions.token
+
+      const erc20ABI = getAbi('standard/ERC20')
+      const approveABI = erc20ABI.find(
+        (method) => method.name === 'approve'
+      )
+
+      // TODO: Handle existing approvals (some tokens fail when the current allowance is not 0)
+      // TODO: Check if the approval already was created and skip the token approve
+      const tokenApproveTransaction = {
+        // TODO: should we include transaction options?
+        from: sender,
+        to: tokenAddress,
+        data: this.web3.eth.abi.encodeFunctionCall(approveABI, [destination, tokenValue]),
+      }
+
+      directTransaction.pretransaction = tokenApproveTransaction
+      delete transactionOptions.token
     }
 
     let permissionsForMethod = []
@@ -935,6 +966,7 @@ export default class Aragon {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
+        transaction.pretransaction = directTransaction.pretransaction
         return [await this.applyTransactionGas(transaction, true), directTransaction]
       }
     }
@@ -978,6 +1010,7 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
+          transaction.pretransaction = directTransaction.pretransaction
           // `applyTransactionGas` is only done for the transaction that will be executed
           return [await this.applyTransactionGas(transaction, true), ...path]
         } else {
