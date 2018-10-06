@@ -35,7 +35,8 @@
     "@babel/plugin-transform-flow-strip-types": "^7.0.0",
     "@babel/plugin-transform-runtime": "^7.1.0",
     "@babel/preset-env": "^7.1.0",
-    "ava": "^0.24.0",
+    "@babel/register": "^7.0.0",
+    "ava": "^1.0.0-beta.8",
     "babel-eslint": "^10.0.1",
     "babel-plugin-inline-json-import": "0.2.1",
     "babel-preset-minify": "^0.5.0",
@@ -57,8 +58,9 @@
     ]
   },
   "ava": {
-    "require": "babel-register",
-    "babel": "inherit"
+    "require": [
+      "@babel/register"
+    ]
   },
   "dependencies": {
     "@aragon/apm": "^2.0.0",
