@@ -33,7 +33,7 @@ test('should resolve address for node', (t) => {
   // arrange
   const hackyOptions = {
     provider: {
-      sendAsync: undefined
+      sendAsync: 2
     }
   }
   ethjsEnsStub.prototype.resolveAddressForNode = sinon.stub().returns('0x02')
