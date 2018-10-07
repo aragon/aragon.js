@@ -777,14 +777,14 @@ export default class Aragon {
     const estimatedGasLimit = await this.web3.eth.estimateGas({ ...transaction, gas: null })
     const recommendedGasLimit = await getRecommendedGasLimit(this.web3, estimatedGasLimit)
 
-    if (!transaction.gasPrice) {
-      transaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
-    }
-
     // If the gas provided in the intent is lower than the estimated gas, use the estimation
     // when forwarding as it requires more gas and otherwise the transaction would go out of gas
     if (!transaction.gas || (isForwarding && transaction.gas < recommendedGasLimit)) {
       transaction.gas = recommendedGasLimit
+    }
+
+    if (!transaction.gasPrice) {
+      transaction.gasPrice = await this.getDefaultGasPrice(transaction.gas)
     }
 
     return transaction
