@@ -98,7 +98,7 @@ test('should init the ACL correctly', async (t) => {
       returnValues: {
         app: 'counter',
         role: 'subtract',
-        manager: 'manager',
+        manager: 'manager'
       }
     })
   })
@@ -148,7 +148,7 @@ test('should init the apps correctly', async (t) => {
     proxyAddress: appAddress
   })
   instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
-    abi: `abi for ${appId}`,
+    abi: `abi for ${appId}`
   })
   // act
   await instance.initApps()
@@ -290,12 +290,12 @@ test('should run the app and reply to a request', async (t) => {
     observer.next({
       id: 'uuid1',
       method: 'cache',
-      params: ['get', 'settings'],
+      params: ['get', 'settings']
     })
   })
   const messengerStub = {
     sendResponse: sinon.stub(),
-    requests: () => requestsStub,
+    requests: () => requestsStub
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
   const instance = new Aragon()
@@ -429,7 +429,7 @@ test('should throw if no ABI is found, when calculating the transaction path', a
       // assert
       t.is(err.message, 'No ABI specified in artifact for 0x789')
       /**
-       * Note: This test also "asserts" that the permissions object, the app object and the 
+       * Note: This test also "asserts" that the permissions object, the app object and the
        * forwarders array does not throw any errors when they are being extracted from their observables.
        */
     })

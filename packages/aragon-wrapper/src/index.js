@@ -73,7 +73,7 @@ export const setupTemplates = (
  * })
  */
 export default class Aragon {
-  constructor(daoAddress, options = {}) {
+  constructor (daoAddress, options = {}) {
     const defaultOptions = {
       provider: detectProvider(),
       apm: {},

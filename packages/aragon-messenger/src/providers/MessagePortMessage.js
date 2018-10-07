@@ -9,6 +9,7 @@ import { Observable } from 'rxjs/Rx'
  * @extends {Provider}
  */
 export default class MessagePortMessage extends Provider {
+  // eslint-disable-next-line no-undef
   constructor (target = self) {
     super()
     this.target = target

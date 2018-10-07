@@ -22,7 +22,7 @@ export function createRequestHandler (request$, requestType, handler) {
     /**
      * Turn the promise returned by the handler into an observable and materialize it, i.e:
      * - if the promise rejects emit a Notification of kind 'E' with an error property
-     * - if the promise resolves emit a Notification of kind 'N' (next) with a value property AND 
+     * - if the promise resolves emit a Notification of kind 'N' (next) with a value property AND
      * another one of kind 'C' (complete) which we should filter out
      */
     ({ request, proxy, wrapper }) => Observable.from(

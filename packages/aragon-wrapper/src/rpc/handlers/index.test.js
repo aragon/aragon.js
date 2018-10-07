@@ -19,7 +19,7 @@ test('should create a request handler', async (t) => {
       request: {
         id: 'uuid0',
         // this one should get filtered away
-        method: 'notifications',
+        method: 'notifications'
       }
     })
     observer.next({
@@ -59,7 +59,7 @@ test('should create a request handler', async (t) => {
     }
 
     if (request.params[0] === 'set') {
-      return Promise.reject(`no permissions to change ${request.params[1]}!!`)
+      return Promise.reject(new Error(`no permissions to change ${request.params[1]}!!`))
     }
 
     return Promise.resolve(`resolved ${request.params[1]}`)

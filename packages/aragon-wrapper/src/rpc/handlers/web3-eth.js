@@ -20,7 +20,7 @@ const METHOD_WHITELIST = new Set([
   'getWork',
   'getUncle',
   'isMining',
-  'isSyncing',
+  'isSyncing'
 ])
 
 export default async function (request, proxy, wrapper) {

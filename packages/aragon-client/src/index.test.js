@@ -115,7 +115,7 @@ test('should return an handle for an external contract events', t => {
   })
   const jsonInterfaceStub = [
     { type: 'event', name: 'SetPermission' },
-    { type: 'function', name: 'grantPermission', constant: true },
+    { type: 'function', name: 'grantPermission', constant: true }
   ]
   const instanceStub = {
     rpc: {
@@ -123,7 +123,7 @@ test('should return an handle for an external contract events', t => {
         .returns(observableA),
 
       sendAndObserveResponse: sinon.stub()
-        .returns(observableB),
+        .returns(observableB)
     }
   }
   // act

@@ -4,7 +4,7 @@ import proxyquire from 'proxyquire'
 
 const ethjsEnsStub = sinon.stub()
 const ens = proxyquire.noCallThru().load('./index', {
-  'ethjs-ens': ethjsEnsStub,
+  'ethjs-ens': ethjsEnsStub
 })
 
 test.afterEach.always(() => {
