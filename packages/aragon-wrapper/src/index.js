@@ -935,6 +935,7 @@ export default class Aragon {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
+        // TODO: recover if applying gas fails here
         return [await this.applyTransactionGas(transaction, true), directTransaction]
       }
     }
@@ -979,6 +980,7 @@ export default class Aragon {
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
           // `applyTransactionGas` is only done for the transaction that will be executed
+          // TODO: recover if applying gas fails here
           return [await this.applyTransactionGas(transaction, true), ...path]
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
