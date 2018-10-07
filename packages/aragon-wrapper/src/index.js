@@ -703,7 +703,7 @@ export default class Aragon {
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
    * @param  {Array<object>} path
-   * @return {Promise<Array<object>>} The given `path`, with descriptions included at each step
+   * @return {Promise<Array<Object>>} The given `path`, with descriptions included at each step
    */
   describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
@@ -756,19 +756,20 @@ export default class Aragon {
     return canForward(sender, script).call().catch(() => false)
   }
 
-  async getDefaultGasPrice (gasLimit = null) {
-    return await this.defaultGasPriceFn(gasLimit)
+  getDefaultGasPrice (gasLimit) {
+    return this.defaultGasPriceFn(gasLimit)
   }
 
   /**
    * Calculates and applies the gas limit and gas price for a transaction
    *
-   * This function will throw if the transaction fails which is checked by estimateGas
-   *
    * @param  {Object} transaction
-   * @return {Object} transaction with gas limit and gas price
+   * @param  {bool} isForwarding
+   * @return {Promise<Object>} The transaction with the gas limit and gas price added.
+   *                           If the transaction fails from the estimateGas check, the promise will
+   *                           be rejected with the error.
    */
-  async applyTransactionGas(transaction, isForwarding = false) {
+  async applyTransactionGas (transaction, isForwarding = false) {
     // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
     // so this is a hack to make sure checksums are not destroyed
     // Also, at the same time it's a hack for checking if the call will revert,
@@ -832,7 +833,7 @@ export default class Aragon {
     let transactionOptions = {}
 
     // If an extra parameter has been provided, it is the transaction options if it is an object
-    if (methodABI.inputs.length + 1 == params.length && typeof params[params.length - 1] === 'object') {
+    if (methodABI.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
       const options = params.pop()
       transactionOptions = { ...transactionOptions, ...options }
     }
@@ -842,7 +843,7 @@ export default class Aragon {
       ...transactionOptions, // Options are overwriten by the values below
       from: sender,
       to: destination,
-      data: this.web3.eth.abi.encodeFunctionCall(methodABI, params),
+      data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
     }
 
     let permissionsForMethod = []
