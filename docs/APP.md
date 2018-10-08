@@ -65,7 +65,7 @@ app.increment(1, { gas: 200000, gasPrice: 80000000 })
 Some caveats to customizing transaction parameters:
 
 - `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
-- `gas`: The gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because the intent may require performing a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
+- `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
 
 
 **Parameters**
