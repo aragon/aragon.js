@@ -20,17 +20,17 @@ export function makeProxyFromABI (address, abi, web3, initializationBlock) {
   return new Proxy(address, abi, web3, initializationBlock)
 }
 
-export const getRecommendedGasLimit = async ({ web3, estimatedGasLimit }) => {
-
+export async function getRecommendedGasLimit (web3, estimatedGasLimit) {
   const latestBlock = await web3.eth.getBlock('latest')
-  const latestBlockGasLimit = latestBlock.gasLimit;
+  const latestBlockGasLimit = latestBlock.gasLimit
 
-  const upperGasLimit = Math.round(latestBlockGasLimit*PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
-  const bufferedGasLimit = Math.round(estimatedGasLimit*GAS_FUZZ_FACTOR)
+  const upperGasLimit = Math.round(latestBlockGasLimit * PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
+  const bufferedGasLimit = Math.round(estimatedGasLimit * GAS_FUZZ_FACTOR)
 
   if (estimatedGasLimit > upperGasLimit) {
+    // TODO: Consider whether we should throw an error rather than returning with a high gas limit
     return estimatedGasLimit
-  } else if  (bufferedGasLimit < upperGasLimit) {
+  } else if (bufferedGasLimit < upperGasLimit) {
     return bufferedGasLimit
   } else {
     return upperGasLimit
