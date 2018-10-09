@@ -17,7 +17,7 @@ const templates = {
       'supportNeeded', // percentage in with 10^18 base (1% = 10^16, 100% = 10^18)
       'minAcceptanceQuorum', // percentage in with 10^18 base
       'voteDuration' // in seconds
-    ],
+    ]
   },
   multisig: {
     name: 'Multisig',
@@ -26,9 +26,9 @@ const templates = {
     params: [
       'name', // string
       'signers', // array of addresses
-      'neededSignatures', // number of signatures need, must be > 0 and <= signers.length
-    ],
-  },
+      'neededSignatures' // number of signatures need, must be > 0 and <= signers.length
+    ]
+  }
 }
 
 const Templates = (web3, apm, from) => {
@@ -57,11 +57,11 @@ const Templates = (web3, apm, from) => {
     newDAO: async (templateName, organizationName, params) => {
       const tmplObj = templates[templateName]
 
-      if (!tmplObj) throw new Error("No template found for that name")
+      if (!tmplObj) throw new Error('No template found for that name')
 
       const contractAddress = await apm.getLatestVersionContract(tmplObj.appId)
 
-      if (!contractAddress) throw new Error("No template contract found for that appId")
+      if (!contractAddress) throw new Error('No template contract found for that appId')
 
       const template = new web3.eth.Contract(
         tmplObj.abi,
@@ -72,13 +72,13 @@ const Templates = (web3, apm, from) => {
       const instance = await newInstance(template, organizationName, params)
 
       return [token, instance]
-    },
+    }
   }
 }
 
 // opts will be passed to the ethjs-ens constructor and
 // should at least contain `provider` and `registryAddress`.
-export const isNameUsed = async (name, opts = {} ) => {
+export const isNameUsed = async (name, opts = {}) => {
   try {
     const addr = await ensResolve(`${name}.aragonid.eth`, opts)
     return addr !== zeroAddress

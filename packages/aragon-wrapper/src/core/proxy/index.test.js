@@ -5,7 +5,7 @@ import { EventEmitter } from 'events'
 import Proxy from './index'
 
 test.afterEach.always(() => {
-    sinon.restore()
+  sinon.restore()
 })
 
 test('should get all the events', (t) => {
