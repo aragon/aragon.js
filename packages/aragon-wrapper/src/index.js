@@ -518,7 +518,7 @@ export default class Aragon {
   }
 
   /**
-   * @param {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
    * @return {Promise<string>} transaction hash
    */
   performTransactionPath (transactionPath) {
@@ -702,7 +702,7 @@ export default class Aragon {
   /**
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
-   * @param  {Array<object>} path
+   * @param  {Array<Object>} path
    * @return {Promise<Array<Object>>} The given `path`, with descriptions included at each step
    */
   describeTransactionPath (path) {
