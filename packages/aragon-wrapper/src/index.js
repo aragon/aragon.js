@@ -99,6 +99,7 @@ export default class Aragon {
     this.cache = new Cache(daoAddress)
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
+    this.appProxyValuesCache = {}
   }
 
   /**
@@ -192,10 +193,14 @@ export default class Aragon {
    *         The address of the proxy to get metadata from
    * @return {Promise<Object>}
    */
-  getAppProxyValues (proxyAddress) {
+  async getAppProxyValues (proxyAddress) {
+    if (this.appProxyValuesCache[proxyAddress]) {
+      return this.appProxyValuesCache[proxyAddress]
+    }
+
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
-    return Promise.all([
+    const appProxyValues = await Promise.all([
       appProxy.call('kernel').catch(() => null),
       appProxy.call('appId').catch(() => null),
       appProxy
@@ -213,6 +218,10 @@ export default class Aragon {
       codeAddress: values[2],
       isForwarder: values[3]
     }))
+
+    this.appProxyValuesCache[proxyAddress] = appProxyValues
+
+    return appProxyValues
   }
 
   /**
