@@ -240,6 +240,9 @@ export default class Aragon {
       .map((addresses) =>
         addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
       )
+      // throttle so it only continues after 30ms without new values
+      // avoids DDOSing the node as getAppProxyValues does up to 5 eth_calls each time
+      .debounceTime(30)
       .switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getAppProxyValues(app))
