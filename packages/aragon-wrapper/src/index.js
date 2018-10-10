@@ -3,6 +3,7 @@ import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
+import { isAddress, toWei } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -16,7 +17,7 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
+import { addressesEqual, makeAddressLookupProxy, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -78,7 +79,7 @@ export default class Aragon {
       provider: detectProvider(),
       apm: {},
       defaultGasPriceFn: () => {
-        return this.web3.utils.toWei('20', 'gwei')
+        return toWei('20', 'gwei')
       }
     }
     options = Object.assign(defaultOptions, options)
@@ -180,7 +181,7 @@ export default class Aragon {
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
           return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
         }
-      }, {})
+      }, makeAddressLookupProxy({}))
       .publishReplay(1)
     this.permissions.connect()
   }
@@ -804,7 +805,7 @@ export default class Aragon {
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
-    const finalForwarderProvided = this.web3.utils.isAddress(finalForwarder)
+    const finalForwarderProvided = isAddress(finalForwarder)
 
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.getApp(destination)

@@ -1,4 +1,5 @@
-import Proxy from '../core/proxy'
+import { isAddress, toChecksumAddress } from 'web3-utils'
+import ContractProxy from '../core/proxy'
 import { getAbi } from '../interfaces'
 
 const GAS_FUZZ_FACTOR = 1.5
@@ -11,13 +12,39 @@ export function addressesEqual (first, second) {
   return first === second
 }
 
+export function makeAddressLookupProxy (target) {
+  return new Proxy(target, {
+    get (target, property, receiver) {
+      if (property in target) {
+        return target[property]
+      }
+
+      if (typeof property === 'string' && isAddress(property)) {
+        // Check all lowercase address
+        let withoutChecksum = property.toLowerCase()
+        if (withoutChecksum in target) { return target[withoutChecksum] }
+
+        // Check all uppercase address
+        withoutChecksum = property.toUpperCase()
+        if (withoutChecksum in target) { return target[withoutChecksum] }
+
+        // Finally check with checksum, if possible
+        try {
+          return target[toChecksumAddress(property)]
+        } catch (_) {}
+      }
+      return undefined
+    }
+  })
+}
+
 export function makeProxy (address, interfaceName, web3, initializationBlock) {
   const abi = getAbi(`aragon/${interfaceName}`)
   return makeProxyFromABI(address, abi, web3, initializationBlock)
 }
 
 export function makeProxyFromABI (address, abi, web3, initializationBlock) {
-  return new Proxy(address, abi, web3, initializationBlock)
+  return new ContractProxy(address, abi, web3, initializationBlock)
 }
 
 export async function getRecommendedGasLimit (web3, estimatedGasLimit) {
