@@ -159,6 +159,7 @@ export default class Aragon {
     // Permissions Object:
     // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
     this.permissions = Observable.merge(...aclObservables)
+      // Keep track of all the types of events that have been processed
       .scan(([ permissions, eventSet ], event) => {
         const eventData = event.returnValues
         const baseKey = `${eventData.app}.${eventData.role}`
@@ -181,8 +182,8 @@ export default class Aragon {
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
           return [dotprop.set(permissions, `${baseKey}.manager`, eventData.manager), eventSet.add(event.event)]
         }
-      }, [{}, new Set])
-      // skip until we have received events from all subscriptions
+      }, [{}, new Set()])
+      // Skip until we have received events from all event subscriptions
       .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
       .map(([ permissions ]) => permissions)
       .publishReplay(1)
@@ -197,6 +198,8 @@ export default class Aragon {
    * @return {Promise<Object>}
    */
   async getAppProxyValues (proxyAddress) {
+    // This function caches information about the AppProxy, as it is called for all
+    // apps everytime a permission changes and this data won't change
     if (this.appProxyValuesCache[proxyAddress]) {
       return this.appProxyValuesCache[proxyAddress]
     }
@@ -252,8 +255,8 @@ export default class Aragon {
       .map((addresses) =>
         addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
       )
-      // throttle so it only continues after 30ms without new values
-      // avoids DDOSing the node as getAppProxyValues does up to 5 eth_calls each time
+      // Throttle so it only continues after 30ms without new values
+      // Avoids DDOSing the node as getAppProxyValues does up to 5 eth_calls each time
       .debounceTime(30)
       .switchMap(
         (appAddresses) => Promise.all(
