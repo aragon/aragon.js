@@ -33,8 +33,8 @@ const templates = {
 
 const Templates = (web3, apm, from) => {
   const minGasPrice = web3.utils.toWei('20', 'gwei')
-  const newToken = async (template, name) => {
-    const call = template.methods.newToken(name, name)
+  const newToken = async (template, name, symbol) => {
+    const call = template.methods.newToken(name, symbol)
     const receipt = await call.send({
       from,
       gas: 6700000,
@@ -54,7 +54,7 @@ const Templates = (web3, apm, from) => {
   }
 
   return {
-    newDAO: async (templateName, organizationName, params) => {
+    newDAO: async (templateName, organizationName, tokenName, tokenSymbol, params) => {
       const tmplObj = templates[templateName]
 
       if (!tmplObj) throw new Error('No template found for that name')
@@ -68,7 +68,7 @@ const Templates = (web3, apm, from) => {
         contractAddress
       )
 
-      const token = await newToken(template, organizationName)
+      const token = await newToken(template, tokenName, tokenSymbol)
       const instance = await newInstance(template, organizationName, params)
 
       return [token, instance]
