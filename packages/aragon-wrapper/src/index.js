@@ -17,7 +17,7 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeAddressLookupProxy, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
+import { addressesEqual, makeAddressMapProxy, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -161,13 +161,15 @@ export default class Aragon {
     this.permissions = Observable.merge(...aclObservables)
       .scan((permissions, event) => {
         const eventData = event.returnValues
-        const baseKey = `${eventData.app}.${eventData.role}`
+
+        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+        const appPermissions = permissions[eventData.app] || {}
 
         if (event.event === SET_PERMISSION_EVENT) {
-          const key = `${baseKey}.allowedEntities`
+          const key = `${eventData.role}.allowedEntities`
 
           // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(permissions, key, []))
+          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
 
           if (eventData.allowed) {
             permissionsForRole.add(eventData.entity)
@@ -175,13 +177,16 @@ export default class Aragon {
             permissionsForRole.delete(eventData.entity)
           }
 
-          return dotprop.set(permissions, key, Array.from(permissionsForRole))
+          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
         }
 
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
-          return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
+          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
         }
-      }, makeAddressLookupProxy({}))
+
+        permissions[eventData.app] = appPermissions
+        return permissions
+      }, makeAddressMapProxy({}))
       .publishReplay(1)
     this.permissions.connect()
   }
@@ -647,8 +652,9 @@ export default class Aragon {
    */
   async getPermissionManager (appAddress, roleHash) {
     const permissions = await this.permissions.take(1).toPromise()
+    const appPermissions = permissions[appAddress]
 
-    return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
+    return dotprop.get(appPermissions, `${roleHash}.manager`)
   }
 
   /**
@@ -847,7 +853,7 @@ export default class Aragon {
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
     }
 
-    let permissionsForMethod = []
+    let appsWithPermissionForMethod = []
 
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
@@ -877,14 +883,15 @@ export default class Aragon {
         (role) => role.id === method.roles[0]
       ).bytes
 
-      permissionsForMethod = dotprop.get(
-        permissions,
-        `${destination}.${roleSig}.allowedEntities`,
+      const permissionsForDestination = permissions[destination]
+      appsWithPermissionForMethod = dotprop.get(
+        permissionsForDestination,
+        `${roleSig}.allowedEntities`,
         []
       )
 
       // No one has access
-      if (permissionsForMethod.length === 0) {
+      if (appsWithPermissionForMethod.length === 0) {
         return []
       }
 
@@ -898,7 +905,7 @@ export default class Aragon {
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
-      if (!forwarders.includes(finalForwarder)) {
+      if (!forwarders.some(forwarder => addressesEqual(forwarder, finalForwarder))) {
         return []
       }
 
@@ -907,7 +914,7 @@ export default class Aragon {
       // Find forwarders with permission to perform the action
       forwardersWithPermission = forwarders
         .filter(
-          (forwarder) => permissionsForMethod.includes(forwarder)
+          (forwarder) => appsWithPermissionForMethod.some(app => addressesEqual(app, forwarder))
         )
     }
 
@@ -945,7 +952,7 @@ export default class Aragon {
     // Get a list of all forwarders (excluding the forwarders with direct permission)
     forwarders = forwarders
       .filter(
-        (forwarder) => !forwardersWithPermission.includes(forwarder)
+        (forwarder) => !forwardersWithPermission.some(f => addressesEqual(f, forwarder))
       )
 
     // Set up the path finding queue

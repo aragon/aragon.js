@@ -1,4 +1,4 @@
-import { isAddress, toChecksumAddress } from 'web3-utils'
+import { isAddress } from 'web3-utils'
 import ContractProxy from '../core/proxy'
 import { getAbi } from '../interfaces'
 
@@ -12,7 +12,7 @@ export function addressesEqual (first, second) {
   return first === second
 }
 
-export function makeAddressLookupProxy (target) {
+export function makeAddressMapProxy (target) {
   return new Proxy(target, {
     get (target, property, receiver) {
       if (property in target) {
@@ -20,20 +20,18 @@ export function makeAddressLookupProxy (target) {
       }
 
       if (typeof property === 'string' && isAddress(property)) {
-        // Check all lowercase address
-        let withoutChecksum = property.toLowerCase()
-        if (withoutChecksum in target) { return target[withoutChecksum] }
-
-        // Check all uppercase address
-        withoutChecksum = property.toUpperCase()
-        if (withoutChecksum in target) { return target[withoutChecksum] }
-
-        // Finally check with checksum, if possible
-        try {
-          return target[toChecksumAddress(property)]
-        } catch (_) {}
+        // Our set handler will ensure any addresses are stored in all lowercase
+        return target[property.toLowerCase()]
       }
       return undefined
+    },
+    set (target, property, value, receiver) {
+      if (typeof property === 'string' && isAddress(property)) {
+        target[property.toLowerCase()] = value
+      } else {
+        target[property] = value
+      }
+      return true
     }
   })
 }
