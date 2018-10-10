@@ -17,7 +17,14 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeAddressMapProxy, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
+import {
+  addressesEqual,
+  includesAddress,
+  makeAddressMapProxy,
+  makeProxy,
+  makeProxyFromABI,
+  getRecommendedGasLimit
+} from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -905,7 +912,7 @@ export default class Aragon {
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
-      if (!forwarders.some(forwarder => addressesEqual(forwarder, finalForwarder))) {
+      if (!includesAddress(forwarders, finalForwarder)) {
         return []
       }
 
@@ -914,7 +921,7 @@ export default class Aragon {
       // Find forwarders with permission to perform the action
       forwardersWithPermission = forwarders
         .filter(
-          (forwarder) => appsWithPermissionForMethod.some(app => addressesEqual(app, forwarder))
+          (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
         )
     }
 
@@ -952,7 +959,7 @@ export default class Aragon {
     // Get a list of all forwarders (excluding the forwarders with direct permission)
     forwarders = forwarders
       .filter(
-        (forwarder) => !forwardersWithPermission.some(f => addressesEqual(f, forwarder))
+        (forwarder) => !includesAddress(forwardersWithPermission, forwarder)
       )
 
     // Set up the path finding queue
