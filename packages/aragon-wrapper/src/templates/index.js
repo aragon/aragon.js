@@ -33,28 +33,44 @@ const templates = {
 
 const Templates = (web3, apm, from) => {
   const minGasPrice = web3.utils.toWei('20', 'gwei')
-  const newToken = async (template, name, symbol) => {
-    const call = template.methods.newToken(name, symbol)
+  const newToken = async (template, { params, options = {} }) => {
+    const [tokenName, tokenSymbol] = params
+    const call = template.methods.newToken(tokenName, tokenSymbol)
     const receipt = await call.send({
       from,
-      gas: 6700000,
-      gasPrice: minGasPrice
+      gasPrice: minGasPrice,
+      ...options
     })
     return receipt.events.DeployToken.returnValues
   }
 
-  const newInstance = async (template, name, params) => {
-    const call = template.methods.newInstance(name, ...params)
+  const newInstance = async (template, { params, options = {} }) => {
+    const call = template.methods.newInstance(...params)
     const receipt = await call.send({
       from,
-      gas: 6700000,
-      gasPrice: minGasPrice
+      gasPrice: minGasPrice,
+      ...options
     })
     return receipt.events.DeployInstance.returnValues
   }
 
   return {
-    newDAO: async (templateName, organizationName, tokenName, tokenSymbol, params) => {
+    /**
+     * Create a new DAO by sending two transactions:
+     *
+     *   1. Create a new token
+     *   2. Create a new instance of a template (the token is cached in the template contract)
+     *
+     * @param {string} templateName name of the template to use
+     * @param {Object} tokenParams parameters for the token creation transaction
+     * @param {Array<string>} tokenParams.params array of [<Token name>, <Token symbol>]
+     * @param {Object} [tokenParams.options={}] transaction options
+     * @param {Object} instanceParams parameters for the DAO creation transaction
+     * @param {Array<string>} tokenParams.params parameters for the template's `newDAO()` method
+     * @param {Object} [instanceParams.options={}] transaction options
+     * @return {Array<Object>} return values for `DeployEvent` and `DeployInstance`
+     */
+    newDAO: async (templateName, tokenParams, instanceParams) => {
       const tmplObj = templates[templateName]
 
       if (!tmplObj) throw new Error('No template found for that name')
@@ -68,8 +84,8 @@ const Templates = (web3, apm, from) => {
         contractAddress
       )
 
-      const token = await newToken(template, tokenName, tokenSymbol)
-      const instance = await newInstance(template, organizationName, params)
+      const token = await newToken(template, tokenParams)
+      const instance = await newInstance(template, instanceParams)
 
       return [token, instance]
     }
