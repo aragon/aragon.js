@@ -193,6 +193,13 @@ export default class Aragon {
    * @return {Promise<Object>}
    */
   getAppProxyValues (proxyAddress) {
+    if (addressesEqual(proxyAddress, this.kernelProxy.address)) {
+      return Promise.resolve({
+        appId: 'kernel',
+        proxyAddress
+      })
+    }
+
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
     return Promise.all([
@@ -227,7 +234,7 @@ export default class Aragon {
   }
 
   /**
-   * Initialise apps observable.
+   * Initialize apps observable.
    *
    * @return {void}
    */
@@ -237,16 +244,10 @@ export default class Aragon {
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
       .map(Object.keys)
-      .map((addresses) =>
-        addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
-      )
       .switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getAppProxyValues(app))
         )
-      )
-      .map(
-        (appMetadata) => appMetadata.filter((app) => this.isApp(app))
       )
       .flatMap(
         (apps) => Promise.all(

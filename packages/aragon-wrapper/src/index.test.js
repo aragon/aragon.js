@@ -141,10 +141,15 @@ test('should init the apps correctly', async (t) => {
       '0x789': 'some permissions'
     })
   })
+  const appIds = {
+    '0x123': 'kernel',
+    '0x456': 'counterApp',
+    '0x789': 'votingApp'
+  }
   instance.kernelProxy = { address: '0x123' }
   instance.getAppProxyValues = (appAddress) => ({
     kernelAddress: '0x123',
-    appId: appAddress === '0x456' ? 'counterApp' : 'votingApp',
+    appId: appIds[appAddress],
     proxyAddress: appAddress
   })
   instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
@@ -156,6 +161,11 @@ test('should init the apps correctly', async (t) => {
   instance.appsWithoutIdentifiers.subscribe(value => {
     t.deepEqual(value, [
       {
+        appId: 'kernel',
+        kernelAddress: '0x123',
+        abi: 'abi for kernel',
+        proxyAddress: '0x123'
+      }, {
         appId: 'counterApp',
         kernelAddress: '0x123',
         abi: 'abi for counterApp',
@@ -179,6 +189,11 @@ test('should init the apps correctly', async (t) => {
   instance.apps.subscribe(value => {
     t.deepEqual(value, [
       {
+        appId: 'kernel',
+        kernelAddress: '0x123',
+        abi: 'abi for kernel',
+        proxyAddress: '0x123'
+      }, {
         appId: 'counterApp',
         kernelAddress: '0x123',
         abi: 'abi for counterApp',
