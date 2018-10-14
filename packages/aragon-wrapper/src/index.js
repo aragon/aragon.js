@@ -808,11 +808,6 @@ export default class Aragon {
 
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.getApp(destination)
-    let forwarders = await this.forwarders.take(1).toPromise().then(
-      (forwarders) => forwarders.map(
-        (forwarder) => forwarder.proxyAddress
-      )
-    )
 
     if (!app) {
       throw new Error(`No artifact found for ${destination}`)
@@ -894,6 +889,12 @@ export default class Aragon {
       } catch (_) { }
     }
 
+    let forwarders = await this.forwarders.take(1).toPromise().then(
+      (forwarders) => forwarders.map(
+        (forwarder) => forwarder.proxyAddress
+      )
+    )
+
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
@@ -910,6 +911,29 @@ export default class Aragon {
         )
     }
 
+    return await this.calculateForwardingPath (sender, destination, directTransaction, forwardersWithPermission)
+
+  }
+
+  /**
+   * Calculate the forwarding path for a transaction to `destination`
+   * that invokes `directTransaction`.
+   *
+   * @param  {string} sender
+   * @param  {string} destination
+   * @param  {Object} directTransaction
+   * @param  {string} [forwardersWithPermission]
+   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   */
+  async calculateForwardingPath (sender, destination, directTransaction, forwardersWithPermission) {
+    const permissions = await this.permissions.take(1).toPromise()
+
+    let forwarders = await this.forwarders.take(1).toPromise().then(
+      (forwarders) => forwarders.map(
+        (forwarder) => forwarder.proxyAddress
+      )
+    )
+
     // No forwarders can perform the requested action
     if (forwardersWithPermission.length === 0) {
       return []
@@ -923,10 +947,11 @@ export default class Aragon {
 
     const createForwarderTransaction = (forwarderAddress, script) => (
       {
-        ...transactionOptions, // Options are overwriten by the values below
+        ...directTransaction, // Options are overwriten by the values below
         from: sender,
         to: forwarderAddress,
-        data: forwardMethod(script).encodeABI()
+        data: forwardMethod(script).encodeABI(),
+        gas: undefined
       }
     )
 
