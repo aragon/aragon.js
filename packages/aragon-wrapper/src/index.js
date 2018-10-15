@@ -292,6 +292,10 @@ export default class Aragon {
       .flatMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
+            if (!app.appId || !app.codeAddress) {
+              return app
+            }
+
             const cacheKey = `${app.appId}.${app.codeAddress}`
             const cachedAppInfo = dotprop.get(appInfoCache, cacheKey)
 
