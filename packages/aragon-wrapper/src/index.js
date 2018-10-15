@@ -53,6 +53,12 @@ export const setupTemplates = (
   return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
 }
 
+// Cache for app proxy values
+const appProxyValuesCache = makeAddressMapProxy({})
+
+// Cache for app info, usually fetched from apm
+const appInfoCache = {}
+
 /**
  * An Aragon wrapper.
  *
@@ -166,7 +172,8 @@ export default class Aragon {
     // Permissions Object:
     // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
     this.permissions = Observable.merge(...aclObservables)
-      .scan((permissions, event) => {
+      // Keep track of all the types of events that have been processed
+      .scan(([ permissions, eventSet ], event) => {
         const eventData = event.returnValues
 
         // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
@@ -192,8 +199,18 @@ export default class Aragon {
         }
 
         permissions[eventData.app] = appPermissions
-        return permissions
-      }, makeAddressMapProxy({}))
+        return [permissions, eventSet.add(event.event)]
+      }, [makeAddressMapProxy({}), new Set()])
+      // Skip until we have received events from all event subscriptions
+      // Note that this is safe as the ACL will always have to emit both
+      // ChangePermissionManager and SetPermission events every time a
+      // permission is created
+      .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
+      .map(([ permissions ]) => permissions)
+      // Throttle so it only continues after 30ms without new values
+      // Avoids DDOSing subscribers as during initialization there may be
+      // hundreds of events processed in a short timespan
+      .debounceTime(30)
       .publishReplay(1)
     this.permissions.connect()
   }
@@ -205,10 +222,18 @@ export default class Aragon {
    *         The address of the proxy to get metadata from
    * @return {Promise<Object>}
    */
-  getAppProxyValues (proxyAddress) {
+  async getAppProxyValues (proxyAddress) {
+    // This function caches information about the AppProxy, as it is called for
+    // all the apps everytime a permission changes and this data won't change
+    // once it's fetched
+    const cachedValue = appProxyValuesCache[proxyAddress]
+    if (cachedValue && cachedValue.kernelAddress && cachedValue.appId && cachedValue.codeAddress) {
+      return cachedValue
+    }
+
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
-    return Promise.all([
+    const appProxyValues = await Promise.all([
       appProxy.call('kernel').catch(() => null),
       appProxy.call('appId').catch(() => null),
       appProxy
@@ -226,6 +251,10 @@ export default class Aragon {
       codeAddress: values[2],
       isForwarder: values[3]
     }))
+
+    appProxyValuesCache[proxyAddress] = appProxyValues
+
+    return appProxyValues
   }
 
   /**
@@ -245,7 +274,6 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
@@ -263,11 +291,28 @@ export default class Aragon {
       )
       .flatMap(
         (apps) => Promise.all(
-          apps.map(async (app) => Object.assign(
-            app,
-            await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => getAragonOsInternalAppInfo(app.appId)) // for internal apps we check local mapping
-          ))
+          apps.map(async (app) => {
+            if (!app.appId || !app.codeAddress) {
+              return app
+            }
+
+            const cacheKey = `${app.appId}.${app.codeAddress}`
+            const cachedAppInfo = dotprop.get(appInfoCache, cacheKey)
+
+            const appInfo =
+              cachedAppInfo ||
+              getAragonOsInternalAppInfo(app.appId) ||
+              (await this.apm
+                .getLatestVersionForContract(app.appId, app.codeAddress)
+                // Just silence any errors
+                .catch(() => {}))
+
+            if (!cachedAppInfo && appInfo) {
+              dotprop.set(appInfoCache, cacheKey, appInfo)
+            }
+
+            return Object.assign(app, appInfo)
+          })
         )
       )
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
