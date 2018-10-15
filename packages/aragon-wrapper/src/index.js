@@ -56,6 +56,9 @@ export const setupTemplates = (
 // Cache for app proxy values
 const appProxyValuesCache = makeAddressMapProxy({})
 
+// Cache for app info, usually fetched from apm
+const appInfoCache = {}
+
 /**
  * An Aragon wrapper.
  *
@@ -264,7 +267,6 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
@@ -285,11 +287,24 @@ export default class Aragon {
       )
       .flatMap(
         (apps) => Promise.all(
-          apps.map(async (app) => Object.assign(
-            app,
-            await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => getAragonOsInternalAppInfo(app.appId)) // for internal apps we check local mapping
-          ))
+          apps.map(async (app) => {
+            const cacheKey = `${app.appId}.${app.codeAddress}`
+            const cachedAppInfo = dotprop.get(appInfoCache, cacheKey)
+
+            const appInfo =
+              cachedAppInfo ||
+              getAragonOsInternalAppInfo(app.appId) ||
+              (await this.apm
+                .getLatestVersionForContract(app.appId, app.codeAddress)
+                // Just silence any errors
+                .catch(() => {}))
+
+            if (!cachedAppInfo && appInfo) {
+              dotprop.set(appInfoCache, cacheKey, appInfo)
+            }
+
+            return Object.assign(app, appInfo)
+          })
         )
       )
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun

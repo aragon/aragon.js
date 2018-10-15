@@ -20,7 +20,7 @@ function getAragonOsInternalAppInfo (appId) {
   const appName = APP_MAPPINGS[appId]
 
   if (!appName) {
-    return {}
+    return
   }
 
   const abi = getAbi(`aragon/${appName}`)
