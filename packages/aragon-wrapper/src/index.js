@@ -202,8 +202,15 @@ export default class Aragon {
         return [permissions, eventSet.add(event.event)]
       }, [makeAddressMapProxy({}), new Set()])
       // Skip until we have received events from all event subscriptions
+      // Note that this is safe as the ACL will always have to emit both
+      // ChangePermissionManager and SetPermission events every time a
+      // permission is created
       .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
       .map(([ permissions ]) => permissions)
+      // Throttle so it only continues after 30ms without new values
+      // Avoids DDOSing subscribers as during initialization there may be
+      // hundreds of events processed in a short timespan
+      .debounceTime(30)
       .publishReplay(1)
     this.permissions.connect()
   }
@@ -274,9 +281,6 @@ export default class Aragon {
       .map((addresses) =>
         addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
       )
-      // Throttle so it only continues after 30ms without new values
-      // Avoids DDOSing the node as getAppProxyValues does up to 5 eth_calls each time
-      .debounceTime(30)
       .switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getAppProxyValues(app))
