@@ -115,18 +115,22 @@ test('should init the ACL correctly', async (t) => {
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
-  // assert
-  instance.permissions.subscribe(value => {
-    t.deepEqual(value, {
-      counter: {
-        add: {
-          allowedEntities: ['0x1', '0x2']
-        },
-        subtract: {
-          allowedEntities: ['0x1'],
-          manager: 'manager'
+  // assert, tell ava to wait for the permissions observable to debounce
+  return new Promise(resolve => {
+    instance.permissions.subscribe(value => {
+      t.deepEqual(value, {
+        counter: {
+          add: {
+            allowedEntities: ['0x1', '0x2']
+          },
+          subtract: {
+            allowedEntities: ['0x1'],
+            manager: 'manager'
+          }
         }
-      }
+      })
+      // The permissions observable debounces, so we should only get one value back
+      setTimeout(resolve, 2000)
     })
   })
 })
