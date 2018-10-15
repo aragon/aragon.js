@@ -3,12 +3,7 @@
     {
       "name": "Add executors",
       "id": "REGISTRY_ADD_EXECUTOR_ROLE",
-      "bytes": "0xc4e90f38eea8c4212a009ca7b8947943ba4d4a58d19b683417f65291d1cd9ed2"
-    },
-    {
-      "name": "Enable and disable executors",
-      "id": "REGISTRY_MANAGER_ROLE",
-      "bytes": "0xf7a450ef335e1892cb42c8ca72e7242359d7711924b75db5717410da3f614aa3"
+      "bytes": "0x0000000000000000000000000000000000000000000000000000000000000001"
     }
   ],
   "functions": [
