@@ -28,7 +28,6 @@ export function makeAddressMapProxy (target) {
         // Our set handler will ensure any addresses are stored in all lowercase
         return target[property.toLowerCase()]
       }
-      return undefined
     },
     set (target, property, value, receiver) {
       if (typeof property === 'string' && isAddress(property)) {
