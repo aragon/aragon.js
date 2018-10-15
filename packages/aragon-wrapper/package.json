@@ -41,7 +41,7 @@
     "babel-plugin-inline-json-import": "0.2.1",
     "babel-preset-minify": "^0.5.0",
     "debug": "^3.1.0",
-    "documentation": "^8.1.2",
+    "documentation": "^9.0.0-alpha.0",
     "eslint-plugin-flowtype": "^2.50.3",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
