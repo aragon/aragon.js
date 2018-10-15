@@ -5,6 +5,7 @@ import { Observable } from 'rxjs/Rx'
 
 const messengerConstructorStub = sinon.stub()
 const utilsStub = {
+  makeAddressMapProxy: sinon.fake.returns({}),
   makeProxy: sinon.stub(),
   addressesEqual: Object.is
 }
@@ -98,7 +99,7 @@ test('should init the ACL correctly', async (t) => {
       returnValues: {
         app: 'counter',
         role: 'subtract',
-        manager: 'manager',
+        manager: 'manager'
       }
     })
   })
@@ -114,18 +115,22 @@ test('should init the ACL correctly', async (t) => {
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
-  // assert
-  instance.permissions.subscribe(value => {
-    t.deepEqual(value, {
-      counter: {
-        add: {
-          allowedEntities: ['0x1', '0x2']
-        },
-        subtract: {
-          allowedEntities: ['0x1'],
-          manager: 'manager'
+  // assert, tell ava to wait for the permissions observable to debounce
+  return new Promise(resolve => {
+    instance.permissions.subscribe(value => {
+      t.deepEqual(value, {
+        counter: {
+          add: {
+            allowedEntities: ['0x1', '0x2']
+          },
+          subtract: {
+            allowedEntities: ['0x1'],
+            manager: 'manager'
+          }
         }
-      }
+      })
+      // The permissions observable debounces, so we should only get one value back
+      setTimeout(resolve, 2000)
     })
   })
 })
@@ -143,12 +148,13 @@ test('should init the apps correctly', async (t) => {
   })
   instance.kernelProxy = { address: '0x123' }
   instance.getAppProxyValues = (appAddress) => ({
-    kernelAddress: '0x123',
     appId: appAddress === '0x456' ? 'counterApp' : 'votingApp',
+    codeAddress: '0x',
+    kernelAddress: '0x123',
     proxyAddress: appAddress
   })
   instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
-    abi: `abi for ${appId}`,
+    abi: `abi for ${appId}`
   })
   // act
   await instance.initApps()
@@ -156,14 +162,16 @@ test('should init the apps correctly', async (t) => {
   instance.appsWithoutIdentifiers.subscribe(value => {
     t.deepEqual(value, [
       {
-        appId: 'counterApp',
-        kernelAddress: '0x123',
         abi: 'abi for counterApp',
+        appId: 'counterApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x456'
       }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
         abi: 'abi for votingApp',
+        appId: 'votingApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x789'
       }
     ])
@@ -179,15 +187,17 @@ test('should init the apps correctly', async (t) => {
   instance.apps.subscribe(value => {
     t.deepEqual(value, [
       {
-        appId: 'counterApp',
-        kernelAddress: '0x123',
         abi: 'abi for counterApp',
+        appId: 'counterApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x456',
         identifier: 'CNT'
       }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
         abi: 'abi for votingApp',
+        appId: 'votingApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x789'
       }
     ])
@@ -290,12 +300,12 @@ test('should run the app and reply to a request', async (t) => {
     observer.next({
       id: 'uuid1',
       method: 'cache',
-      params: ['get', 'settings'],
+      params: ['get', 'settings']
     })
   })
   const messengerStub = {
     sendResponse: sinon.stub(),
-    requests: () => requestsStub,
+    requests: () => requestsStub
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
   const instance = new Aragon()
@@ -428,8 +438,8 @@ test('should throw if no ABI is found, when calculating the transaction path', a
     .catch(err => {
       // assert
       t.is(err.message, 'No ABI specified in artifact for 0x789')
-      /**
-       * Note: This test also "asserts" that the permissions object, the app object and the 
+      /*
+       * Note: This test also "asserts" that the permissions object, the app object and the
        * forwarders array does not throw any errors when they are being extracted from their observables.
        */
     })

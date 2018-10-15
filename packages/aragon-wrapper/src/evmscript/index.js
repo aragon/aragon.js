@@ -4,7 +4,7 @@ export const CALLSCRIPT_ID = '0x00000001'
 
 /**
  * Encode a call script
- * 
+ *
  * ```
  * CallScriptAction {
  *   to: string;
@@ -12,7 +12,7 @@ export const CALLSCRIPT_ID = '0x00000001'
  * }
  * ```
  *
- * @param {Array<CallScriptAction>} actions 
+ * @param {Array<CallScriptAction>} actions
  * @returns {string}
  */
 export function encodeCallScript (actions) {

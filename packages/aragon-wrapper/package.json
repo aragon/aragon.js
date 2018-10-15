@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
-    "lint": "standard src",
+    "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
     "build": "babel -d dist src",
     "prepublishOnly": "env NODE_ENV=production npm run build"
@@ -41,6 +41,7 @@
     "babel-plugin-inline-json-import": "0.2.1",
     "babel-preset-minify": "^0.5.0",
     "debug": "^3.1.0",
+    "documentation": "^8.1.2",
     "eslint-plugin-flowtype": "^2.50.3",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
@@ -79,6 +80,7 @@
     "rxjs": "^5.5.6",
     "uuid": "^3.2.1",
     "web3": "1.0.0-beta.33",
-    "web3-eth-abi": "1.0.0-beta.33"
+    "web3-eth-abi": "1.0.0-beta.33",
+    "web3-utils": "1.0.0-beta.33"
   }
 }
