@@ -3,6 +3,7 @@ import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
+import { isAddress, toWei } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -16,7 +17,14 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
+import {
+  addressesEqual,
+  includesAddress,
+  makeAddressMapProxy,
+  makeProxy,
+  makeProxyFromABI,
+  getRecommendedGasLimit
+} from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -78,7 +86,7 @@ export default class Aragon {
       provider: detectProvider(),
       apm: {},
       defaultGasPriceFn: () => {
-        return this.web3.utils.toWei('20', 'gwei')
+        return toWei('20', 'gwei')
       }
     }
     options = Object.assign(defaultOptions, options)
@@ -99,7 +107,7 @@ export default class Aragon {
     this.cache = new Cache(daoAddress)
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
-    this.appProxyValuesCache = {}
+    this.appProxyValuesCache = makeAddressMapProxy({})
   }
 
   /**
@@ -162,13 +170,15 @@ export default class Aragon {
       // Keep track of all the types of events that have been processed
       .scan(([ permissions, eventSet ], event) => {
         const eventData = event.returnValues
-        const baseKey = `${eventData.app}.${eventData.role}`
+
+        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+        const appPermissions = permissions[eventData.app] || {}
 
         if (event.event === SET_PERMISSION_EVENT) {
-          const key = `${baseKey}.allowedEntities`
+          const key = `${eventData.role}.allowedEntities`
 
           // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(permissions, key, []))
+          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
 
           if (eventData.allowed) {
             permissionsForRole.add(eventData.entity)
@@ -176,13 +186,16 @@ export default class Aragon {
             permissionsForRole.delete(eventData.entity)
           }
 
-          return [dotprop.set(permissions, key, Array.from(permissionsForRole)), eventSet.add(event.event)]
+          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
         }
 
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
-          return [dotprop.set(permissions, `${baseKey}.manager`, eventData.manager), eventSet.add(event.event)]
+          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
         }
-      }, [{}, new Set()])
+
+        permissions[eventData.app] = appPermissions
+        return [permissions, eventSet.add(event.event)]
+      }, [makeAddressMapProxy({}), new Set()])
       // Skip until we have received events from all event subscriptions
       .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
       .map(([ permissions ]) => permissions)
@@ -536,7 +549,7 @@ export default class Aragon {
   }
 
   /**
-   * @param {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
    * @return {Promise<string>} transaction hash
    */
   performTransactionPath (transactionPath) {
@@ -664,8 +677,9 @@ export default class Aragon {
    */
   async getPermissionManager (appAddress, roleHash) {
     const permissions = await this.permissions.take(1).toPromise()
+    const appPermissions = permissions[appAddress]
 
-    return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
+    return dotprop.get(appPermissions, `${roleHash}.manager`)
   }
 
   /**
@@ -720,7 +734,7 @@ export default class Aragon {
   /**
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
-   * @param  {Array<object>} path
+   * @param  {Array<Object>} path
    * @return {Promise<Array<Object>>} The given `path`, with descriptions included at each step
    */
   describeTransactionPath (path) {
@@ -822,7 +836,7 @@ export default class Aragon {
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
-    const finalForwarderProvided = this.web3.utils.isAddress(finalForwarder)
+    const finalForwarderProvided = isAddress(finalForwarder)
 
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.getApp(destination)
@@ -864,7 +878,7 @@ export default class Aragon {
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
     }
 
-    let permissionsForMethod = []
+    let appsWithPermissionForMethod = []
 
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
@@ -894,14 +908,15 @@ export default class Aragon {
         (role) => role.id === method.roles[0]
       ).bytes
 
-      permissionsForMethod = dotprop.get(
-        permissions,
-        `${destination}.${roleSig}.allowedEntities`,
+      const permissionsForDestination = permissions[destination]
+      appsWithPermissionForMethod = dotprop.get(
+        permissionsForDestination,
+        `${roleSig}.allowedEntities`,
         []
       )
 
       // No one has access
-      if (permissionsForMethod.length === 0) {
+      if (appsWithPermissionForMethod.length === 0) {
         return []
       }
 
@@ -915,7 +930,7 @@ export default class Aragon {
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
-      if (!forwarders.includes(finalForwarder)) {
+      if (!includesAddress(forwarders, finalForwarder)) {
         return []
       }
 
@@ -924,7 +939,7 @@ export default class Aragon {
       // Find forwarders with permission to perform the action
       forwardersWithPermission = forwarders
         .filter(
-          (forwarder) => permissionsForMethod.includes(forwarder)
+          (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
         )
     }
 
@@ -962,7 +977,7 @@ export default class Aragon {
     // Get a list of all forwarders (excluding the forwarders with direct permission)
     forwarders = forwarders
       .filter(
-        (forwarder) => !forwardersWithPermission.includes(forwarder)
+        (forwarder) => !includesAddress(forwardersWithPermission, forwarder)
       )
 
     // Set up the path finding queue

@@ -5,6 +5,7 @@ import { Observable } from 'rxjs/Rx'
 
 const messengerConstructorStub = sinon.stub()
 const utilsStub = {
+  makeAddressMapProxy: sinon.fake.returns({}),
   makeProxy: sinon.stub(),
   addressesEqual: Object.is
 }
@@ -428,7 +429,7 @@ test('should throw if no ABI is found, when calculating the transaction path', a
     .catch(err => {
       // assert
       t.is(err.message, 'No ABI specified in artifact for 0x789')
-      /**
+      /*
        * Note: This test also "asserts" that the permissions object, the app object and the
        * forwarders array does not throw any errors when they are being extracted from their observables.
        */
