@@ -5,6 +5,7 @@ import { Observable } from 'rxjs/Rx'
 
 const messengerConstructorStub = sinon.stub()
 const utilsStub = {
+  makeAddressMapProxy: sinon.fake.returns({}),
   makeProxy: sinon.stub(),
   addressesEqual: Object.is
 }
