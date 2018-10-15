@@ -53,6 +53,9 @@ export const setupTemplates = (
   return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
 }
 
+// Cache for app proxy values
+const appProxyValuesCache = makeAddressMapProxy({})
+
 /**
  * An Aragon wrapper.
  *
@@ -107,7 +110,6 @@ export default class Aragon {
     this.cache = new Cache(daoAddress)
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
-    this.appProxyValuesCache = makeAddressMapProxy({})
   }
 
   /**
@@ -211,10 +213,12 @@ export default class Aragon {
    * @return {Promise<Object>}
    */
   async getAppProxyValues (proxyAddress) {
-    // This function caches information about the AppProxy, as it is called for all
-    // apps everytime a permission changes and this data won't change
-    if (this.appProxyValuesCache[proxyAddress]) {
-      return this.appProxyValuesCache[proxyAddress]
+    // This function caches information about the AppProxy, as it is called for
+    // all the apps everytime a permission changes and this data won't change
+    // once it's fetched
+    const cachedValue = appProxyValuesCache[proxyAddress]
+    if (cachedValue && cachedValue.kernelAddress && cachedValue.appId && cachedValue.codeAddress) {
+      return cachedValue
     }
 
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
@@ -238,7 +242,7 @@ export default class Aragon {
       isForwarder: values[3]
     }))
 
-    this.appProxyValuesCache[proxyAddress] = appProxyValues
+    appProxyValuesCache[proxyAddress] = appProxyValues
 
     return appProxyValues
   }
