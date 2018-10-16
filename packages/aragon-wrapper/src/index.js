@@ -788,10 +788,14 @@ export default class Aragon {
       // No expression
       if (!expression) return step
       return Object.assign(step, {
-        description: await radspec.evaluate(expression, {
-          abi: app.abi,
-          transaction: step
-        }, this.web3.currentProvider),
+        description: await radspec.evaluate(
+          expression,
+          {
+            abi: app.abi,
+            transaction: step
+          },
+          { ethNode: this.web3.currentProvider }
+        ),
         name: app.name,
         identifier: app.identifier
       })
