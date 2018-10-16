@@ -1010,8 +1010,7 @@ export default class Aragon {
         ...directTransaction, // Options are overwriten by the values below
         from: sender,
         to: forwarderAddress,
-        data: forwardMethod(script).encodeABI(),
-        gas: undefined
+        data: forwardMethod(script).encodeABI()
       }
     )
 
