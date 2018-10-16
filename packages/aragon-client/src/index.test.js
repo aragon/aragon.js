@@ -101,8 +101,8 @@ test('should return the events observable', t => {
   t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'events')
 })
 
-test('should return an handle for an external contract events', t => {
-  t.plan(7)
+test('should return a handle for an external contract', t => {
+  t.plan(10)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
   const observableA = Observable.of({
@@ -111,25 +111,38 @@ test('should return an handle for an external contract events', t => {
   })
   const observableB = Observable.of({
     id: 'uuid4',
-    result: 'bob was granted permission for the counter app'
+    result: 'bob has permission for the counter app'
+  })
+  const observableC = Observable.of({
+    id: 'uuid5',
+    result: 'contract was initialized'
   })
   const jsonInterfaceStub = [
     { type: 'event', name: 'SetPermission' },
-    { type: 'function', name: 'grantPermission', constant: true }
+    { type: 'function', name: 'hasPermission', constant: true },
+    { type: 'function',
+      name: 'initialize',
+      constant: false,
+      inputs: [ { name: '_permissionsCreator', type: 'address' } ]
+    }
   ]
+
+  const sendAndObserveResponseStub = sinon.stub()
+  sendAndObserveResponseStub.onCall(0).returns(observableB)
+  sendAndObserveResponseStub.onCall(1).returns(observableC)
+
   const instanceStub = {
     rpc: {
       sendAndObserveResponses: sinon.stub()
         .returns(observableA),
 
-      sendAndObserveResponse: sinon.stub()
-        .returns(observableB)
+      sendAndObserveResponse: sendAndObserveResponseStub
     }
   }
   // act
   const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
   // assert
-  // the call to sendAndObserveResponse should be defered until we subscribe
+  // the call to sendAndObserveResponse should be deferred until we subscribe
   t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
   // events from block 2
   result.events(2).subscribe(value => {
@@ -141,13 +154,22 @@ test('should return an handle for an external contract events', t => {
       ['0xextContract', [jsonInterfaceStub[0]], 2]
     )
   })
-  result.grantPermission('0xbob', '0xcounter').subscribe(value => {
-    t.is(value, 'bob was granted permission for the counter app')
+  result.hasPermission('0xbob', '0xcounter').subscribe(value => {
+    t.is(value, 'bob has permission for the counter app')
 
     t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_call')
     t.deepEqual(
       instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1],
       ['0xextContract', jsonInterfaceStub[1], '0xbob', '0xcounter']
+    )
+  })
+  result.initialize('0xbob').subscribe(value => {
+    t.is(value, 'contract was initialized')
+
+    t.is(instanceStub.rpc.sendAndObserveResponse.getCall(1).args[0], 'external_intent')
+    t.deepEqual(
+      instanceStub.rpc.sendAndObserveResponse.getCall(1).args[1],
+      ['0xextContract', jsonInterfaceStub[2], '0xbob']
     )
   })
 })

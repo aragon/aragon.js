@@ -137,7 +137,7 @@ Creates a handle to interact with an external contract (i.e. a contract that is 
 
 **Returns**
 
-(`Object`): An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+(`Object`): An external smart contract handle. This object provides functions to subscribe to events, send calls to the smart contract, and to send transaction intents via the wrappers `transactions` observable.
 
 **Example**
 
@@ -150,7 +150,11 @@ token.symbol()
 
 // Retrieve the token balance of an account
 token.balanceOf(someAccountAddress)
-	.subscribe((balance) => console.log(`The balance of the account is ${balance}`))
+  .subscribe((balance) => console.log(`The balance of the account is ${balance}`))
+
+// Create a Transfer tx intent
+app.transactions.subscribe(someFnToHandleIntents)
+token.transfer(someAccountAddress, someAmount, {...transactionOpts})
 ```
 
 ### cache

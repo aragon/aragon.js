@@ -93,8 +93,20 @@ export class AppProxy {
             ]
           ).pluck('result')
         )
+      },
+
+      call: (method, ...params) => {
+        const methodJsonInterface = jsonInterface.filter(
+          (item) => item.type === 'function' && item.name === method
+        )
+        return this.rpc.sendAndObserveResponse(
+          'external_call',
+          [address, methodJsonInterface, ...params]
+        ).pluck('result')
       }
     }
+
+    // TODO: the following method bindings will not work if there are overloaded functions in the abi
 
     // Bind calls
     const callMethods = jsonInterface.filter(
@@ -104,6 +116,19 @@ export class AppProxy {
       contract[methodJsonInterface.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_call',
+          [address, methodJsonInterface, ...params]
+        ).pluck('result')
+      }
+    })
+
+    // Bind sends
+    const sendMethods = jsonInterface.filter(
+      (item) => item.type === 'function' && !item.constant
+    )
+    sendMethods.forEach((methodJsonInterface) => {
+      contract[methodJsonInterface.name] = (...params) => {
+        return this.rpc.sendAndObserveResponse(
+          'external_intent',
           [address, methodJsonInterface, ...params]
         ).pluck('result')
       }

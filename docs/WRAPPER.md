@@ -14,8 +14,8 @@
 ```javascript
 const aragon = new Aragon('0xdeadbeef')
 
-// Initialises the wrapper and logs the installed apps
-aragon.init(() => {
+// Initializes the wrapper and logs the installed apps
+aragon.init().then(() => {
   aragon.apps.subscribe(
     (apps) => console.log(apps)
   )

@@ -533,6 +533,7 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'intent', handlers.intent),
       handlers.createRequestHandler(request$, 'call', handlers.call),
       handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+      handlers.createRequestHandler(request$, 'external_intent', handlers.externalIntent),
       handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
       handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
       handlers.createRequestHandler(request$, 'identify', handlers.identifier),
