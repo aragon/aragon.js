@@ -949,7 +949,7 @@ export default class Aragon {
       } catch (_) { }
     }
 
-    let forwarders = await this.forwarders.take(1).toPromise().then(
+    const forwarders = await this.forwarders.take(1).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
       )
@@ -971,8 +971,7 @@ export default class Aragon {
         )
     }
 
-    return await this.calculateForwardingPath (sender, destination, directTransaction, forwardersWithPermission)
-
+    return this.calculateForwardingPath(sender, destination, directTransaction, forwardersWithPermission)
   }
 
   /**
@@ -986,14 +985,6 @@ export default class Aragon {
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateForwardingPath (sender, destination, directTransaction, forwardersWithPermission) {
-    const permissions = await this.permissions.take(1).toPromise()
-
-    let forwarders = await this.forwarders.take(1).toPromise().then(
-      (forwarders) => forwarders.map(
-        (forwarder) => forwarder.proxyAddress
-      )
-    )
-
     // No forwarders can perform the requested action
     if (forwardersWithPermission.length === 0) {
       return []
@@ -1026,10 +1017,11 @@ export default class Aragon {
     }
 
     // Get a list of all forwarders (excluding the forwarders with direct permission)
-    forwarders = forwarders
-      .filter(
-        (forwarder) => !includesAddress(forwardersWithPermission, forwarder)
-      )
+    const forwarders = await this.forwarders.take(1).toPromise().then(
+      (forwarders) => forwarders
+        .map((forwarder) => forwarder.proxyAddress)
+        .filter((forwarder) => !includesAddress(forwardersWithPermission, forwarder))
+    )
 
     // Set up the path finding queue
     // The queue takes the form of Array<[Array<EthereumTransaction>, Array<String>]>
