@@ -3,6 +3,7 @@ import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
+import { isAddress, toWei } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -16,7 +17,14 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeProxy, makeProxyFromABI, getRecommendedGasLimit } from './utils'
+import {
+  addressesEqual,
+  includesAddress,
+  makeAddressMapProxy,
+  makeProxy,
+  makeProxyFromABI,
+  getRecommendedGasLimit
+} from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
@@ -44,6 +52,12 @@ export const setupTemplates = (
   const web3 = new Web3(provider)
   return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
 }
+
+// Cache for app proxy values
+const appProxyValuesCache = makeAddressMapProxy({})
+
+// Cache for app info, usually fetched from apm
+const appInfoCache = {}
 
 /**
  * An Aragon wrapper.
@@ -78,7 +92,7 @@ export default class Aragon {
       provider: detectProvider(),
       apm: {},
       defaultGasPriceFn: () => {
-        return this.web3.utils.toWei('20', 'gwei')
+        return toWei('20', 'gwei')
       }
     }
     options = Object.assign(defaultOptions, options)
@@ -158,15 +172,18 @@ export default class Aragon {
     // Permissions Object:
     // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
     this.permissions = Observable.merge(...aclObservables)
-      .scan((permissions, event) => {
+      // Keep track of all the types of events that have been processed
+      .scan(([ permissions, eventSet ], event) => {
         const eventData = event.returnValues
-        const baseKey = `${eventData.app}.${eventData.role}`
+
+        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+        const appPermissions = permissions[eventData.app] || {}
 
         if (event.event === SET_PERMISSION_EVENT) {
-          const key = `${baseKey}.allowedEntities`
+          const key = `${eventData.role}.allowedEntities`
 
           // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(permissions, key, []))
+          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
 
           if (eventData.allowed) {
             permissionsForRole.add(eventData.entity)
@@ -174,13 +191,26 @@ export default class Aragon {
             permissionsForRole.delete(eventData.entity)
           }
 
-          return dotprop.set(permissions, key, Array.from(permissionsForRole))
+          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
         }
 
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
-          return dotprop.set(permissions, `${baseKey}.manager`, eventData.manager)
+          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
         }
-      }, {})
+
+        permissions[eventData.app] = appPermissions
+        return [permissions, eventSet.add(event.event)]
+      }, [makeAddressMapProxy({}), new Set()])
+      // Skip until we have received events from all event subscriptions
+      // Note that this is safe as the ACL will always have to emit both
+      // ChangePermissionManager and SetPermission events every time a
+      // permission is created
+      .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
+      .map(([ permissions ]) => permissions)
+      // Throttle so it only continues after 30ms without new values
+      // Avoids DDOSing subscribers as during initialization there may be
+      // hundreds of events processed in a short timespan
+      .debounceTime(30)
       .publishReplay(1)
     this.permissions.connect()
   }
@@ -192,10 +222,18 @@ export default class Aragon {
    *         The address of the proxy to get metadata from
    * @return {Promise<Object>}
    */
-  getAppProxyValues (proxyAddress) {
+  async getAppProxyValues (proxyAddress) {
+    // This function caches information about the AppProxy, as it is called for
+    // all the apps everytime a permission changes and this data won't change
+    // once it's fetched
+    const cachedValue = appProxyValuesCache[proxyAddress]
+    if (cachedValue && cachedValue.kernelAddress && cachedValue.appId && cachedValue.codeAddress) {
+      return cachedValue
+    }
+
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
-    return Promise.all([
+    const appProxyValues = await Promise.all([
       appProxy.call('kernel').catch(() => null),
       appProxy.call('appId').catch(() => null),
       appProxy
@@ -213,6 +251,10 @@ export default class Aragon {
       codeAddress: values[2],
       isForwarder: values[3]
     }))
+
+    appProxyValuesCache[proxyAddress] = appProxyValues
+
+    return appProxyValues
   }
 
   /**
@@ -232,7 +274,6 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
@@ -250,11 +291,28 @@ export default class Aragon {
       )
       .flatMap(
         (apps) => Promise.all(
-          apps.map(async (app) => Object.assign(
-            app,
-            await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => getAragonOsInternalAppInfo(app.appId)) // for internal apps we check local mapping
-          ))
+          apps.map(async (app) => {
+            if (!app.appId || !app.codeAddress) {
+              return app
+            }
+
+            const cacheKey = `${app.appId}.${app.codeAddress}`
+            const cachedAppInfo = dotprop.get(appInfoCache, cacheKey)
+
+            const appInfo =
+              cachedAppInfo ||
+              getAragonOsInternalAppInfo(app.appId) ||
+              (await this.apm
+                .getLatestVersionForContract(app.appId, app.codeAddress)
+                // Just silence any errors
+                .catch(() => {}))
+
+            if (!cachedAppInfo && appInfo) {
+              dotprop.set(appInfoCache, cacheKey, appInfo)
+            }
+
+            return Object.assign(app, appInfo)
+          })
         )
       )
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
@@ -646,8 +704,9 @@ export default class Aragon {
    */
   async getPermissionManager (appAddress, roleHash) {
     const permissions = await this.permissions.take(1).toPromise()
+    const appPermissions = permissions[appAddress]
 
-    return dotprop.get(permissions, `${appAddress}.${roleHash}.manager`)
+    return dotprop.get(appPermissions, `${roleHash}.manager`)
   }
 
   /**
@@ -804,7 +863,7 @@ export default class Aragon {
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
-    const finalForwarderProvided = this.web3.utils.isAddress(finalForwarder)
+    const finalForwarderProvided = isAddress(finalForwarder)
 
     const permissions = await this.permissions.take(1).toPromise()
     const app = await this.getApp(destination)
@@ -841,7 +900,7 @@ export default class Aragon {
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
     }
 
-    let permissionsForMethod = []
+    let appsWithPermissionForMethod = []
 
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
@@ -871,14 +930,15 @@ export default class Aragon {
         (role) => role.id === method.roles[0]
       ).bytes
 
-      permissionsForMethod = dotprop.get(
-        permissions,
-        `${destination}.${roleSig}.allowedEntities`,
+      const permissionsForDestination = permissions[destination]
+      appsWithPermissionForMethod = dotprop.get(
+        permissionsForDestination,
+        `${roleSig}.allowedEntities`,
         []
       )
 
       // No one has access
-      if (permissionsForMethod.length === 0) {
+      if (appsWithPermissionForMethod.length === 0) {
         return []
       }
 
@@ -898,7 +958,7 @@ export default class Aragon {
     let forwardersWithPermission
 
     if (finalForwarderProvided) {
-      if (!forwarders.includes(finalForwarder)) {
+      if (!includesAddress(forwarders, finalForwarder)) {
         return []
       }
 
@@ -907,7 +967,7 @@ export default class Aragon {
       // Find forwarders with permission to perform the action
       forwardersWithPermission = forwarders
         .filter(
-          (forwarder) => permissionsForMethod.includes(forwarder)
+          (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
         )
     }
 
@@ -969,7 +1029,7 @@ export default class Aragon {
     // Get a list of all forwarders (excluding the forwarders with direct permission)
     forwarders = forwarders
       .filter(
-        (forwarder) => !forwardersWithPermission.includes(forwarder)
+        (forwarder) => !includesAddress(forwardersWithPermission, forwarder)
       )
 
     // Set up the path finding queue
