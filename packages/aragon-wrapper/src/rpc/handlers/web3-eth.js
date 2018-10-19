@@ -33,6 +33,6 @@ export default async function (request, proxy, wrapper) {
   return METHOD_WHITELIST.has(method)
     ? Promise.resolve(web3.eth[method](...params))
     : Promise.reject(
-        new Error(`Given web3.eth method (${method}) is not whitelisted`)
-      )
+      new Error(`Given web3.eth method (${method}) is not whitelisted`)
+    )
 }

@@ -3,13 +3,18 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Observable } from 'rxjs/Rx'
 
+const aragonOSCoreStub = {
+  getAragonOsInternalAppInfo: sinon.stub()
+}
 const messengerConstructorStub = sinon.stub()
 const utilsStub = {
+  makeAddressMapProxy: sinon.fake.returns({}),
   makeProxy: sinon.stub(),
   addressesEqual: Object.is
 }
 const Aragon = proxyquire.noCallThru().load('./index', {
   '@aragon/messenger': messengerConstructorStub,
+  './core/aragonOS': aragonOSCoreStub,
   './utils': utilsStub
 }).default
 
@@ -114,18 +119,22 @@ test('should init the ACL correctly', async (t) => {
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
-  // assert
-  instance.permissions.subscribe(value => {
-    t.deepEqual(value, {
-      counter: {
-        add: {
-          allowedEntities: ['0x1', '0x2']
-        },
-        subtract: {
-          allowedEntities: ['0x1'],
-          manager: 'manager'
+  // assert, tell ava to wait for the permissions observable to debounce
+  return new Promise(resolve => {
+    instance.permissions.subscribe(value => {
+      t.deepEqual(value, {
+        counter: {
+          add: {
+            allowedEntities: ['0x1', '0x2']
+          },
+          subtract: {
+            allowedEntities: ['0x1'],
+            manager: 'manager'
+          }
         }
-      }
+      })
+      // The permissions observable debounces, so we should only get one value back
+      setTimeout(resolve, 2000)
     })
   })
 })
@@ -146,10 +155,15 @@ test('should init the apps correctly', async (t) => {
     '0x456': 'counterApp',
     '0x789': 'votingApp'
   }
+  aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds['0x123']).returns({
+    abi: 'abi for kernel',
+    isAragonOsInternalApp: true,
+  })
   instance.kernelProxy = { address: '0x123' }
-  instance.getAppProxyValues = (appAddress) => ({
-    kernelAddress: '0x123',
+  instance.getAppProxyValues = async (appAddress) => ({
     appId: appIds[appAddress],
+    codeAddress: '0x',
+    kernelAddress: '0x123',
     proxyAddress: appAddress
   })
   instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
@@ -161,19 +175,23 @@ test('should init the apps correctly', async (t) => {
   instance.appsWithoutIdentifiers.subscribe(value => {
     t.deepEqual(value, [
       {
-        appId: 'kernel',
-        kernelAddress: '0x123',
         abi: 'abi for kernel',
+        appId: 'kernel',
+        codeAddress: '0x',
+        isAragonOsInternalApp: true,
+        kernelAddress: '0x123',
         proxyAddress: '0x123'
       }, {
-        appId: 'counterApp',
-        kernelAddress: '0x123',
         abi: 'abi for counterApp',
+        appId: 'counterApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x456'
       }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
         abi: 'abi for votingApp',
+        appId: 'votingApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x789'
       }
     ])
@@ -189,20 +207,24 @@ test('should init the apps correctly', async (t) => {
   instance.apps.subscribe(value => {
     t.deepEqual(value, [
       {
-        appId: 'kernel',
-        kernelAddress: '0x123',
         abi: 'abi for kernel',
+        appId: 'kernel',
+        codeAddress: '0x',
+        isAragonOsInternalApp: true,
+        kernelAddress: '0x123',
         proxyAddress: '0x123'
       }, {
-        appId: 'counterApp',
-        kernelAddress: '0x123',
         abi: 'abi for counterApp',
+        appId: 'counterApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x456',
         identifier: 'CNT'
       }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
         abi: 'abi for votingApp',
+        appId: 'votingApp',
+        codeAddress: '0x',
+        kernelAddress: '0x123',
         proxyAddress: '0x789'
       }
     ])
@@ -443,7 +465,7 @@ test('should throw if no ABI is found, when calculating the transaction path', a
     .catch(err => {
       // assert
       t.is(err.message, 'No ABI specified in artifact for 0x789')
-      /**
+      /*
        * Note: This test also "asserts" that the permissions object, the app object and the
        * forwarders array does not throw any errors when they are being extracted from their observables.
        */
