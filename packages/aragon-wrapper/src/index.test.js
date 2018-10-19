@@ -18,7 +18,17 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should get the accounts', async (t) => {
+test('should use provided accounts', async (t) => {
+  // arrange
+  const instance = new Aragon()
+  // act
+  await instance.initAccounts({ providedAccounts: ['0x00'] })
+  const accounts = await instance.getAccounts()
+  // assert
+  t.deepEqual(accounts, ['0x00'])
+})
+
+test.only('should get the accounts from web3', async (t) => {
   // arrange
   const instance = new Aragon()
   instance.web3 = {
@@ -27,10 +37,25 @@ test('should get the accounts', async (t) => {
     }
   }
   // act
-  await instance.initAccounts(null)
+  await instance.initAccounts({ fetchFromWeb3: true })
   const accounts = await instance.getAccounts()
   // assert
   t.deepEqual(accounts, ['0x01', '0x02'])
+})
+
+test('should not fetch the accounts if not asked', async (t) => {
+  // arrange
+  const instance = new Aragon()
+  instance.web3 = {
+    eth: {
+      getAccounts: sinon.stub().returns(['0x01', '0x02'])
+    }
+  }
+  // act
+  await instance.initAccounts({ fetchFromWeb3: false })
+  const accounts = await instance.getAccounts()
+  // assert
+  t.deepEqual(accounts, [])
 })
 
 test('should init the ACL correctly', async (t) => {
