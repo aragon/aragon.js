@@ -54,9 +54,11 @@
 </div>
 
 # aragon.js Basic Overview
-The layer between [Aragon Core](https://github.com/aragon/aragon-core) and the Aragon web- and desktop [application](https://github.com/aragon/aragon). Use it to build third-party apps for Aragon, or to roll your own front-end.
+
+The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https://github.com/aragon/aragon) and the [Aragon Apps](https://github.com/aragon/aragon-apps). Use it to build your own Aragon app.
 
 ## Install
+
 ```sh
 npm i @aragon/client
 ```

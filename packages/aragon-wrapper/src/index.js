@@ -3,6 +3,7 @@ import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
+import { isAddress, toWei } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -16,13 +17,25 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
-import { addressesEqual, makeProxy, makeProxyFromABI } from './utils'
+import {
+  addressesEqual,
+  includesAddress,
+  makeAddressMapProxy,
+  makeProxy,
+  makeProxyFromABI,
+  getRecommendedGasLimit
+} from './utils'
+
+import { getAragonOsInternalAppInfo } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
 
 // Cache
 import Cache from './cache'
+
+// Interfaces
+import { getAbi } from './interfaces'
 
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
@@ -40,6 +53,12 @@ export const setupTemplates = (
   return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
 }
 
+// Cache for app proxy values
+const appProxyValuesCache = makeAddressMapProxy({})
+
+// Cache for app info, usually fetched from apm
+const appInfoCache = {}
+
 /**
  * An Aragon wrapper.
  *
@@ -51,20 +70,30 @@ export const setupTemplates = (
  *        The Web3 provider to use for blockchain communication
  * @param {String} [options.ensRegistryAddress=null]
  *        The address of the ENS registry
+ * @param {Function} [options.defaultGasPriceFn=function]
+ *        A factory function to provide the default gas price for transactions.
+ *        It can return a promise of number string or a number string. The function
+ *        has access to a recommended gas limit which can be used for custom
+ *        calculations. This function can also be used to get a good gas price
+ *        estimation from a 3rd party resource.
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
- * // Initialises the wrapper and logs the installed apps
- * aragon.init(() => {
- *   aragon.apps.subscribe(
- *     (apps) => console.log(apps)
- *   )
+ * // Initialises the wrapper
+ * await aragon.init({
+ *   accounts: {
+ *     providedAccounts: ["0xbeefdead", "0xbeefbeef"]
+ *   }
  * })
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: detectProvider()
+      provider: detectProvider(),
+      apm: {},
+      defaultGasPriceFn: () => {
+        return toWei('20', 'gwei')
+      }
     }
     options = Object.assign(defaultOptions, options)
 
@@ -88,16 +117,19 @@ export default class Aragon {
 
     // Set up cache
     this.cache = new Cache(daoAddress)
+
+    this.defaultGasPriceFn = options.defaultGasPriceFn
   }
 
   /**
    * Initialise the wrapper.
    *
-   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {Object} [options] Options
+   * @param {Object} [options.accounts] `initAccount()` options (see below)
    * @return {Promise<void>}
    */
-  async init (accounts = null) {
-    await this.initAccounts(accounts)
+  async init (options = {}) {
+    await this.initAccounts(options.accounts)
     await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
@@ -109,21 +141,23 @@ export default class Aragon {
   /**
    * Initialise the accounts observable.
    *
-   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {Object} [options] Options
+   * @param {boolean} [options.fetchFromWeb3] Whether or not accounts should also be fetched from
+   *                                          the provided Web3 instance
+   * @param {Array<string>} [options.providedAccounts] Array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async initAccounts (accounts) {
+  async initAccounts ({ fetchFromWeb3, providedAccounts = [] } = {}) {
     this.accounts = new ReplaySubject(1)
-
-    if (accounts === null) {
-      accounts = await this.web3.eth.getAccounts()
-    }
+    const accounts = fetchFromWeb3
+      ? providedAccounts.concat(await this.web3.eth.getAccounts())
+      : providedAccounts
 
     this.setAccounts(accounts)
   }
 
   /**
-   * Initialise the ACL.
+   * Initialise the ACL (Access Control List).
    *
    * @return {Promise<void>}
    */
@@ -132,26 +166,60 @@ export default class Aragon {
     const aclAddress = await this.kernelProxy.call('acl')
     this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
 
+    const SET_PERMISSION_EVENT = 'SetPermission'
+    const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
+
+    const aclObservables = [
+      SET_PERMISSION_EVENT,
+      CHANGE_PERMISSION_MANAGER_EVENT
+    ].map(event =>
+      this.aclProxy.events(event)
+    )
+
     // Set up permissions observable
-    this.permissions = this.aclProxy.events('SetPermission')
-      .pluck('returnValues')
-      .scan((permissions, event) => {
-        const currentPermissionsForRole = dotprop.get(
-          permissions,
-          `${event.app}.${event.role}`,
-          []
-        )
 
-        const newPermissionsForRole = event.allowed
-          ? currentPermissionsForRole.concat(event.entity)
-          : currentPermissionsForRole.filter((entity) => entity !== event.entity)
+    // Permissions Object:
+    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
+    this.permissions = Observable.merge(...aclObservables)
+      // Keep track of all the types of events that have been processed
+      .scan(([ permissions, eventSet ], event) => {
+        const eventData = event.returnValues
 
-        return dotprop.set(
-          permissions,
-          `${event.app}.${event.role}`,
-          newPermissionsForRole
-        )
-      }, {})
+        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+        const appPermissions = permissions[eventData.app] || {}
+
+        if (event.event === SET_PERMISSION_EVENT) {
+          const key = `${eventData.role}.allowedEntities`
+
+          // Converts to and from a set to avoid duplicated entities
+          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
+
+          if (eventData.allowed) {
+            permissionsForRole.add(eventData.entity)
+          } else {
+            permissionsForRole.delete(eventData.entity)
+          }
+
+          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
+        }
+
+        if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
+          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
+        }
+
+        permissions[eventData.app] = appPermissions
+        return [permissions, eventSet.add(event.event)]
+      }, [makeAddressMapProxy({}), new Set()])
+      // Skip until we have received events from all event subscriptions
+      // Note that this is safe as the ACL will always have to emit both
+      // ChangePermissionManager and SetPermission events every time a
+      // permission is created
+      .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
+      .map(([ permissions ]) => permissions)
+      // Throttle so it only continues after 30ms without new values
+      // Avoids DDOSing subscribers as during initialization there may be
+      // hundreds of events processed in a short timespan
+      .debounceTime(30)
       .publishReplay(1)
     this.permissions.connect()
   }
@@ -163,10 +231,18 @@ export default class Aragon {
    *         The address of the proxy to get metadata from
    * @return {Promise<Object>}
    */
-  getAppProxyValues (proxyAddress) {
+  async getAppProxyValues (proxyAddress) {
+    // This function caches information about the AppProxy, as it is called for
+    // all the apps everytime a permission changes and this data won't change
+    // once it's fetched
+    const cachedValue = appProxyValuesCache[proxyAddress]
+    if (cachedValue && cachedValue.kernelAddress && cachedValue.appId && cachedValue.codeAddress) {
+      return cachedValue
+    }
+
     const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
-    return Promise.all([
+    const appProxyValues = await Promise.all([
       appProxy.call('kernel').catch(() => null),
       appProxy.call('appId').catch(() => null),
       appProxy
@@ -184,6 +260,10 @@ export default class Aragon {
       codeAddress: values[2],
       isForwarder: values[3]
     }))
+
+    appProxyValuesCache[proxyAddress] = appProxyValues
+
+    return appProxyValues
   }
 
   /**
@@ -203,7 +283,6 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // TODO: Only includes apps in the namespace `keccak256("app")`
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
@@ -221,11 +300,28 @@ export default class Aragon {
       )
       .flatMap(
         (apps) => Promise.all(
-          apps.map(async (app) => Object.assign(
-            app,
-            await this.apm.getLatestVersionForContract(app.appId, app.codeAddress)
-              .catch(() => ({}))
-          ))
+          apps.map(async (app) => {
+            if (!app.appId || !app.codeAddress) {
+              return app
+            }
+
+            const cacheKey = `${app.appId}.${app.codeAddress}`
+            const cachedAppInfo = dotprop.get(appInfoCache, cacheKey)
+
+            const appInfo =
+              cachedAppInfo ||
+              getAragonOsInternalAppInfo(app.appId) ||
+              (await this.apm
+                .getLatestVersionForContract(app.appId, app.codeAddress)
+                // Just silence any errors
+                .catch(() => {}))
+
+            if (!cachedAppInfo && appInfo) {
+              dotprop.set(appInfoCache, cacheKey, appInfo)
+            }
+
+            return Object.assign(app, appInfo)
+          })
         )
       )
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
@@ -368,7 +464,7 @@ export default class Aragon {
         newNotifications[notificationIndex] = {
           ...notifications[notificationIndex],
           read: true,
-          acknowledge: () => {}
+          acknowledge: () => { }
         }
         return newNotifications
       }
@@ -419,10 +515,11 @@ export default class Aragon {
 
     // Get the application proxy
     // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const proxy = this.appsWithoutIdentifiers
+    const proxy$ = this.appsWithoutIdentifiers
       .map((apps) => apps.find(
         (app) => addressesEqual(app.proxyAddress, proxyAddress))
       )
+      // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
       .map(
         (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
       )
@@ -430,9 +527,13 @@ export default class Aragon {
     // Wrap requests with the application proxy
     const request$ = Observable.combineLatest(
       messenger.requests(),
-      proxy,
+      proxy$,
       (request, proxy) => ({ request, proxy, wrapper: this })
     )
+      // Use the same request$ result in each handler
+      // Turns request$ into a subject
+      .publishReplay(1)
+    request$.connect()
 
     // Register request handlers
     const shutdown = handlers.combineRequestHandlers(
@@ -481,6 +582,49 @@ export default class Aragon {
     return this.accounts
       .take(1)
       .toPromise()
+  }
+
+  /**
+   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
+   * @return {Promise<string>} transaction hash
+   */
+  performTransactionPath (transactionPath) {
+    return new Promise((resolve, reject) => {
+      this.transactions.next({
+        transaction: transactionPath[0],
+        path: transactionPath,
+        accept (transactionHash) {
+          resolve(transactionHash)
+        },
+        reject (err) {
+          reject(err || new Error('The transaction was not signed'))
+        }
+      })
+    })
+  }
+
+  /**
+   * Performs an action on the ACL using transaction pathing
+   *
+   * @param {string} method
+   * @param {Array<*>} params
+   * @return {Promise<string>} transaction hash
+   */
+  async performACLIntent (method, params) {
+    const path = await this.getACLTransactionPath(method, params)
+    return this.performTransactionPath(path)
+  }
+
+  /**
+   * Looks for app with the provided proxyAddress and returns its app object if found
+   *
+   * @param {string} proxyAddress
+   * @return {Promise<Object>} The app object
+   */
+  getApp (proxyAddress) {
+    return this.apps.map(
+      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+    ).take(1).toPromise()
   }
 
   /**
@@ -537,9 +681,10 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
-   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async getTransactionPath (destination, methodName, params) {
+  async getTransactionPath (destination, methodName, params, finalForwarder) {
     const accounts = await this.getAccounts()
 
     for (let account of accounts) {
@@ -547,7 +692,8 @@ export default class Aragon {
         account,
         destination,
         methodName,
-        params
+        params,
+        finalForwarder
       )
 
       if (path.length > 0) {
@@ -558,11 +704,78 @@ export default class Aragon {
     return []
   }
 
-  async describeTransactionPath (path) {
+  /**
+   * Get the permission manager for an `app`'s and `role`.
+   *
+   * @param {string} appAddress
+   * @param {string} roleHash
+   * @return {Promise<string>} The permission manager
+   */
+  async getPermissionManager (appAddress, roleHash) {
+    const permissions = await this.permissions.take(1).toPromise()
+    const appPermissions = permissions[appAddress]
+
+    return dotprop.get(appPermissions, `${roleHash}.manager`)
+  }
+
+  /**
+   * Calculates transaction path for performing a method on the ACL
+   *
+   * @param {string} method
+   * @param {Array<*>} params
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
+   */
+  async getACLTransactionPath (method, params) {
+    const aclAddr = this.aclProxy.address
+
+    const acl = await this.getApp(aclAddr)
+
+    const functionArtifact = acl.functions.find(
+      ({ sig }) => sig.split('(')[0] === method
+    )
+
+    if (!functionArtifact) {
+      throw new Error(`Method ${method} not found on ACL artifact`)
+    }
+
+    if (functionArtifact.roles && functionArtifact.roles.length !== 0) {
+      // createPermission can be done with regular transaction pathing (it has a regular ACL role)
+      return this.getTransactionPath(aclAddr, method, params)
+    } else {
+      // All other ACL functions don't have a role, the manager needs to be provided to aid transaction pathing
+
+      // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
+      const methodABI = acl.abi.find(
+        (item) => item.name === method && item.type === 'function'
+      )
+
+      if (!methodABI) {
+        throw new Error(`Method ${method} not found on ACL ABI`)
+      }
+
+      const inputNames = methodABI.inputs.map((input) => input.name)
+      const appIndex = inputNames.indexOf('_app')
+      const roleIndex = inputNames.indexOf('_role')
+
+      if (appIndex === -1 || roleIndex === -1) {
+        throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
+      }
+
+      const manager = await this.getPermissionManager(params[appIndex], params[roleIndex])
+
+      return this.getTransactionPath(aclAddr, method, params, manager)
+    }
+  }
+
+  /**
+   * Use radspec to create a human-readable description for each transaction in the given `path`
+   *
+   * @param  {Array<Object>} path
+   * @return {Promise<Array<Object>>} The given `path`, with descriptions included at each step
+   */
+  describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
-      const app = await this.apps.map(
-        (apps) => apps.find((app) => addressesEqual(app.proxyAddress, step.to))
-      ).take(1).toPromise()
+      const app = await this.getApp(step.to)
 
       // No app artifact
       if (!app) return step
@@ -584,23 +797,70 @@ export default class Aragon {
       // No expression
       if (!expression) return step
       return Object.assign(step, {
-        description: await radspec.evaluate(expression, {
-          abi: app.abi,
-          transaction: step
-        }, this.web3.currentProvider),
+        description: await radspec.evaluate(
+          expression,
+          {
+            abi: app.abi,
+            transaction: step
+          },
+          { ethNode: this.web3.currentProvider }
+        ),
         name: app.name,
         identifier: app.identifier
       })
     }))
   }
 
-  async canForward (forwarder, sender, script) {
+  /**
+   * Whether the `sender` can use the `forwarder` to invoke `script`.
+   *
+   * @param  {string} forwarder
+   * @param  {string} sender
+   * @param  {string} script
+   * @return {Promise<bool>}
+   */
+  canForward (forwarder, sender, script) {
     const canForward = new this.web3.eth.Contract(
-      require('../abi/aragon/Forwarder.json'),
+      getAbi('aragon/Forwarder'),
       forwarder
     ).methods['canForward']
 
     return canForward(sender, script).call().catch(() => false)
+  }
+
+  getDefaultGasPrice (gasLimit) {
+    return this.defaultGasPriceFn(gasLimit)
+  }
+
+  /**
+   * Calculates and applies the gas limit and gas price for a transaction
+   *
+   * @param  {Object} transaction
+   * @param  {bool} isForwarding
+   * @return {Promise<Object>} The transaction with the gas limit and gas price added.
+   *                           If the transaction fails from the estimateGas check, the promise will
+   *                           be rejected with the error.
+   */
+  async applyTransactionGas (transaction, isForwarding = false) {
+    // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
+    // so this is a hack to make sure checksums are not destroyed
+    // Also, at the same time it's a hack for checking if the call will revert,
+    // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
+    // So yeah...
+    const estimatedGasLimit = await this.web3.eth.estimateGas({ ...transaction, gas: undefined })
+    const recommendedGasLimit = await getRecommendedGasLimit(this.web3, estimatedGasLimit)
+
+    // If the gas provided in the intent is lower than the estimated gas, use the estimation
+    // when forwarding as it requires more gas and otherwise the transaction would go out of gas
+    if (!transaction.gas || (isForwarding && transaction.gas < recommendedGasLimit)) {
+      transaction.gas = recommendedGasLimit
+    }
+
+    if (!transaction.gasPrice) {
+      transaction.gasPrice = await this.getDefaultGasPrice(transaction.gas)
+    }
+
+    return transaction
   }
 
   /**
@@ -611,20 +871,15 @@ export default class Aragon {
    * @param  {string} destination
    * @param  {string} methodName
    * @param  {Array<*>} params
-   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action.
+   *                  Needed for actions that aren't in the ACL but whose execution depends on other factors
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async calculateTransactionPath (sender, destination, methodName, params) {
-    const minGasPrice = this.web3.utils.toWei('20', 'gwei')
+  async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
+    const finalForwarderProvided = isAddress(finalForwarder)
 
     const permissions = await this.permissions.take(1).toPromise()
-    const app = await this.apps.map(
-      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, destination))
-    ).take(1).toPromise()
-    let forwarders = await this.forwarders.take(1).toPromise().then(
-      (forwarders) => forwarders.map(
-        (forwarder) => forwarder.proxyAddress
-      )
-    )
+    const app = await this.getApp(destination)
 
     if (!app) {
       throw new Error(`No artifact found for ${destination}`)
@@ -635,74 +890,114 @@ export default class Aragon {
       throw new Error(`No ABI specified in artifact for ${destination}`)
     }
 
-    const methods = app.functions
-    if (!methods) {
-      throw new Error(`No functions specified in artifact for ${destination}`)
+    const methodABI = app.abi.find(
+      (method) => method.name === methodName
+    )
+    if (!methodABI) {
+      throw new Error(`${methodName} not found on ABI for ${destination}`)
     }
 
-    // Find method description from the function signatures
-    const method = methods.find(
-      (method) => method.sig.split('(')[0] === methodName
-    )
-    if (!method) {
-      throw new Error(`No method named ${methodName} on ${destination}`)
+    let transactionOptions = {}
+
+    // If an extra parameter has been provided, it is the transaction options if it is an object
+    if (methodABI.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
+      const options = params.pop()
+      transactionOptions = { ...transactionOptions, ...options }
     }
 
     // The direct transaction we eventually want to perform
     const directTransaction = {
+      ...transactionOptions, // Options are overwriten by the values below
       from: sender,
       to: destination,
-      data: this.web3.eth.abi.encodeFunctionCall(
-        app.abi.find(
-          (method) => method.name === methodName
-        ),
-        params
-      ),
-      gasPrice: minGasPrice
+      data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
     }
 
-    // If the method has no ACL requirements, we assume we
-    // can perform the action directly
-    if (method.roles.length === 0) {
-      return [directTransaction]
+    let appsWithPermissionForMethod = []
+
+    // Only try to perform direct transaction if no final forwarder is provided or
+    // if the final forwarder is the sender
+    if (!finalForwarderProvided || finalForwarder === sender) {
+      const methods = app.functions
+
+      if (!methods) {
+        throw new Error(`No functions specified in artifact for ${destination}`)
+      }
+
+      // Find method description from the function signatures
+      const method = methods.find(
+        (method) => method.sig.split('(')[0] === methodName
+      )
+      if (!method) {
+        throw new Error(`No method named ${methodName} on ${destination}`)
+      }
+
+      // If the method has no ACL requirements, we assume we
+      // can perform the action directly
+      if (method.roles.length === 0) {
+        return [directTransaction]
+      }
+
+      // TODO: Support multiple needed roles?
+      const roleSig = app.roles.find(
+        (role) => role.id === method.roles[0]
+      ).bytes
+
+      const permissionsForDestination = permissions[destination]
+      appsWithPermissionForMethod = dotprop.get(
+        permissionsForDestination,
+        `${roleSig}.allowedEntities`,
+        []
+      )
+
+      // No one has access
+      if (appsWithPermissionForMethod.length === 0) {
+        return []
+      }
+
+      try {
+        // `applyTransactionGas` can throw if the transaction will fail
+        // if that happens, we will try to find a transaction path through a forwarder
+        return [await this.applyTransactionGas(directTransaction)]
+      } catch (_) { }
     }
 
-    // TODO: Support multiple needed roles?
-    const roleSig = app.roles.find(
-      (role) => role.id === method.roles[0]
-    ).bytes
-
-    const permissionsForMethod = dotprop.get(
-      permissions,
-      `${destination}.${roleSig}`,
-      []
+    const forwarders = await this.forwarders.take(1).toPromise().then(
+      (forwarders) => forwarders.map(
+        (forwarder) => forwarder.proxyAddress
+      )
     )
 
-    // No one has access
-    if (permissionsForMethod.length === 0) {
-      return []
+    let forwardersWithPermission
+
+    if (finalForwarderProvided) {
+      if (!includesAddress(forwarders, finalForwarder)) {
+        return []
+      }
+
+      forwardersWithPermission = [finalForwarder]
+    } else {
+      // Find forwarders with permission to perform the action
+      forwardersWithPermission = forwarders
+        .filter(
+          (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
+        )
     }
 
-    // Check if we have direct access
-    try {
-      // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
-      // so this is a hack to make sure checksums are not destroyed
-      // Also, at the same time it's a hack for checking if the call will revert,
-      // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
-      // So yeah...
-      await this.web3.eth.estimateGas(
-        Object.assign({}, directTransaction)
-      )
+    return this.calculateForwardingPath(sender, destination, directTransaction, forwardersWithPermission)
+  }
 
-      return [directTransaction]
-    } catch (_) {}
-
-    // Find forwarders with permission to perform the action
-    const forwardersWithPermission = forwarders
-      .filter(
-        (forwarder) => permissionsForMethod.includes(forwarder)
-      )
-
+  /**
+   * Calculate the forwarding path for a transaction to `destination`
+   * that invokes `directTransaction`.
+   *
+   * @param  {string} sender
+   * @param  {string} destination
+   * @param  {Object} directTransaction
+   * @param  {string} [forwardersWithPermission]
+   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   */
+  async calculateForwardingPath (sender, destination, directTransaction, forwardersWithPermission) {
     // No forwarders can perform the requested action
     if (forwardersWithPermission.length === 0) {
       return []
@@ -711,43 +1006,49 @@ export default class Aragon {
     // TODO: No need for contract?
     // A helper method to create a transaction that calls `forward` on a forwarder with `script`
     const forwardMethod = new this.web3.eth.Contract(
-      require('../abi/aragon/Forwarder.json')
+      getAbi('aragon/Forwarder')
     ).methods['forward']
 
-    const createForwarderTransaction = (forwarderAddress, script) => ({
-      from: sender,
-      to: forwarderAddress,
-      data: forwardMethod(script).encodeABI(),
-      gasPrice: minGasPrice
-    })
+    const createForwarderTransaction = (forwarderAddress, script) => (
+      {
+        ...directTransaction, // Options are overwriten by the values below
+        from: sender,
+        to: forwarderAddress,
+        data: forwardMethod(script).encodeABI()
+      }
+    )
 
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
-        return [createForwarderTransaction(forwarder, script), directTransaction]
+        const transaction = createForwarderTransaction(forwarder, script)
+        // TODO: recover if applying gas fails here
+        return [await this.applyTransactionGas(transaction, true), directTransaction]
       }
     }
 
     // Get a list of all forwarders (excluding the forwarders with direct permission)
-    forwarders = forwarders
-      .filter(
-        (forwarder) => !forwardersWithPermission.includes(forwarder)
-      )
+    const forwarders = await this.forwarders.take(1).toPromise().then(
+      (forwarders) => forwarders
+        .map((forwarder) => forwarder.proxyAddress)
+        .filter((forwarder) => !includesAddress(forwardersWithPermission, forwarder))
+    )
 
     // Set up the path finding queue
     // The queue takes the form of Array<[Array<EthereumTransaction>, Array<String>]>
     // In other words: it is an array of tuples, where the first index of the tuple
     // is the current path and the second index of the tuple is the
     // queue (a list of unexplored forwarder addresses) for that path
-    const queue = forwardersWithPermission.map(
-      (forwarderWithPermission) => [
-        [createForwarderTransaction(
-          forwarderWithPermission, encodeCallScript([directTransaction])
-        ), directTransaction], forwarders
+    const queue = forwardersWithPermission.map((forwarderWithPermission) => {
+      return [
+        [
+          createForwarderTransaction(forwarderWithPermission, encodeCallScript([directTransaction])),
+          directTransaction
+        ], forwarders
       ]
-    )
+    })
 
     // Find the shortest path
     // TODO(onbjerg): Should we find and return multiple paths?
@@ -767,7 +1068,10 @@ export default class Aragon {
         if (await this.canForward(forwarder, sender, script)) {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
-          return [createForwarderTransaction(forwarder, script), ...path]
+          const transaction = createForwarderTransaction(forwarder, script)
+          // `applyTransactionGas` is only done for the transaction that will be executed
+          // TODO: recover if applying gas fails here
+          return [await this.applyTransactionGas(transaction, true), ...path]
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a

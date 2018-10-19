@@ -23,8 +23,7 @@ export default class WindowMessage extends Provider {
    */
   messages () {
     return Observable.fromEvent(window, 'message', false)
-      .filter((event) =>
-        event.source === this.target)
+      .filter(event => event.source === this.target)
       .pluck('data')
   }
 

@@ -46,15 +46,27 @@ The app communicates with the wrapper using a messaging provider. The default pr
 
 To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
 
-For example, to invoke `increment` on your app's smart contract:
+For example, to execute the `increment` function in your app's smart contract:
 
 ```js
 const app = new AragonApp()
 
 // Sends an intent to the wrapper that we wish to invoke `increment` on our
 // app's smart contract
-app.increment()
+app.increment(1)
 ```
+
+You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
+
+```js
+app.increment(1, { gas: 200000, gasPrice: 80000000 })
+```
+
+Some caveats to customizing transaction parameters:
+
+- `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
+- `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
+
 
 **Parameters**
 
@@ -230,6 +242,7 @@ Perform a read-only call on the app's smart contract.
 
 1. `method` (`String`): The name of the method to call.
 2. `...params` (*arguments*): An optional variadic number of parameters.
+3. `options` (`Object`): Call options (Optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details. 
 
 **Returns**
 

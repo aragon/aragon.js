@@ -1,7 +1,7 @@
 {
   "presets": [
     [
-      "env",
+      "@babel/preset-env",
       {
         "targets": {
           "browsers": [
@@ -13,12 +13,14 @@
         },
         "useBuiltIns": false
       }
-    ],
-    "stage-2"
+    ]
   ],
   "plugins": [
-    "transform-flow-strip-types",
-    "transform-runtime"
+    "@babel/plugin-proposal-class-properties",
+    "@babel/plugin-proposal-object-rest-spread",
+    "@babel/transform-flow-strip-types",
+    "@babel/transform-runtime",
+    ["inline-json-import", { "extensions": [".json"] }]
   ],
   "env": {
     "production": {
