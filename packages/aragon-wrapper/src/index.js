@@ -53,8 +53,8 @@ export const setupTemplates = (
   return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
 }
 
-// Cache for app proxy values
-const appProxyValuesCache = makeAddressMapProxy({})
+// Cache for proxy values
+const proxyValuesCache = makeAddressMapProxy({})
 
 // Cache for app info, usually fetched from apm
 const appInfoCache = {}
@@ -222,46 +222,61 @@ export default class Aragon {
    *         The address of the proxy to get metadata from
    * @return {Promise<Object>}
    */
-  async getAppProxyValues (proxyAddress) {
-    if (addressesEqual(proxyAddress, this.kernelProxy.address)) {
-      return Promise.resolve({
-        appId: 'kernel',
-        proxyAddress
-      })
-    }
-
+  async getProxyValues (proxyAddress) {
     // This function caches information about the AppProxy, as it is called for
     // all the apps everytime a permission changes and this data won't change
     // once it's fetched
-    const cachedValue = appProxyValuesCache[proxyAddress]
+    const cachedValue = proxyValuesCache[proxyAddress]
     if (cachedValue && cachedValue.kernelAddress && cachedValue.appId && cachedValue.codeAddress) {
       return cachedValue
     }
 
-    const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
+    let proxyValues
 
-    const appProxyValues = await Promise.all([
-      appProxy.call('kernel').catch(() => null),
-      appProxy.call('appId').catch(() => null),
-      appProxy
-        .call('implementation')
-        .catch(() => appProxy
-          // Fallback to old non-ERC897 proxy implementation
-          .call('getCode')
-          .catch(() => null)
-        ),
-      appProxy.call('isForwarder').catch(() => false)
-    ]).then((values) => ({
-      proxyAddress,
-      kernelAddress: values[0],
-      appId: values[1],
-      codeAddress: values[2],
-      isForwarder: values[3]
-    }))
+    if (addressesEqual(proxyAddress, this.kernelProxy.address)) {
+      const kernelProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
-    appProxyValuesCache[proxyAddress] = appProxyValues
+      proxyValues = await Promise.all([
+        // Use Kernel ABI
+        this.kernelProxy.call('KERNEL_APP_ID').catch(() => null),
+        // Use ERC897 proxy ABI
+        kernelProxy
+          .call('implementation')
+          .catch(() => kernelProxy
+            // Fallback to old non-ERC897 proxy implementation
+            .call('getCode')
+            .catch(() => null)
+          )
+      ]).then((values) => ({
+        proxyAddress,
+        appId: values[0],
+        codeAddress: values[1]
+      }))
+    } else {
+      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
-    return appProxyValues
+      proxyValues = await Promise.all([
+        appProxy.call('kernel').catch(() => null),
+        appProxy.call('appId').catch(() => null),
+        appProxy
+          .call('implementation')
+          .catch(() => appProxy
+            // Fallback to old non-ERC897 proxy implementation
+            .call('getCode')
+            .catch(() => null)
+          ),
+        appProxy.call('isForwarder').catch(() => false)
+      ]).then((values) => ({
+        proxyAddress,
+        kernelAddress: values[0],
+        appId: values[1],
+        codeAddress: values[2],
+        isForwarder: values[3]
+      }))
+    }
+
+    proxyValuesCache[proxyAddress] = proxyValues
+    return proxyValues
   }
 
   /**
@@ -285,11 +300,19 @@ export default class Aragon {
     this.identifiers = new Subject()
     this.appsWithoutIdentifiers = this.permissions
       .map(Object.keys)
+      // Add Kernel as the first "app"
+      .map((addresses) => {
+        const appsWithoutKernel =
+          addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
+        return [this.kernelProxy.address].concat(appsWithoutKernel)
+      })
+      // Get proxy values
       .switchMap(
         (appAddresses) => Promise.all(
-          appAddresses.map((app) => this.getAppProxyValues(app))
+          appAddresses.map((app) => this.getProxyValues(app))
         )
       )
+      // Get artifact info
       .flatMap(
         (apps) => Promise.all(
           apps.map(async (app) => {

@@ -139,95 +139,111 @@ test('should init the ACL correctly', async (t) => {
   })
 })
 
-test('should init the apps correctly', async (t) => {
-  t.plan(2)
-  // arrange
-  const instance = new Aragon()
-  instance.permissions = Observable.create((observer) => {
-    observer.next({
-      '0x123': 'some permissions',
+const kernelAddress = '0x123'
+const appInitTestCases = [
+  [
+    'with kernel in permissions',
+    {
+      [kernelAddress]: 'some permissions',
       '0x456': 'some permissions',
       '0x789': 'some permissions'
+    }
+  ],
+  [
+    'without kernel in permissions',
+    {
+      '0x456': 'some permissions',
+      '0x789': 'some permissions'
+    }
+  ]
+]
+appInitTestCases.forEach(([ testName, permissionsObj ]) => {
+  test(`should init the apps correctly - ${testName}`, async (t) => {
+    t.plan(2)
+    // arrange
+    const instance = new Aragon()
+    instance.permissions = Observable.create((observer) => {
+      observer.next(permissionsObj)
     })
-  })
-  const appIds = {
-    '0x123': 'kernel',
-    '0x456': 'counterApp',
-    '0x789': 'votingApp'
-  }
-  aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds['0x123']).returns({
-    abi: 'abi for kernel',
-    isAragonOsInternalApp: true,
-  })
-  instance.kernelProxy = { address: '0x123' }
-  instance.getAppProxyValues = async (appAddress) => ({
-    appId: appIds[appAddress],
-    codeAddress: '0x',
-    kernelAddress: '0x123',
-    proxyAddress: appAddress
-  })
-  instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
-    abi: `abi for ${appId}`
-  })
-  // act
-  await instance.initApps()
-  // assert
-  instance.appsWithoutIdentifiers.subscribe(value => {
-    t.deepEqual(value, [
-      {
-        abi: 'abi for kernel',
-        appId: 'kernel',
-        codeAddress: '0x',
-        isAragonOsInternalApp: true,
-        kernelAddress: '0x123',
-        proxyAddress: '0x123'
-      }, {
-        abi: 'abi for counterApp',
-        appId: 'counterApp',
-        codeAddress: '0x',
-        kernelAddress: '0x123',
-        proxyAddress: '0x456'
-      }, {
-        abi: 'abi for votingApp',
-        appId: 'votingApp',
-        codeAddress: '0x',
-        kernelAddress: '0x123',
-        proxyAddress: '0x789'
-      }
-    ])
-  })
+    const appIds = {
+      '0x123': 'kernel',
+      '0x456': 'counterApp',
+      '0x789': 'votingApp'
+    }
+    aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
+      abi: 'abi for kernel',
+      isAragonOsInternalApp: true
+    })
+    instance.kernelProxy = { address: '0x123' }
+    instance.getProxyValues = async (appAddress) => ({
+      appId: appIds[appAddress],
+      codeAddress: '0x',
+      kernelAddress: '0x123',
+      proxyAddress: appAddress
+    })
+    instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
+      abi: `abi for ${appId}`
+    })
+    // act
+    await instance.initApps()
+    // assert
+    instance.appsWithoutIdentifiers.subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0x',
+          isAragonOsInternalApp: true,
+          kernelAddress: '0x123',
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0x',
+          kernelAddress: '0x123',
+          proxyAddress: '0x456'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0x',
+          kernelAddress: '0x123',
+          proxyAddress: '0x789'
+        }
+      ])
+    })
 
-  // hack: wait 200ms for the subscribe callback above to be called,
-  // otherwise it will emit with the identifier set below
-  await new Promise(resolve => setTimeout(resolve, 200))
+    // hack: wait 200ms for the subscribe callback above to be called,
+    // otherwise it will emit with the identifier set below
+    await new Promise(resolve => setTimeout(resolve, 200))
 
-  // act
-  await instance.setAppIdentifier('0x456', 'CNT')
-  // assert
-  instance.apps.subscribe(value => {
-    t.deepEqual(value, [
-      {
-        abi: 'abi for kernel',
-        appId: 'kernel',
-        codeAddress: '0x',
-        isAragonOsInternalApp: true,
-        kernelAddress: '0x123',
-        proxyAddress: '0x123'
-      }, {
-        abi: 'abi for counterApp',
-        appId: 'counterApp',
-        codeAddress: '0x',
-        kernelAddress: '0x123',
-        proxyAddress: '0x456',
-        identifier: 'CNT'
-      }, {
-        abi: 'abi for votingApp',
-        appId: 'votingApp',
-        codeAddress: '0x',
-        kernelAddress: '0x123',
-        proxyAddress: '0x789'
-      }
-    ])
+    // act
+    await instance.setAppIdentifier('0x456', 'CNT')
+    // assert
+    instance.apps.subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0x',
+          isAragonOsInternalApp: true,
+          kernelAddress: '0x123',
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0x',
+          kernelAddress: '0x123',
+          proxyAddress: '0x456',
+          identifier: 'CNT'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0x',
+          kernelAddress: '0x123',
+          proxyAddress: '0x789'
+        }
+      ])
+    })
   })
 })
 

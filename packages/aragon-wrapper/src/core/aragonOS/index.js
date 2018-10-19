@@ -10,7 +10,7 @@ const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
 const APP_MAPPINGS = {
   [aragonpmAppId('acl')]: 'ACL',
   [aragonpmAppId('evmreg')]: 'EVM Script Registry',
-  kernel: 'Kernel',
+  [aragonpmAppId('kernel')]: 'Kernel',
 
   // TODO: Remove this when 0.5 Rinkeby DAOs are deprecated
   [oldWrongAppId('acl')]: 'ACL',
