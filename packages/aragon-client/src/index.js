@@ -4,7 +4,7 @@ import { empty } from 'rxjs/observable/empty'
 import { fromPromise } from 'rxjs/observable/fromPromise'
 import { merge } from 'rxjs/observable/merge'
 
-const AppProxyHandler = {
+export const AppProxyHandler = {
   get (target, name, receiver) {
     if (name in target) {
       return target[name]
@@ -22,7 +22,7 @@ const AppProxyHandler = {
 /**
  * A JavaScript proxy that wraps RPC calls to the wrapper.
  */
-class AppProxy {
+export class AppProxy {
   constructor (provider) {
     this.rpc = new Messenger(provider)
   }
@@ -141,15 +141,6 @@ class AppProxy {
       ['get', 'state']
     ).pluck('result')
   }
-
-  /**
-   * A state reducer a lá Redux.
-   *
-   * @callback reducer
-   * @param {*} state
-   * @param {Object} event
-   * @return {Object} The next state
-   */
 
   /**
    * Listens for events, passes them through `reducer`, caches the resulting state
@@ -292,7 +283,7 @@ class AppProxy {
  * @param {Object} [provider=MessagePortMessage] An RPC provider (will default to using the MessagePort API)
  */
 export default class AragonApp {
-  constructor (provider =  new providers.MessagePortMessage()) {
+  constructor (provider = new providers.MessagePortMessage()) {
     return new Proxy(
       new AppProxy(provider),
       AppProxyHandler

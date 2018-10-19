@@ -1,13 +1,21 @@
-// @flow
 import abi from 'web3-eth-abi'
 
-type CallScriptAction = {
-  to: string,
-  data: string
-}
-
 export const CALLSCRIPT_ID = '0x00000001'
-export function encodeCallScript (actions: Array<CallScriptAction>): string {
+
+/**
+ * Encode a call script
+ *
+ * ```
+ * CallScriptAction {
+ *   to: string;
+ *   data: string;
+ * }
+ * ```
+ *
+ * @param {Array<CallScriptAction>} actions
+ * @returns {string}
+ */
+export function encodeCallScript (actions) {
   return actions.reduce((script, { to, data }) => {
     const address = abi.encodeParameter('address', to)
     const dataLength = abi.encodeParameter('uint256', (data.length - 2) / 2).toString('hex')
