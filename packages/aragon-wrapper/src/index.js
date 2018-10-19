@@ -82,7 +82,7 @@ const appInfoCache = {}
  * // Initialises the wrapper
  * await aragon.init({
  *   accounts: {
- *     provided: ["0xbeefdead", "0xbeefbeef"]
+ *     providedAccounts: ["0xbeefdead", "0xbeefbeef"]
  *   }
  * })
  */
