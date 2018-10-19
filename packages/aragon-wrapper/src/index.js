@@ -80,7 +80,11 @@ const appInfoCache = {}
  * const aragon = new Aragon('0xdeadbeef')
  *
  * // Initialises the wrapper
- * await aragon.init(["0xbeefdead", "0xbeefbeef"], {fetchAccountsFromWeb3: false}})
+ * await aragon.init({
+ *   accounts: {
+ *     provided: ["0xbeefdead", "0xbeefbeef"]
+ *   }
+ * })
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
@@ -114,13 +118,12 @@ export default class Aragon {
   /**
    * Initialise the wrapper.
    *
-   * @param {Array<string>} [accounts=null] An optional array of accounts that the user controls
-   * @param {Object} [options={fetchAccountsFromWeb3: false}] An optional options object
-   * @param {boolean} options.fetchAccountsFromWeb3 Boolean value that specifies whether or not we should fetch accounts from the Web3 instance
+   * @param {Object} [options] Options
+   * @param {Object} [options.accounts] `initAccount()` options (see below)
    * @return {Promise<void>}
    */
-  async init (accounts = null, options = {fetchAccountsFromWeb3: false}) {
-    await this.initAccounts(accounts, options.fetchAccountsFromWeb3)
+  async init (options = {}) {
+    await this.initAccounts(options.accounts)
     await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
@@ -132,21 +135,19 @@ export default class Aragon {
   /**
    * Initialise the accounts observable.
    *
-   * @param {Array<string>} accounts An array of accounts that the user controls
-   * @param {boolean} fetchAccountsFromWeb3 An optionnal boolean value that specifies whether or not we should fetch accounts from the Web3 instance
+   * @param {Object} [options] Options
+   * @param {boolean} [options.fetchFromWeb3] Whether or not accounts should also be fetched from
+   *                                          the provided Web3 instance
+   * @param {Array<string>} [options.providedAccounts] Array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async initAccounts (accounts, fetchAccountsFromWeb3) {
+  async initAccounts ({ fetchFromWeb3, providedAccounts = [] } = {}) {
     this.accounts = new ReplaySubject(1)
+    const accounts = fetchFromWeb3
+      ? providedAccounts.concat(await this.web3.eth.getAccounts())
+      : providedAccounts
 
-    if (fetchAccountsFromWeb3 === true) {
-      if (accounts != null) 
-        accounts.concat(await this.web3.eth.getAccounts())
-      else 
-        accounts = await this.web3.eth.getAccounts()
-    }
-
-    this.setAccounts(accounts || [])
+    this.setAccounts(accounts)
   }
 
   /**

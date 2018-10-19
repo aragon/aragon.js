@@ -15,7 +15,11 @@
 const aragon = new Aragon('0xdeadbeef')
 
 // Initialises the wrapper
-aragon.init(["0xbeefdead", "0xbeefbeef"], {withAccounts: false}})
+await aragon.init({
+  accounts: {
+    providedAccounts: ["0xbeefdead", "0xbeefbeef"]
+  }
+})
 ```
 
 ## init
@@ -24,11 +28,24 @@ Initialise the wrapper.
 
 ### **Parameters**
 
--   `accounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
-      An optional array of accounts that the user controls
--   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-      An optional options object that contains 'withAccounts' that specifies whether or not we should fetch accounts from the Web3 instance.
-      Ex: ```aragon.init(["0xbeefbeef"], { withAccounts: true })```
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
+      An optional options object for configuring the wrapper.
+    -   `accounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
+          Options object for [`initAccounts()`](#initaccounts)
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
+
+## initAccounts
+
+Initialise user-controlled accounts.
+
+### **Parameters**
+
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
+    -   `fetchFromWeb3` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)**
+          Whether accounts should also be fetched from the Web3 instance provided to the wrapper
+    -   `providedAccounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
+          An array of accounts that the user controls
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
