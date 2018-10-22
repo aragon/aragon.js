@@ -312,6 +312,10 @@ export default class Aragon {
           appAddresses.map((app) => this.getProxyValues(app))
         )
       )
+      .map(
+        (appMetadata) => appMetadata.filter(
+          (app) => this.isApp(app) || addressesEqual(app.proxyAddress, this.kernelProxy.address))
+      )
       // Get artifact info
       .flatMap(
         (apps) => Promise.all(
