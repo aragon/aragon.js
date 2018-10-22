@@ -3,22 +3,57 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Observable } from 'rxjs/Rx'
 
-const messengerConstructorStub = sinon.stub()
-const utilsStub = {
-  makeAddressMapProxy: sinon.fake.returns({}),
-  makeProxy: sinon.stub(),
-  addressesEqual: Object.is
-}
-const Aragon = proxyquire.noCallThru().load('./index', {
-  '@aragon/messenger': messengerConstructorStub,
-  './utils': utilsStub
-}).default
+test.beforeEach(t => {
+  const messengerConstructorStub = sinon.stub()
+  const utilsStub = {
+    makeAddressMapProxy: sinon.fake.returns({}),
+    makeProxy: sinon.stub(),
+    addressesEqual: Object.is
+  }
+  const Aragon = proxyquire.noCallThru().load('./index', {
+    '@aragon/messenger': messengerConstructorStub,
+    './utils': utilsStub
+  }).default
+
+  t.context = {
+    Aragon,
+    messengerConstructorStub,
+    utilsStub
+  }
+})
 
 test.afterEach.always(() => {
   sinon.restore()
 })
 
+test('should throw on init if daoAddress is not a Kernel', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const badDaoAddress = '0xbaddao'
+  const instance = new Aragon(badDaoAddress)
+  // web3 will throw if a bad address ('0x') comes back
+  const kernelProxyCallStub = sinon.stub().withArgs('acl').throws()
+  instance.kernelProxy = {
+    address: badDaoAddress,
+    call: kernelProxyCallStub
+  }
+
+  // act and assert
+  await t.throwsAsync(
+    instance.init(),
+    {
+      instanceOf: Error,
+      message: `Provided daoAddress is not a DAO`
+    }
+  )
+})
+
 test('should use provided accounts', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
   // arrange
   const instance = new Aragon()
   // act
@@ -28,7 +63,10 @@ test('should use provided accounts', async (t) => {
   t.deepEqual(accounts, ['0x00'])
 })
 
-test.only('should get the accounts from web3', async (t) => {
+test('should get the accounts from web3', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
   // arrange
   const instance = new Aragon()
   instance.web3 = {
@@ -44,6 +82,9 @@ test.only('should get the accounts from web3', async (t) => {
 })
 
 test('should not fetch the accounts if not asked', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
   // arrange
   const instance = new Aragon()
   instance.web3 = {
@@ -59,6 +100,8 @@ test('should not fetch the accounts if not asked', async (t) => {
 })
 
 test('should init the ACL correctly', async (t) => {
+  const { Aragon, utilsStub } = t.context
+
   t.plan(1)
   // arrange
   const setPermissionEvents = Observable.create(observer => {
@@ -160,7 +203,58 @@ test('should init the ACL correctly', async (t) => {
   })
 })
 
+test('should init the acl with the default acl fetched from the kernel by default', async (t) => {
+  const { Aragon, utilsStub } = t.context
+
+  t.plan(3)
+  // arrange
+  const instance = new Aragon()
+  const fakeAclAddress = '0x321'
+  const kernelProxyCallStub = sinon.stub().returns(fakeAclAddress)
+  instance.kernelProxy = {
+    call: kernelProxyCallStub
+  }
+  const aclProxyStub = {
+    events: sinon.stub()
+  }
+  utilsStub.makeProxy.reset()
+  utilsStub.makeProxy.returns(aclProxyStub)
+
+  // act
+  await instance.initAcl()
+  // assert
+  t.truthy(kernelProxyCallStub.calledOnce)
+  t.deepEqual(kernelProxyCallStub.firstCall.args, ['acl'])
+  t.is(utilsStub.makeProxy.firstCall.args[0], fakeAclAddress)
+})
+
+test('should init the acl with the provided acl', async (t) => {
+  const { Aragon, utilsStub } = t.context
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  const fakeAclAddress = '0x321'
+  const kernelProxyCallStub = sinon.stub()
+  instance.kernelProxy = {
+    call: kernelProxyCallStub
+  }
+  const aclProxyStub = {
+    events: sinon.stub()
+  }
+  utilsStub.makeProxy.reset()
+  utilsStub.makeProxy.returns(aclProxyStub)
+
+  // act
+  await instance.initAcl({ aclAddress: fakeAclAddress })
+  // assert
+  t.truthy(kernelProxyCallStub.notCalled)
+  t.is(utilsStub.makeProxy.firstCall.args[0], fakeAclAddress)
+})
+
 test('should init the apps correctly', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(2)
   // arrange
   const instance = new Aragon()
@@ -230,6 +324,8 @@ test('should init the apps correctly', async (t) => {
 })
 
 test('should init the forwarders correctly', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(1)
   // arrange
   const instance = new Aragon()
@@ -258,6 +354,8 @@ test('should init the forwarders correctly', async (t) => {
 })
 
 test('should init the notifications correctly', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(7)
   // arrange
   const instance = new Aragon()
@@ -290,6 +388,8 @@ test('should init the notifications correctly', async (t) => {
 })
 
 test('should send notifications correctly', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(12)
   // arrange
   const instance = new Aragon()
@@ -318,6 +418,8 @@ test('should send notifications correctly', async (t) => {
 })
 
 test('should run the app and reply to a request', async (t) => {
+  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
   t.plan(4)
   // arrange
@@ -368,6 +470,8 @@ test('should run the app and reply to a request', async (t) => {
 })
 
 test('should get the app from a proxy address', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(1)
   // arrange
   const instance = new Aragon()
@@ -396,6 +500,8 @@ test('should get the app from a proxy address', async (t) => {
 })
 
 test('should get the permission manager', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(1)
   // arrange
   const instance = new Aragon()
@@ -419,6 +525,8 @@ test('should get the permission manager', async (t) => {
 })
 
 test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
+  const { Aragon } = t.context
+
   t.plan(1)
   // arrange
   const instance = new Aragon()
