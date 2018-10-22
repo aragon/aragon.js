@@ -233,7 +233,7 @@ export default class Aragon {
 
     let proxyValues
 
-    if (addressesEqual(proxyAddress, this.kernelProxy.address)) {
+    if (this.isKernel(proxyAddress)) {
       const kernelProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
 
       proxyValues = await Promise.all([
@@ -286,8 +286,17 @@ export default class Aragon {
    * @return {boolean}
    */
   isApp (app) {
-    return app.kernelAddress &&
-      addressesEqual(app.kernelAddress, this.kernelProxy.address)
+    return app.kernelAddress && this.isKernel(app.kernelAddress)
+  }
+
+  /**
+   * Check if an address is the kernel.
+   *
+   * @param  {string}  address
+   * @return {boolean}
+   */
+  isKernel (address) {
+    return addressesEqual(address, this.kernelProxy.address)
   }
 
   /**
@@ -302,8 +311,7 @@ export default class Aragon {
       .map(Object.keys)
       // Add Kernel as the first "app"
       .map((addresses) => {
-        const appsWithoutKernel =
-          addresses.filter((address) => !addressesEqual(address, this.kernelProxy.address))
+        const appsWithoutKernel = addresses.filter((address) => !this.isKernel(address))
         return [this.kernelProxy.address].concat(appsWithoutKernel)
       })
       // Get proxy values
@@ -314,7 +322,7 @@ export default class Aragon {
       )
       .map(
         (appMetadata) => appMetadata.filter(
-          (app) => this.isApp(app) || addressesEqual(app.proxyAddress, this.kernelProxy.address))
+          (app) => this.isApp(app) || this.isKernel(app.proxyAddress))
       )
       // Get artifact info
       .flatMap(
