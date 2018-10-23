@@ -35,6 +35,8 @@ Initialise the wrapper.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
+Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/dev/contracts/kernel/Kernel.sol) instance
+
 ## initAccounts
 
 Initialise user-controlled accounts.
@@ -52,6 +54,12 @@ Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/
 ## initAcl
 
 Initialise the ACL.
+
+### **Parameters**
+
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
+    -   `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
+          Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/dev/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 

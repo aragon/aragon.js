@@ -68,7 +68,7 @@ const appInfoCache = {}
  *        Wrapper options.
  * @param {*} [options.provider=ws://rinkeby.aragon.network:8546]
  *        The Web3 provider to use for blockchain communication
- * @param {String} [options.ensRegistryAddress=null]
+ * @param {string} [options.ensRegistryAddress=null]
  *        The address of the ENS registry
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
@@ -120,12 +120,24 @@ export default class Aragon {
    *
    * @param {Object} [options] Options
    * @param {Object} [options.accounts] `initAccount()` options (see below)
+   * @param {Object} [options.acl] `initACL()` options (see below)
    * @return {Promise<void>}
+   * @throws {Error} Will throw an error if the `daoAddress` is detected to not be a Kernel instance
    */
   async init (options = {}) {
+    let aclAddress
+
+    try {
+      // Check if address is kernel
+      // web3 throws if it's an empty address ('0x')
+      aclAddress = await this.kernelProxy.call('acl')
+    } catch (_) {
+      throw Error(`Provided daoAddress is not a DAO`)
+    }
+
     await this.initAccounts(options.accounts)
     await this.kernelProxy.updateInitializationBlock()
-    await this.initAcl()
+    await this.initAcl(Object.assign({ aclAddress }, options.acl))
     this.initApps()
     this.initForwarders()
     this.initNotifications()
@@ -155,9 +167,12 @@ export default class Aragon {
    *
    * @return {Promise<void>}
    */
-  async initAcl () {
+  async initAcl ({ aclAddress } = {}) {
+    if (!aclAddress) {
+      aclAddress = await this.kernelProxy.call('acl')
+    }
+
     // Set up ACL proxy
-    const aclAddress = await this.kernelProxy.call('acl')
     this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
 
     const SET_PERMISSION_EVENT = 'SetPermission'
