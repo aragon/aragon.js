@@ -135,11 +135,12 @@ export default class Aragon {
       throw Error(`Provided daoAddress is not a DAO`)
     }
 
-    await this.initAccounts(options.accounts)
     await this.kernelProxy.updateInitializationBlock()
+    await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
     this.initApps()
     this.initForwarders()
+    this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
   }
@@ -236,8 +237,7 @@ export default class Aragon {
   /**
    * Get proxy metadata (`appId`, address of the kernel, ...).
    *
-   * @param  {string} proxyAddress
-   *         The address of the proxy to get metadata from
+   * @param  {string} proxyAddress The address of the proxy to get metadata from
    * @return {Promise<Object>}
    */
   async getProxyValues (proxyAddress) {
@@ -424,6 +424,19 @@ export default class Aragon {
   }
 
   /**
+   * Initialise the network observable.
+   *
+   * @return {Promise<void>}
+   */
+  async initNetwork () {
+    this.network = new ReplaySubject(1)
+    this.network.next({
+      id: await this.web3.eth.net.getId(),
+      type: await this.web3.eth.net.getNetworkType()
+    })
+  }
+
+  /**
    * Initialise the notifications observable.
    *
    * @return {void}
@@ -584,6 +597,7 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'events', handlers.events),
       handlers.createRequestHandler(request$, 'intent', handlers.intent),
       handlers.createRequestHandler(request$, 'call', handlers.call),
+      handlers.createRequestHandler(request$, 'network', handlers.network),
       handlers.createRequestHandler(request$, 'notification', handlers.notifications),
       handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
       handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),

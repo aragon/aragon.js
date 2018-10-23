@@ -104,6 +104,33 @@ test('should not fetch the accounts if not asked', async (t) => {
   t.deepEqual(accounts, [])
 })
 
+test('should get the network details from web3', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  const testNetworkId = 4
+  const testNetworkType = 'rinkeby'
+  instance.web3 = {
+    eth: {
+      net: {
+        getId: sinon.stub().returns(testNetworkId),
+        getNetworkType: sinon.stub().returns(testNetworkType)
+      }
+    }
+  }
+  // act
+  await instance.initNetwork()
+  // assert
+  instance.network.subscribe(network => {
+    t.deepEqual(network, {
+      id: testNetworkId,
+      type: testNetworkType
+    })
+  })
+})
+
 test('should init the ACL correctly', async (t) => {
   const { Aragon, utilsStub } = t.context
 

@@ -39,6 +39,17 @@ export class AppProxy {
   }
 
   /**
+   * Get the network the app is connected to over time.
+   *
+   * @return {Observable}
+   */
+  network () {
+    return this.rpc.sendAndObserveResponses(
+      'network'
+    ).pluck('result')
+  }
+
+  /**
    * Set the app identifier.
    *
    * An app identifier is a way to distinguish multiple instances
