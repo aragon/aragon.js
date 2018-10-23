@@ -63,7 +63,7 @@ Initialise the ACL.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-## getAppProxyValues
+## getProxyValues
 
 Get proxy metadata (`appId`, address of the kernel, ...).
 
