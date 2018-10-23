@@ -234,19 +234,17 @@ export default class Aragon {
     let proxyValues
 
     if (this.isKernel(proxyAddress)) {
-      const kernelProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
+      const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3, this.kernelProxy.initializationBlock)
 
       proxyValues = await Promise.all([
         // Use Kernel ABI
         this.kernelProxy.call('KERNEL_APP_ID').catch(() => null),
         // Use ERC897 proxy ABI
+        // Note that this won't work on old Aragon Core 0.5 Kernels,
+        // as they had not implemented ERC897 yet
         kernelProxy
           .call('implementation')
-          .catch(() => kernelProxy
-            // Fallback to old non-ERC897 proxy implementation
-            .call('getCode')
-            .catch(() => null)
-          )
+          .catch(() => null)
       ]).then((values) => ({
         proxyAddress,
         appId: values[0],
