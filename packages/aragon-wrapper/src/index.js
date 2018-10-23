@@ -79,11 +79,11 @@ const appInfoCache = {}
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
- * // Initialises the wrapper and logs the installed apps
- * aragon.init(() => {
- *   aragon.apps.subscribe(
- *     (apps) => console.log(apps)
- *   )
+ * // Initialises the wrapper
+ * await aragon.init({
+ *   accounts: {
+ *     providedAccounts: ["0xbeefdead", "0xbeefbeef"]
+ *   }
  * })
  */
 export default class Aragon {
@@ -118,11 +118,12 @@ export default class Aragon {
   /**
    * Initialise the wrapper.
    *
-   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {Object} [options] Options
+   * @param {Object} [options.accounts] `initAccount()` options (see below)
    * @return {Promise<void>}
    */
-  async init (accounts = null) {
-    await this.initAccounts(accounts)
+  async init (options = {}) {
+    await this.initAccounts(options.accounts)
     await this.kernelProxy.updateInitializationBlock()
     await this.initAcl()
     this.initApps()
@@ -134,15 +135,17 @@ export default class Aragon {
   /**
    * Initialise the accounts observable.
    *
-   * @param {?Array<string>} [accounts=null] An optional array of accounts that the user controls
+   * @param {Object} [options] Options
+   * @param {boolean} [options.fetchFromWeb3] Whether or not accounts should also be fetched from
+   *                                          the provided Web3 instance
+   * @param {Array<string>} [options.providedAccounts] Array of accounts that the user controls
    * @return {Promise<void>}
    */
-  async initAccounts (accounts) {
+  async initAccounts ({ fetchFromWeb3, providedAccounts = [] } = {}) {
     this.accounts = new ReplaySubject(1)
-
-    if (accounts === null) {
-      accounts = await this.web3.eth.getAccounts()
-    }
+    const accounts = fetchFromWeb3
+      ? providedAccounts.concat(await this.web3.eth.getAccounts())
+      : providedAccounts
 
     this.setAccounts(accounts)
   }
