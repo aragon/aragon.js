@@ -1,5 +1,4 @@
 import { templates as templateArtifacts } from '@aragon/templates-beta'
-import { toWei } from 'web3-utils'
 import { resolve as ensResolve } from '../ens'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
@@ -33,13 +32,11 @@ const templates = {
 }
 
 const Templates = (web3, apm, from) => {
-  const minGasPrice = toWei('20', 'gwei')
   const newToken = async (template, { params, options = {} }) => {
     const [tokenName, tokenSymbol] = params
     const call = template.methods.newToken(tokenName, tokenSymbol)
     const receipt = await call.send({
       from,
-      gasPrice: minGasPrice,
       ...options
     })
     return receipt.events.DeployToken.returnValues
@@ -49,7 +46,6 @@ const Templates = (web3, apm, from) => {
     const call = template.methods.newInstance(...params)
     const receipt = await call.send({
       from,
-      gasPrice: minGasPrice,
       ...options
     })
     return receipt.events.DeployInstance.returnValues
