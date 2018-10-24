@@ -16,39 +16,30 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "KERNEL_APP_ID",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "APP_ADDR_NAMESPACE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "REGISTRY_ADD_EXECUTOR_ROLE",
     "outputs": [
       {
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_script",
+        "type": "bytes"
+      }
+    ],
+    "name": "getEVMScriptExecutor",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
       }
     ],
     "payable": false,
@@ -63,34 +54,6 @@
       {
         "name": "",
         "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "EVMSCRIPT_REGISTRY_APP_ID",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "CORE_NAMESPACE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
       }
     ],
     "payable": false,
@@ -124,20 +87,6 @@
       {
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "ETH",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
       }
     ],
     "payable": false,
@@ -202,11 +151,11 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "REGISTRY_MANAGER_ROLE",
+    "name": "getEVMScriptRegistry",
     "outputs": [
       {
         "name": "",
-        "type": "bytes32"
+        "type": "address"
       }
     ],
     "payable": false,
@@ -216,7 +165,7 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "ACL_APP_ID",
+    "name": "REGISTRY_MANAGER_ROLE",
     "outputs": [
       {
         "name": "",
@@ -244,44 +193,11 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "APP_BASES_NAMESPACE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "isPetrified",
     "outputs": [
       {
         "name": "",
         "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "_script",
-        "type": "bytes"
-      }
-    ],
-    "name": "getExecutor",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
       }
     ],
     "payable": false,
