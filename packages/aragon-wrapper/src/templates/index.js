@@ -57,7 +57,12 @@ const Templates = (web3, apm, from) => {
 
       const { contractAddress, abi } = await apm.getLatestVersion(tmplObj.appId)
 
-      if (!contractAddress) throw new Error('No template contract found for that appId')
+      if (!contractAddress) {
+        throw new Error(`No contract found on APM for template '${templateName}'`)
+      }
+      if (!abi) {
+        throw new Error(`Could not fetch ABI for template '${templateName}'`)
+      }
 
       const template = new web3.eth.Contract(abi, contractAddress)
 
