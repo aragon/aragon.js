@@ -6,11 +6,11 @@ const zeroAddress = '0x0000000000000000000000000000000000000000'
 const templates = {
   democracy: {
     name: 'Democracy',
-    appId: 'democracy-kit.aragonpm.eth',
+    appId: 'democracy-kit.aragonpm.eth'
   },
   multisig: {
     name: 'Multisig',
-    appId: 'multisig-kit.aragonpm.eth',
+    appId: 'multisig-kit.aragonpm.eth'
   }
 }
 
