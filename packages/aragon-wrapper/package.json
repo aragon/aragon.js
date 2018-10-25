@@ -1,7 +1,7 @@
 {
   "name": "@aragon/wrapper",
   "version": "2.0.1",
-  "description": "Library for Aragon Wrappers",
+  "description": "Library for Aragon client implementations",
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
