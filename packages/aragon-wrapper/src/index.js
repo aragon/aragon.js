@@ -41,7 +41,7 @@ import { getAbi } from './interfaces'
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
     ? web3.currentProvider // eslint-disable-line
-    : 'ws://rinkeby.aragon.network:8546'
+    : 'wss://rinkeby.eth.aragon.network/ws'
 
 // Returns a template creator instance that can be used independently.
 export const setupTemplates = (
