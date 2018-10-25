@@ -270,6 +270,7 @@ export default class Aragon {
       }))
     } else {
       const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
+      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3, this.kernelProxy.initializationBlock)
 
       proxyValues = await Promise.all([
         appProxy.call('kernel').catch(() => null),
@@ -281,7 +282,7 @@ export default class Aragon {
             .call('getCode')
             .catch(() => null)
           ),
-        appProxy.call('isForwarder').catch(() => false)
+        appProxyForwarder.call('isForwarder').catch(() => false)
       ]).then((values) => ({
         proxyAddress,
         kernelAddress: values[0],
