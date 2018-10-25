@@ -7,7 +7,7 @@
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
-    "build": "babel -d dist src",
+    "build": "babel src -d dist -s",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
