@@ -1,6 +1,5 @@
 // Externals
 import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
-import { isBefore } from 'date-fns'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress, toWei } from 'web3-utils'
@@ -475,7 +474,7 @@ export default class Aragon {
         // Find the first notification that's not before this new one
         // and insert ahead of it if it exists
         const newNotificationIndex = notifications.findIndex(
-          notification => !isBefore(new Date(notification.date), date)
+          notification => ((new Date(notification.date)).getTime() >= date.getTime())
         )
         return newNotificationIndex === -1
           ? [...notifications, notification]

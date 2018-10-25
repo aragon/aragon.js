@@ -68,7 +68,6 @@
     "@aragon/messenger": "^1.0.0",
     "@aragon/templates-beta": "^1.1.3",
     "@babel/runtime": "^7.1.2",
-    "date-fns": "2.0.0-alpha.22",
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",
     "ethereum-ens": "^0.7.3",
