@@ -95,6 +95,12 @@ Initialise forwarder observable.
 
 Returns **void**
 
+## initNetwork
+
+Initialise connected network details observable.
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
+
 ## runApp
 
 Run an app.
