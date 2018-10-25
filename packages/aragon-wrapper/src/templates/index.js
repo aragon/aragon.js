@@ -1,33 +1,16 @@
-import { templates as templateArtifacts } from '@aragon/templates-beta'
 import { resolve as ensResolve } from '../ens'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 
-// TODO: Load template info dynamically from APM content package.
 // Maybe we can even do a simple markup language that aragon/aragon interprets
 const templates = {
   democracy: {
     name: 'Democracy',
-    abi: templateArtifacts['DemocracyTemplate'].abi,
-    appId: 'democracy-template.aragonpm.eth',
-    params: [
-      'name', // string
-      'holders', // array of addresses
-      'stakes', // array of token balances (token has 18 decimals, 1 token = 10^18)
-      'supportNeeded', // percentage in with 10^18 base (1% = 10^16, 100% = 10^18)
-      'minAcceptanceQuorum', // percentage in with 10^18 base
-      'voteDuration' // in seconds
-    ]
+    appId: 'democracy-kit.aragonpm.eth'
   },
   multisig: {
     name: 'Multisig',
-    abi: templateArtifacts['MultisigTemplate'].abi,
-    appId: 'multisig-template.aragonpm.eth',
-    params: [
-      'name', // string
-      'signers', // array of addresses
-      'neededSignatures' // number of signatures need, must be > 0 and <= signers.length
-    ]
+    appId: 'multisig-kit.aragonpm.eth'
   }
 }
 
@@ -72,14 +55,16 @@ const Templates = (web3, apm, from) => {
 
       if (!tmplObj) throw new Error('No template found for that name')
 
-      const contractAddress = await apm.getLatestVersionContract(tmplObj.appId)
+      const { contractAddress, abi } = await apm.getLatestVersion(tmplObj.appId)
 
-      if (!contractAddress) throw new Error('No template contract found for that appId')
+      if (!contractAddress) {
+        throw new Error(`No contract found on APM for template '${templateName}'`)
+      }
+      if (!abi) {
+        throw new Error(`Could not fetch ABI for template '${templateName}'`)
+      }
 
-      const template = new web3.eth.Contract(
-        tmplObj.abi,
-        contractAddress
-      )
+      const template = new web3.eth.Contract(abi, contractAddress)
 
       const token = await newToken(template, tokenParams)
       const instance = await newInstance(template, instanceParams)
