@@ -3,12 +3,12 @@ const debug = require('debug')('aragon.ens')
 
 /**
  * Resolve an ens name or node
- * 
- * @param {string} nameOrNode 
- * @param {*} opts 
+ *
+ * @param {string} nameOrNode
+ * @param {*} opts
  * @returns {Promise<string>}
  */
-export function resolve (nameOrNode, opts = { provider: {}}) {
+export function resolve (nameOrNode, opts = { provider: {} }) {
   const isName = nameOrNode.includes('.')
 
   // Stupid hack for ethjs-ens

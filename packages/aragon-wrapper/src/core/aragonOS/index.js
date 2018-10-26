@@ -1,15 +1,16 @@
 import { hash as namehash } from 'eth-ens-namehash'
-import Web3 from 'web3'
+import { soliditySha3 } from 'web3-utils'
 import { getAbi, getArtifact } from '../../interfaces'
 
 // TODO: Remove this when 0.5 Rinkeby DAOs are deprecated
-const oldWrongAppId = appName => Web3.utils.soliditySha3(`${appName}.aragonpm.eth`)
+const oldWrongAppId = appName => soliditySha3(`${appName}.aragonpm.eth`)
 
 const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
 
 const APP_MAPPINGS = {
   [aragonpmAppId('acl')]: 'ACL',
   [aragonpmAppId('evmreg')]: 'EVM Script Registry',
+  [aragonpmAppId('kernel')]: 'Kernel',
 
   // TODO: Remove this when 0.5 Rinkeby DAOs are deprecated
   [oldWrongAppId('acl')]: 'ACL',
@@ -20,7 +21,7 @@ function getAragonOsInternalAppInfo (appId) {
   const appName = APP_MAPPINGS[appId]
 
   if (!appName) {
-    return {}
+    return
   }
 
   const abi = getAbi(`aragon/${appName}`)

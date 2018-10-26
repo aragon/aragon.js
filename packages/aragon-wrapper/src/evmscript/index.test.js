@@ -24,7 +24,7 @@ test('encodeCallScript', (t) => {
     callScript.slice(50, 58),
     '00000002',
     'second part of callscript should be data length for tx 1'
-  ),
+  )
   t.is(
     callScript.slice(58, 62),
     'cafe',
@@ -39,7 +39,7 @@ test('encodeCallScript', (t) => {
     callScript.slice(102, 110),
     '00000002',
     'fifth part of callscript should be data length for tx 2'
-  ),
+  )
   t.is(
     callScript.slice(110, 114),
     'beef',

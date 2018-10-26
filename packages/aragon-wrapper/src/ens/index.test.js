@@ -2,18 +2,25 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 
-const ethjsEnsStub = sinon.stub()
-const ens = proxyquire.noCallThru().load('./index', {
-  'ethjs-ens': ethjsEnsStub,
+test.beforeEach(t => {
+  const ethjsEnsStub = sinon.stub()
+  const ens = proxyquire.noCallThru().load('./index', {
+    'ethjs-ens': ethjsEnsStub
+  })
+
+  t.context = {
+    ens,
+    ethjsEnsStub
+  }
 })
 
 test.afterEach.always(() => {
   sinon.restore()
-  // restore the history of this stub, which is shared between tests for some reason
-  ethjsEnsStub.reset()
 })
 
 test('should lookup name', (t) => {
+  const { ens, ethjsEnsStub } = t.context
+
   // arrange
   const options = {
     provider: {
@@ -30,6 +37,8 @@ test('should lookup name', (t) => {
 })
 
 test('should resolve address for node', (t) => {
+  const { ens, ethjsEnsStub } = t.context
+
   // arrange
   const hackyOptions = {
     provider: {

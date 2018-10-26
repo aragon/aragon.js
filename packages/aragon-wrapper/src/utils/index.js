@@ -1,4 +1,5 @@
-import Proxy from '../core/proxy'
+import { isAddress } from 'web3-utils'
+import ContractProxy from '../core/proxy'
 import { getAbi } from '../interfaces'
 
 const GAS_FUZZ_FACTOR = 1.5
@@ -11,21 +12,49 @@ export function addressesEqual (first, second) {
   return first === second
 }
 
+// "Safer" version of [].includes() for addresses
+export function includesAddress (arr, address) {
+  return arr.some(a => addressesEqual(a, address))
+}
+
+export function makeAddressMapProxy (target) {
+  return new Proxy(target, {
+    get (target, property, receiver) {
+      if (property in target) {
+        return target[property]
+      }
+
+      if (typeof property === 'string' && isAddress(property)) {
+        // Our set handler will ensure any addresses are stored in all lowercase
+        return target[property.toLowerCase()]
+      }
+    },
+    set (target, property, value, receiver) {
+      if (typeof property === 'string' && isAddress(property)) {
+        target[property.toLowerCase()] = value
+      } else {
+        target[property] = value
+      }
+      return true
+    }
+  })
+}
+
 export function makeProxy (address, interfaceName, web3, initializationBlock) {
   const abi = getAbi(`aragon/${interfaceName}`)
   return makeProxyFromABI(address, abi, web3, initializationBlock)
 }
 
 export function makeProxyFromABI (address, abi, web3, initializationBlock) {
-  return new Proxy(address, abi, web3, initializationBlock)
+  return new ContractProxy(address, abi, web3, initializationBlock)
 }
 
-export const getRecommendedGasLimit = async (web3, estimatedGasLimit) => {
+export async function getRecommendedGasLimit (web3, estimatedGasLimit) {
   const latestBlock = await web3.eth.getBlock('latest')
-  const latestBlockGasLimit = latestBlock.gasLimit;
+  const latestBlockGasLimit = latestBlock.gasLimit
 
-  const upperGasLimit = Math.round(latestBlockGasLimit*PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
-  const bufferedGasLimit = Math.round(estimatedGasLimit*GAS_FUZZ_FACTOR)
+  const upperGasLimit = Math.round(latestBlockGasLimit * PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
+  const bufferedGasLimit = Math.round(estimatedGasLimit * GAS_FUZZ_FACTOR)
 
   if (estimatedGasLimit > upperGasLimit) {
     // TODO: Consider whether we should throw an error rather than returning with a high gas limit
