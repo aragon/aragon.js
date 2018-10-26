@@ -45,11 +45,11 @@ export const detectProvider = () =>
 // Returns a template creator instance that can be used independently.
 export const setupTemplates = (
   provider,
-  registryAddress,
-  from
+  from,
+  apmOptions
 ) => {
   const web3 = new Web3(provider)
-  return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
+  return Templates(web3, apm(web3, apmOptions), from)
 }
 
 // Cache for proxy values
