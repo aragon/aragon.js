@@ -888,6 +888,7 @@ export default class Aragon {
       if (!expression) return step
 
       let description
+      let annotatedDescription
       try {
         description = await radspec.evaluate(
           expression,
@@ -899,12 +900,15 @@ export default class Aragon {
         )
 
         try {
-          description = await this.postprocessRadspecDescription(description)
+          const processed = await this.postprocessRadspecDescription(description)
+          description = processed.description
+          annotatedDescription = processed.annotatedDescription
         } catch (err) { }
       } catch (err) { }
 
       return Object.assign(step, {
         description,
+        annotatedDescription,
         name: app.name,
         identifier: app.identifier
       })
@@ -915,7 +919,7 @@ export default class Aragon {
    * Look for known addresses and roles in a radspec description and substitute them with a human string
    *
    * @param  {string} description
-   * @return {Promise<string>} modified description
+   * @return {Promise<Object>} description and annotated description
    */
   async postprocessRadspecDescription (description) {
     const addressRegex = /\b0x[a-fA-F0-9]{40}\b/g
@@ -930,13 +934,14 @@ export default class Aragon {
         .find(({ bytes }) => bytes === input)
 
       if (role && role.name) {
-        return [input, `'${role.name}'`]
+        const annotation = { type: 'role', role }
+        return [input, `'${role.name}'`, annotation]
       }
     }
 
     const addressReplacement = (input, apps) => {
       if (addressesEqual(input, ANY_ENTITY)) {
-        return [input, `'Any account'`]
+        return [input, `'Any account'`, { type: 'any-account' }]
       }
 
       const app = apps.find(
@@ -944,18 +949,17 @@ export default class Aragon {
       )
 
       if (app) {
+        const annotation = { type: 'app', app }
         const replacement = `${app.name}${app.identifier ? ` (${app.identifier})` : ''}`
-        return [input, `'${replacement}'`]
+        return [input, `'${replacement}'`, annotation]
       }
     }
 
-    const addressReplacements = description
-      .match(addressRegex)
+    const addressReplacements = (description.match(addressRegex) || [])
       .map((string) => addressReplacement(string, apps))
       .filter((replace) => replace) // filter out no-ops
 
-    const bytes32Replacements = description
-      .match(bytes32Regex)
+    const bytes32Replacements = (description.match(bytes32Regex) || [])
       .map((string) => bytes32Replacement(string, apps))
       .filter((replace) => replace) // filter out no-ops
 
@@ -964,10 +968,38 @@ export default class Aragon {
       ...bytes32Replacements
     ]
 
-    return replacements.reduce(
-      (acc, [string, replacement]) =>
+    const newDescription = replacements.reduce(
+      (acc, [string, replacement]) => (
         acc.replace(string, replacement)
-      , description)
+      ), description)
+
+    const textItem = value => {
+      const space = ' '
+      if (value.startsWith(space)) value = value.slice(1)
+      if (value.endsWith(space)) value = value.slice(0, -1)
+      return { type: 'text', value }
+    }
+
+    const annotatedDescription = replacements.reduce(
+      (acc, [string, replacement, annotation]) => {
+        return acc.reduce((ac, item) => {
+          if (item.type !== 'text' || item.value.indexOf(string) === -1) {
+            return ac.concat(item)
+          }
+
+          const textComponents = item.value.split(string)
+          return ac.concat([
+            textItem(textComponents[0]),
+            annotation,
+            textItem(textComponents.slice(1).join(string))
+          ])
+        }, [])
+      }, [textItem(description)])
+
+    return {
+      description: newDescription,
+      annotatedDescription
+    }
   }
 
   /**
