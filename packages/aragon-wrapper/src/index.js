@@ -71,7 +71,7 @@ export const detectProvider = () =>
  *        estimation from a 3rd party resource.
  * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
  *        The Web3 provider to use for blockchain communication
- * @return {Template} Template factory instance
+ * @return {Object} Template factory instance
  */
 export const setupTemplates = (from, options = {}) => {
   const defaultOptions = {

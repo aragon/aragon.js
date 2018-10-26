@@ -16,22 +16,25 @@ const templates = {
 }
 
 /**
- * Factory for DAO templates.
+ * @name Templates
+ * @function
+ * @description Factory for DAO templates.
  *
  * @param {string} from
  *        The address of the account using the factory.
  * @param {Object} options
  *        Template factory options.
- * @param {Object} [options.apm]
+ * @param {Object} options.apm
  *        apm.js instance
- * @param {Function} [options.defaultGasPriceFn=function]
+ * @param {Function} options.defaultGasPriceFn
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
- * @param {Object} [options.web3]
+ * @param {Object} options.web3
  *        Web3 instance
+ * @return {Object} Factory object
  */
 const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
   const newToken = async (template, { params, options = {} }) => {
