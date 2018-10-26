@@ -1,0 +1,66 @@
+{
+  "name": "test-wallet-provider",
+  "version": "0.0.5",
+  "description": "Aragon enabled Web3 provider",
+  "main": "dist/index.js",
+  "scripts": {
+    "flow": "flow src",
+    "lint": "standard src",
+    "test": "mocha --timeout 5000 --require @babel/register --require @babel/polyfill",
+    "build": "babel -d dist src",
+    "prepublishOnly": "env NODE_ENV=production npm run build"
+  },
+  "keywords": [
+    "etheruem",
+    "aragon",
+    "web3",
+    "wallet",
+    "provider"
+  ],
+  "author": "Jeremy Macaluso <jvluso@recoblix.com>",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@aragon/cli": "^4.2.1",
+    "@aragon/os": "^4.0.0-beta.1",
+    "@aragon/test-helpers": "^1.0.1",
+    "@aragon/wrapper": "^2.0.0-beta.42",
+    "babel-runtime": "^6.26.0",
+    "bignumber.js": "^7.2.1",
+    "bip39": "^2.2.0",
+    "ethereumjs-wallet": "^0.6.0",
+    "ganache-core": "^2.2.1",
+    "solidity-sha3": "^0.4.1",
+    "truffle-hdwallet-provider": "0.0.3",
+    "web3": "^1.0.0-beta.36",
+    "web3-provider-engine": "^14.0.6"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^7.2.1",
+    "babel-plugin-inline-json-import": "^0.2.1",
+    "babel-plugin-transform-flow-strip-types": "^6.22.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-minify": "^0.3.0",
+    "babel-preset-stage-2": "^6.24.1",
+    "ava": "^0.24.0",
+    "mocha": "^5.1.1",
+    "nyc": "^11.4.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "plugins": [
+      "flowtype"
+    ]
+  },
+  "ava": {
+    "require": "babel-register",
+    "babel": "inherit"
+  },
+  "peerDependencies": {
+    "truffle": "4.x"
+  }
+}
