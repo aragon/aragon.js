@@ -5,6 +5,8 @@ import { getAbi } from '../interfaces'
 const GAS_FUZZ_FACTOR = 1.5
 const PREVIOUS_BLOCK_GAS_LIMIT_FACTOR = 0.95
 
+export const ANY_ENTITY = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF'
+
 // Check address equality without checksums
 export function addressesEqual (first, second) {
   first = first && first.toLowerCase()

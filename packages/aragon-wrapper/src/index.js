@@ -22,7 +22,8 @@ import {
   makeAddressMapProxy,
   makeProxy,
   makeProxyFromABI,
-  getRecommendedGasLimit
+  getRecommendedGasLimit,
+  ANY_ENTITY
 } from './utils'
 
 import { getAragonOsInternalAppInfo } from './core/aragonOS'
@@ -864,6 +865,10 @@ export default class Aragon {
           },
           { ethNode: this.web3.currentProvider }
         )
+
+        try {
+          description = await this.postprocessRadspecDescription(description)
+        } catch (err) { }
       } catch (err) { }
 
       return Object.assign(step, {
@@ -872,6 +877,65 @@ export default class Aragon {
         identifier: app.identifier
       })
     }))
+  }
+
+  /**
+   * Look for known addresses and roles in a radspec description and substitute them with a human string
+   *
+   * @param  {string} description
+   * @return {Promise<string>} modified description
+   */
+  async postprocessRadspecDescription (description) {
+    const addressRegex = /\b0x[a-fA-F0-9]{40}\b/g
+    const bytes32Regex = /\b0x[a-f0-9]{64}\b/g
+
+    const apps = await this.apps.take(1).toPromise()
+
+    const bytes32Replacement = (input, apps) => {
+      const role = apps
+        .map(({ roles }) => roles || [])
+        .reduce((acc, roles) => acc.concat(roles), []) // flatten
+        .find(({ bytes }) => bytes === input)
+
+      if (role && role.name) {
+        return [input, `'${role.name}'`]
+      }
+    }
+
+    const addressReplacement = (input, apps) => {
+      if (addressesEqual(input, ANY_ENTITY)) {
+        return [input, `'Any account'`]
+      }
+
+      const app = apps.find(
+        ({ proxyAddress }) => addressesEqual(proxyAddress, input)
+      )
+
+      if (app) {
+        const replacement = `${app.name}${app.identifier ? ` (${app.identifier})` : ''}`
+        return [input, `'${replacement}'`]
+      }
+    }
+
+    const addressReplacements = description
+      .match(addressRegex)
+      .map((string) => addressReplacement(string, apps))
+      .filter((replace) => replace) // filter out no-ops
+
+    const bytes32Replacements = description
+      .match(bytes32Regex)
+      .map((string) => bytes32Replacement(string, apps))
+      .filter((replace) => replace) // filter out no-ops
+
+    const replacements = [
+      ...addressReplacements,
+      ...bytes32Replacements
+    ]
+
+    return replacements.reduce(
+      (acc, [string, replacement]) =>
+        acc.replace(string, replacement)
+      , description)
   }
 
   /**
