@@ -2,7 +2,7 @@
 import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
-import { isAddress, toWei } from 'web3-utils'
+import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -37,27 +37,58 @@ import Cache from './cache'
 // Interfaces
 import { getAbi } from './interfaces'
 
+// Cache for proxy values
+const proxyValuesCache = makeAddressMapProxy({})
+
+// Cache for app info, usually fetched from apm
+const appInfoCache = {}
+
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
     ? web3.currentProvider // eslint-disable-line
     : 'wss://rinkeby.eth.aragon.network/ws'
 
-// Returns a template creator instance that can be used independently.
-export const setupTemplates = (
-  provider,
-  registryAddress,
-  from
-) => {
-  const web3 = new Web3(provider)
-  return Templates(web3, apm(web3, { provider, ensRegistryAddress: registryAddress }), from)
+/**
+ * Set up an instance of the template factory that can be used independently
+ *
+ * @param {string} from
+ *        The address of the account using the factory.
+ * @param {Object} options
+ *        Template factory options.
+ * @param {string} [options.apm]
+ *        Options for apm.js (see https://github.com/aragon/apm.js)
+ * @param {string} [options.apm.ensRegistryAddress]
+ *        ENS registry for apm.js
+ * @param {Object} [options.apm.ipfs]
+ *        IPFS provider config for apm.js
+ * @param {string} [options.apm.ipfs.gateway]
+ *        IPFS gateway apm.js will use to fetch artifacts from
+ * @param {Function} [options.defaultGasPriceFn=function]
+ *        A factory function to provide the default gas price for transactions.
+ *        It can return a promise of number string or a number string. The function
+ *        has access to a recommended gas limit which can be used for custom
+ *        calculations. This function can also be used to get a good gas price
+ *        estimation from a 3rd party resource.
+ * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
+ *        The Web3 provider to use for blockchain communication
+ * @return {Object} Template factory instance
+ */
+export const setupTemplates = (from, options = {}) => {
+  const defaultOptions = {
+    apm: {},
+    defaultGasPriceFn: () => {},
+    provider: detectProvider()
+  }
+  options = Object.assign(defaultOptions, options)
+  const web3 = new Web3(options.provider)
+
+  return Templates(from, {
+    web3,
+    apm: apm(web3, options.apm),
+    defaultGasPriceFn: options.defaultGasPriceFn
+  })
 }
-
-// Cache for proxy values
-const proxyValuesCache = makeAddressMapProxy({})
-
-// Cache for app info, usually fetched from apm
-const appInfoCache = {}
 
 /**
  * An Aragon wrapper.
@@ -66,16 +97,22 @@ const appInfoCache = {}
  *        The address of the DAO.
  * @param {Object} options
  *        Wrapper options.
- * @param {*} [options.provider=ws://rinkeby.aragon.network:8546]
- *        The Web3 provider to use for blockchain communication
- * @param {string} [options.ensRegistryAddress=null]
- *        The address of the ENS registry
+ * @param {string} [options.apm]
+ *        Options for apm.js (see https://github.com/aragon/apm.js)
+ * @param {string} [options.apm.ensRegistryAddress]
+ *        ENS registry for apm.js
+ * @param {Object} [options.apm.ipfs]
+ *        IPFS provider config for apm.js
+ * @param {string} [options.apm.ipfs.gateway]
+ *        IPFS gateway apm.js will use to fetch artifacts from
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
+ * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
+ *        The Web3 provider to use for blockchain communication
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
@@ -89,11 +126,9 @@ const appInfoCache = {}
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      provider: detectProvider(),
       apm: {},
-      defaultGasPriceFn: () => {
-        return toWei('20', 'gwei')
-      }
+      defaultGasPriceFn: () => {},
+      provider: detectProvider()
     }
     options = Object.assign(defaultOptions, options)
 
@@ -101,10 +136,7 @@ export default class Aragon {
     this.web3 = new Web3(options.provider)
 
     // Set up APM
-    this.apm = apm(this.web3, Object.assign(options.apm, {
-      ensRegistryAddress: options.ensRegistryAddress,
-      provider: options.provider
-    }))
+    this.apm = apm(this.web3, options.apm)
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
