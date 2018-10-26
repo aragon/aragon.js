@@ -903,7 +903,7 @@ export default class Aragon {
           const processed = await this.postprocessRadspecDescription(description)
           description = processed.description
           annotatedDescription = processed.annotatedDescription
-        } catch (err) { }
+        } catch (err) { console.log(err) }
       } catch (err) { }
 
       return Object.assign(step, {
@@ -992,7 +992,7 @@ export default class Aragon {
             textItem(textComponents[0]),
             annotation,
             textItem(textComponents.slice(1).join(string))
-          ])
+          ]).filter(({ value }) => value !== '')
         }, [])
       }, [textItem(description)])
 
