@@ -937,6 +937,16 @@ export default class Aragon {
    *                           be rejected with the error.
    */
   async applyTransactionGas (transaction, isForwarding = false) {
+    // If a pretransaction is required for the main transaction to be performed,
+    // performing web3.eth.estimateGas could fail until the pretransaction is mined
+    // Example: erc20 approve (pretransaction) + deposit to vault (main transaction)
+    if (transaction.pretransaction && transaction.pretransaction.length > 0) {
+      // Calculate gas settings for pretransaction
+      transaction.pretransaction = await this.applyTransactionGas(transaction.pretransaction, false)
+      // Note: for transactions with pretransactions gas limit and price cannot be calculated
+      return transaction
+    }
+
     // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
     // so this is a hack to make sure checksums are not destroyed
     // Also, at the same time it's a hack for checking if the call will revert,
@@ -953,46 +963,6 @@ export default class Aragon {
 
     if (!transaction.gasPrice) {
       transaction.gasPrice = await this.getDefaultGasPrice(transaction.gas)
-    }
-
-    return transaction
-  }
-
-  /**
-   * Calculates and applies the gas limit and gas price for a transaction
-   *
-   * This function will throw if the transaction fails which is checked by estimateGas
-   *
-   * @param  {Object} transaction
-   * @return {Object} transaction with gas limit and gas price
-   */
-  async applyTransactionGas(transaction, isForwarding = false) {
-    // If a pretransaction is required for the main transaction to be performed,
-    // performing web3.eth.estimateGas could fail until the pretransaction is mined
-    // Example: erc20 approve (pretransaction) + deposit to vault (main transaction)
-    if (transaction.pretransaction && transaction.pretransaction.length > 0) {
-      // Calculate gas settings for pretransaction
-      transaction.pretransaction = await this.applyTransactionGas(transaction.pretransaction, false)
-      // Note: for transactions with pretransactions gas limit and price cannot be calculated
-      return transaction
-    }
-
-    // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
-    // so this is a hack to make sure checksums are not destroyed
-    // Also, at the same time it's a hack for checking if the call will revert,
-    // since `eth_call` returns `0x` if the call fails and if the call returns nothing.
-    // So yeah...
-    const estimatedGasLimit = await this.web3.eth.estimateGas({ ...transaction, gas: null })
-    const recommendedGasLimit = await getRecommendedGasLimit(this.web3, estimatedGasLimit)
-
-    if (!transaction.gasPrice) {
-      transaction.gasPrice = await this.getDefaultGasPrice(recommendedGasLimit)
-    }
-
-    // If the gas provided in the intent is lower than the estimated gas, use the estimation
-    // when forwarding as it requires more gas and otherwise the transaction would go out of gas
-    if (!transaction.gas || (isForwarding && transaction.gas < recommendedGasLimit)) {
-      transaction.gas = recommendedGasLimit
     }
 
     return transaction
