@@ -898,13 +898,13 @@ export default class Aragon {
           },
           { ethNode: this.web3.currentProvider }
         )
-
-        try {
-          const processed = await this.postprocessRadspecDescription(description)
-          description = processed.description
-          annotatedDescription = processed.annotatedDescription
-        } catch (err) { console.log(err) }
       } catch (err) { }
+
+      if (description) {
+        const processed = await this.postprocessRadspecDescription(description)
+        description = processed.description
+        annotatedDescription = processed.annotatedDescription
+      }
 
       return Object.assign(step, {
         description,
@@ -922,83 +922,77 @@ export default class Aragon {
    * @return {Promise<Object>} description and annotated description
    */
   async postprocessRadspecDescription (description) {
-    const addressRegex = /\b0x[a-fA-F0-9]{40}\b/g
-    const bytes32Regex = /\b0x[a-f0-9]{64}\b/g
+    const addressRegexStr = '0x[a-fA-F0-9]{40}'
+    const addressRegex = new RegExp(`^${addressRegexStr}$`)
+    const bytes32RegexStr = '0x[a-f0-9]{64}'
+    const bytes32Regex = new RegExp(`^${bytes32RegexStr}$`)
+    const combinedRegex = new RegExp(`\\b(${addressRegexStr}|${bytes32RegexStr})\\b`)
 
-    const apps = await this.apps.take(1).toPromise()
+    const tokens = description
+      .split(combinedRegex)
+      .map(token => token.trim())
+      .filter(token => token)
 
-    const bytes32Replacement = (input, apps) => {
-      const role = apps
-        .map(({ roles }) => roles || [])
-        .reduce((acc, roles) => acc.concat(roles), []) // flatten
-        .find(({ bytes }) => bytes === input)
-
-      if (role && role.name) {
-        const annotation = { type: 'role', role }
-        return [input, `'${role.name}'`, annotation]
-      }
+    if (tokens.length <= 1) {
+      return { description }
     }
 
-    const addressReplacement = (input, apps) => {
+    const apps = await this.apps.take(1).toPromise()
+    const roles = apps
+      .map(({ roles }) => roles || [])
+      .reduce((acc, roles) => acc.concat(roles), []) // flatten
+
+    const annotateAddress = (input) => {
       if (addressesEqual(input, ANY_ENTITY)) {
-        return [input, `'Any account'`, { type: 'any-account' }]
+        return [input, "'Any account'", { type: 'any-account', value: ANY_ENTITY }]
       }
 
       const app = apps.find(
         ({ proxyAddress }) => addressesEqual(proxyAddress, input)
       )
-
       if (app) {
-        const annotation = { type: 'app', app }
         const replacement = `${app.name}${app.identifier ? ` (${app.identifier})` : ''}`
-        return [input, `'${replacement}'`, annotation]
+        return [input, `'${replacement}'`, { type: 'app', value: app }]
       }
+
+      return [input, input, { type: 'address', value: input }]
     }
 
-    const addressReplacements = (description.match(addressRegex) || [])
-      .map((string) => addressReplacement(string, apps))
-      .filter((replace) => replace) // filter out no-ops
+    const annotateBytes32 = (input) => {
+      const role = roles.find(({ bytes }) => bytes === input)
 
-    const bytes32Replacements = (description.match(bytes32Regex) || [])
-      .map((string) => bytes32Replacement(string, apps))
-      .filter((replace) => replace) // filter out no-ops
-
-    const replacements = [
-      ...addressReplacements,
-      ...bytes32Replacements
-    ]
-
-    const newDescription = replacements.reduce(
-      (acc, [string, replacement]) => (
-        acc.replace(string, replacement)
-      ), description)
-
-    const textItem = value => {
-      const space = ' '
-      if (value.startsWith(space)) value = value.slice(1)
-      if (value.endsWith(space)) value = value.slice(0, -1)
-      return { type: 'text', value }
+      if (role && role.name) {
+        return [input, `'${role.name}'`, { type: 'role', value: role }]
+      }
+      return [input, input, { type: 'bytes32', value: input }]
     }
 
-    const annotatedDescription = replacements.reduce(
-      (acc, [string, replacement, annotation]) => {
-        return acc.reduce((ac, item) => {
-          if (item.type !== 'text' || item.value.indexOf(string) === -1) {
-            return ac.concat(item)
-          }
+    const annotateText = (input) => {
+      return [input, input, { type: 'text', value: input }]
+    }
 
-          const textComponents = item.value.split(string)
-          return ac.concat([
-            textItem(textComponents[0]),
-            annotation,
-            textItem(textComponents.slice(1).join(string))
-          ]).filter(({ value }) => value !== '')
-        }, [])
-      }, [textItem(description)])
+    const annotatedTokens = tokens.map(token => {
+      if (addressRegex.test(token)) {
+        return annotateAddress(token)
+      }
+      if (bytes32Regex.test(token)) {
+        return annotateBytes32(token)
+      }
+      return annotateText(token)
+    })
+
+    const compiled = annotatedTokens.reduce((acc, [_, replacement, annotation]) => {
+      acc.description.push(replacement)
+      acc.annotatedDescription.push(annotation)
+      return acc
+    }, {
+      annotatedDescription: [],
+      description: []
+    })
 
     return {
-      description: newDescription,
-      annotatedDescription
+      annotatedDescription: compiled.annotatedDescription,
+      description: compiled.description.join(' ')
     }
   }
 
