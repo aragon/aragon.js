@@ -1018,7 +1018,7 @@ export default class Aragon {
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
     }
 
-    if (!!transactionOptions.token) {
+    if (transactionOptions.token) {
       const { address: tokenAddress, value: tokenValue } = transactionOptions.token
 
       const erc20ABI = getAbi('standard/ERC20')
