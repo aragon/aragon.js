@@ -1025,25 +1025,32 @@ export default class Aragon {
       const tokenContract = new this.web3.eth.Contract(erc20ABI, tokenAddress)
       const balance = await tokenContract.methods.balanceOf(sender).call()
 
-      if (toBN(balance).lt(toBN(tokenValue))) {
+      const tokenValueBN = toBN(tokenValue)
+
+      if (toBN(balance).lt(tokenValueBN)) {
         throw new Error(`Balance too low. ${sender} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
       }
 
-      const approveABI = erc20ABI.find(
-        (method) => method.name === 'approve'
-      )
+      const allowance = await tokenContract.methods.allowance(sender, destination).call()
+      const allowanceBN = toBN(allowance)
 
-      // TODO: Handle existing approvals (some tokens fail when the current allowance is not 0)
-      // TODO: Check if the approval already was created and skip the token approve
-      const tokenApproveTransaction = {
-        // TODO: should we include transaction options?
-        from: sender,
-        to: tokenAddress,
-        data: this.web3.eth.abi.encodeFunctionCall(approveABI, [destination, tokenValue]),
+      // If allowance is already greater than or equal to amount, there is no need to do an approve transaction
+      if (allowanceBN.lt(tokenValueBN)) {
+        if (allowanceBN.gt(toBN(0))) {
+          // TODO: Actually handle existing approvals (some tokens fail when the current allowance is not 0)
+          console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
+        }
+
+        const tokenApproveTransaction = {
+          // TODO: should we include transaction options?
+          from: sender,
+          to: tokenAddress,
+          data: tokenContract.methods.approve(destination, tokenValue).encodeABI()
+        }
+
+        directTransaction.pretransaction = tokenApproveTransaction
+        delete transactionOptions.token
       }
-
-      directTransaction.pretransaction = tokenApproveTransaction
-      delete transactionOptions.token
     }
 
     let appsWithPermissionForMethod = []
