@@ -42,7 +42,7 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
     const call = template.methods.newToken(tokenName, tokenSymbol)
     const receipt = await call.send({
       from,
-      ...applyCallGasOptions(call, options)
+      ...await applyCallGasOptions(call, options)
     })
     return receipt.events.DeployToken.returnValues
   }
@@ -51,7 +51,7 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
     const call = template.methods.newInstance(...params)
     const receipt = await call.send({
       from,
-      ...applyCallGasOptions(call, options)
+      ...await applyCallGasOptions(call, options)
     })
     return receipt.events.DeployInstance.returnValues
   }
@@ -59,7 +59,11 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
   const applyCallGasOptions = async (call, txOptions = {}) => {
     if (!txOptions.gas) {
       const estimatedGasLimit = await call.estimateGas({ from })
-      const recommendedGasLimit = await getRecommendedGasLimit(web3, estimatedGasLimit)
+      const recommendedGasLimit = await getRecommendedGasLimit(
+        web3,
+        estimatedGasLimit,
+        { gasFuzzFactor: 1.1 }
+      )
       txOptions.gas = recommendedGasLimit
     }
 
