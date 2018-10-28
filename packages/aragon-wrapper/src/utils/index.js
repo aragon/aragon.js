@@ -49,7 +49,7 @@ export function makeProxyFromABI (address, abi, web3, initializationBlock) {
   return new ContractProxy(address, abi, web3, initializationBlock)
 }
 
-export async function getRecommendedGasLimit (web3, estimatedGasLimit, { gasFuzzFactor = DEFAULT_GAS_FUZZ_FACTOR }) {
+export async function getRecommendedGasLimit (web3, estimatedGasLimit, { gasFuzzFactor = DEFAULT_GAS_FUZZ_FACTOR } = {}) {
   const latestBlock = await web3.eth.getBlock('latest')
   const latestBlockGasLimit = latestBlock.gasLimit
 
