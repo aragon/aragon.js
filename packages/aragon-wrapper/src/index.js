@@ -2,7 +2,7 @@
 import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
-import { isAddress } from 'web3-utils'
+import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -1022,6 +1022,13 @@ export default class Aragon {
       const { address: tokenAddress, value: tokenValue } = transactionOptions.token
 
       const erc20ABI = getAbi('standard/ERC20')
+      const tokenContract = new this.web3.eth.Contract(erc20ABI, tokenAddress)
+      const balance = await tokenContract.methods.balanceOf(sender).call()
+
+      if (toBN(balance).lt(toBN(tokenValue))) {
+        throw new Error(`Balance too low. ${sender} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
+      }
+
       const approveABI = erc20ABI.find(
         (method) => method.name === 'approve'
       )
