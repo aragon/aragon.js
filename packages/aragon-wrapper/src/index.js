@@ -940,7 +940,7 @@ export default class Aragon {
     // If a pretransaction is required for the main transaction to be performed,
     // performing web3.eth.estimateGas could fail until the pretransaction is mined
     // Example: erc20 approve (pretransaction) + deposit to vault (main transaction)
-    if (transaction.pretransaction && transaction.pretransaction.length > 0) {
+    if (transaction.pretransaction) {
       // Calculate gas settings for pretransaction
       transaction.pretransaction = await this.applyTransactionGas(transaction.pretransaction, false)
       // Note: for transactions with pretransactions gas limit and price cannot be calculated
@@ -1143,6 +1143,10 @@ export default class Aragon {
       return []
     }
 
+    // Only apply the pretransaction to the final forwarding transaction
+    const pretransaction = directTransaction.pretransaction
+    delete directTransaction.pretransaction
+
     // TODO: No need for contract?
     // A helper method to create a transaction that calls `forward` on a forwarder with `script`
     const forwardMethod = new this.web3.eth.Contract(
@@ -1164,7 +1168,7 @@ export default class Aragon {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
-        transaction.pretransaction = directTransaction.pretransaction
+        transaction.pretransaction = pretransaction
         // TODO: recover if applying gas fails here
         return [await this.applyTransactionGas(transaction, true), directTransaction]
       }
@@ -1210,7 +1214,7 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
-          transaction.pretransaction = directTransaction.pretransaction
+          transaction.pretransaction = pretransaction
           // `applyTransactionGas` is only done for the transaction that will be executed
           // TODO: recover if applying gas fails here
           return [await this.applyTransactionGas(transaction, true), ...path]
