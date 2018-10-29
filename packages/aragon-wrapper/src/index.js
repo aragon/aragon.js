@@ -2,7 +2,7 @@
 import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
-import { isAddress } from 'web3-utils'
+import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
 import radspec from 'radspec'
 
@@ -1027,6 +1027,16 @@ export default class Aragon {
    *                           be rejected with the error.
    */
   async applyTransactionGas (transaction, isForwarding = false) {
+    // If a pretransaction is required for the main transaction to be performed,
+    // performing web3.eth.estimateGas could fail until the pretransaction is mined
+    // Example: erc20 approve (pretransaction) + deposit to vault (main transaction)
+    if (transaction.pretransaction) {
+      // Calculate gas settings for pretransaction
+      transaction.pretransaction = await this.applyTransactionGas(transaction.pretransaction, false)
+      // Note: for transactions with pretransactions gas limit and price cannot be calculated
+      return transaction
+    }
+
     // NOTE: estimateGas mutates the argument object and transforms the address to lowercase
     // so this is a hack to make sure checksums are not destroyed
     // Also, at the same time it's a hack for checking if the call will revert,
@@ -1096,6 +1106,41 @@ export default class Aragon {
       from: sender,
       to: destination,
       data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
+    }
+
+    if (transactionOptions.token) {
+      const { address: tokenAddress, value: tokenValue } = transactionOptions.token
+
+      const erc20ABI = getAbi('standard/ERC20')
+      const tokenContract = new this.web3.eth.Contract(erc20ABI, tokenAddress)
+      const balance = await tokenContract.methods.balanceOf(sender).call()
+
+      const tokenValueBN = toBN(tokenValue)
+
+      if (toBN(balance).lt(tokenValueBN)) {
+        throw new Error(`Balance too low. ${sender} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
+      }
+
+      const allowance = await tokenContract.methods.allowance(sender, destination).call()
+      const allowanceBN = toBN(allowance)
+
+      // If allowance is already greater than or equal to amount, there is no need to do an approve transaction
+      if (allowanceBN.lt(tokenValueBN)) {
+        if (allowanceBN.gt(toBN(0))) {
+          // TODO: Actually handle existing approvals (some tokens fail when the current allowance is not 0)
+          console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
+        }
+
+        const tokenApproveTransaction = {
+          // TODO: should we include transaction options?
+          from: sender,
+          to: tokenAddress,
+          data: tokenContract.methods.approve(destination, tokenValue).encodeABI()
+        }
+
+        directTransaction.pretransaction = tokenApproveTransaction
+        delete transactionOptions.token
+      }
     }
 
     let appsWithPermissionForMethod = []
@@ -1188,6 +1233,10 @@ export default class Aragon {
       return []
     }
 
+    // Only apply the pretransaction to the final forwarding transaction
+    const pretransaction = directTransaction.pretransaction
+    delete directTransaction.pretransaction
+
     // TODO: No need for contract?
     // A helper method to create a transaction that calls `forward` on a forwarder with `script`
     const forwardMethod = new this.web3.eth.Contract(
@@ -1209,6 +1258,7 @@ export default class Aragon {
       let script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
+        transaction.pretransaction = pretransaction
         // TODO: recover if applying gas fails here
         return [await this.applyTransactionGas(transaction, true), directTransaction]
       }
@@ -1254,6 +1304,7 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
+          transaction.pretransaction = pretransaction
           // `applyTransactionGas` is only done for the transaction that will be executed
           // TODO: recover if applying gas fails here
           return [await this.applyTransactionGas(transaction, true), ...path]
