@@ -676,7 +676,6 @@ export default class Aragon {
       .toPromise()
   }
 
-
   /**
    * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
    * @return {Promise<string>} transaction hash
