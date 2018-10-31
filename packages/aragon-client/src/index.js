@@ -273,7 +273,7 @@ export class AppProxy {
     ).pluck('result')
   }
 
-   /**
+  /**
    * Allow apps to sign arbitrary data via a RPC call
    *
    * @return {Observable} An observable that emits the signature of the signed data
