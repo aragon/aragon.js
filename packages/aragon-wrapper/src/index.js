@@ -677,6 +677,16 @@ export default class Aragon {
   }
 
   /**
+   * Allows apps to sign arbitrary data via a RPC call
+   *
+   * @param {string} data The data to be signed or the signature of the signed data
+   * @return {void}
+   */
+  signData (data) {
+    this.signatures.next(data)
+  }
+
+  /**
    * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
    * @return {Promise<string>} transaction hash
    */

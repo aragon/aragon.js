@@ -276,11 +276,13 @@ export class AppProxy {
   /**
    * Allow apps to sign arbitrary data via a RPC call
    *
+   * @param  {string} dataToSign
    * @return {Observable} An observable that emits the signature of the signed data
    */
-  signData () {
+  signData (dataToSign) {
     return this.rpc.sendAndObserveResponse(
-      'sign_data'
+      'sign_data',
+      [dataToSign]
     ).pluck('result')
   }
 }
