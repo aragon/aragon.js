@@ -66,6 +66,7 @@
   "dependencies": {
     "@aragon/apm": "^3.0.0",
     "@aragon/messenger": "^1.0.0",
+    "@aragon/os": "^4.0.1",
     "@babel/runtime": "^7.1.2",
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",

@@ -1,11 +1,11 @@
 // ABIs
-import abiAragonACL from '../abi/aragon/ACL.json'
-import abiAragonAppProxy from '../abi/aragon/AppProxy.json'
-import abiAragonERCProxy from '../abi/aragon/ERCProxy.json'
-import abiAragonForwarder from '../abi/aragon/Forwarder.json'
-import abiAragonKernel from '../abi/aragon/Kernel.json'
-import abiAragonEVMScriptRegistry from '../abi/aragon/EVMScriptRegistry.json'
-import abiERC20 from '../abi/standard/ERC20.json'
+import abiAragonACL from '@aragon/os/abi/ACL'
+import abiAragonAppProxy from '@aragon/os/abi/AppProxyBase'
+import abiAragonERCProxy from '@aragon/os/abi/ERCProxy'
+import abiAragonForwarder from '@aragon/os/abi/IForwarder'
+import abiAragonKernel from '@aragon/os/abi/Kernel'
+import abiAragonEVMScriptRegistry from '@aragon/os/abi/EVMScriptRegistry'
+import abiERC20 from '@aragon/os/abi/ERC20'
 
 // Artifacts
 import artifactsAragonACL from '../artifacts/aragon/ACL.json'
