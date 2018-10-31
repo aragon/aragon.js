@@ -175,6 +175,7 @@ export default class Aragon {
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
+    this.signatures = new Subject()
   }
 
   /**
@@ -637,7 +638,8 @@ export default class Aragon {
       handlers.createRequestHandler(request$, 'identify', handlers.identifier),
       handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
       handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-      handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+      handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+      handlers.createRequestHandler(request$, 'sign_data', handlers.signData)
     ).subscribe(
       (response) => messenger.sendResponse(response.id, response.payload)
     )
@@ -673,6 +675,7 @@ export default class Aragon {
       .take(1)
       .toPromise()
   }
+
 
   /**
    * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
