@@ -175,7 +175,7 @@ export default class Aragon {
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
-    this.signatures = new Subject()
+    this.signatures = new ReplaySubject(1)
   }
 
   /**
@@ -679,7 +679,7 @@ export default class Aragon {
   /**
    * Allows apps to sign arbitrary data via a RPC call
    *
-   * @param {string} data The data to be signed or the signature of the signed data
+   * @param {string} data The data to be signed 
    * @return {void}
    */
   signData (data) {
