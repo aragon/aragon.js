@@ -13,13 +13,13 @@ import artifactsAragonKernel from '../artifacts/aragon/Kernel.json'
 import artifactsAragonEVMScriptRegistry from '../artifacts/aragon/EVMScriptRegistry.json'
 
 const ABIS = {
-  'aragon/ACL': abiAragonACL,
-  'aragon/AppProxy': abiAragonAppProxy,
-  'aragon/ERCProxy': abiAragonERCProxy,
-  'aragon/Forwarder': abiAragonForwarder,
-  'aragon/Kernel': abiAragonKernel,
-  'aragon/EVM Script Registry': abiAragonEVMScriptRegistry,
-  'standard/ERC20': abiERC20
+  'aragon/ACL': abiAragonACL.abi,
+  'aragon/AppProxy': abiAragonAppProxy.abi,
+  'aragon/ERCProxy': abiAragonERCProxy.abi,
+  'aragon/Forwarder': abiAragonForwarder.abi,
+  'aragon/Kernel': abiAragonKernel.abi,
+  'aragon/EVM Script Registry': abiAragonEVMScriptRegistry.abi,
+  'standard/ERC20': abiERC20.abi
 }
 
 const ARTIFACTS = {
