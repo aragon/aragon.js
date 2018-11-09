@@ -1,6 +1,4 @@
-import low from 'lowdb'
-import Memory from 'lowdb/adapters/Memory'
-import LocalStorage from 'lowdb/adapters/LocalStorage'
+import localforage from 'localforage'
 import { Subject } from 'rxjs/Rx'
 
 /**
@@ -11,7 +9,6 @@ export default class Cache {
     this.prefix = prefix
 
     // Set up cache DB
-    let adapter = null
     if (typeof window === 'undefined') {
       // TODO: Support caching on the file system
       // const path = require('path')
@@ -23,44 +20,42 @@ export default class Cache {
       //     os.homedir(), '.aragon', 'cache.json'
       //   )
       // )
-      adapter = new Memory()
-    } else {
-      adapter = new LocalStorage()
     }
-    this.db = low(adapter)
-
-    // Set default cache state
-    this.db.defaults({}).write()
 
     // Set up the changes observable
     this.changes = new Subject()
+
+    // Set DB
+    this.db = localforage.createInstance({
+      driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
+      name: 'localforage'
+    })
   }
 
   getCacheKeyPath (key) {
     return `${this.prefix}.${key}`
   }
 
-  async set (key, value) {
-    // Some lowdb adapters are synchronous while others are asynchronous so
-    // let's always wrap it in a promise
-    await Promise.resolve(this.db.set(
+  set (key, value) {
+    this.db.setItem(
       this.getCacheKeyPath(key),
       value
-    ).write())
-
-    this.changes.next({ key, value })
+    ).then(function (v) {
+      this.changes.next({ key, v })
+    }, function (err) {
+      console.error(err)
+    })
   }
 
   get (key, defaultValue) {
-    return this.db.get(
+    // If we access a key without data the promise resolve but value is null
+    this.db.getItem(
       this.getCacheKeyPath(key)
-    ).value() || defaultValue
-  }
-
-  update (key, transition) {
-    return this.set(key,
-      transition(this.get(key))
-    )
+    ).then(function (value = defaultValue) {
+      return value
+    }, function (err) {
+      console.error(err)
+    })
   }
 
   /**
