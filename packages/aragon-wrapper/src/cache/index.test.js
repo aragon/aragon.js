@@ -10,17 +10,19 @@ test.afterEach.always(() => {
 test('should set the cache and emit the change', async (t) => {
   // arrange
   const instance = new Cache('counterapp')
-  const dbWriteStub = sinon.stub().returns()
-  const dbSetStub = sinon.stub().returns({
-    write: dbWriteStub
+  const dbMock = {
+    setItem: sinon.stub().returns()
+  }
+  const setStub = sinon.stub().returns({
+    setItem: dbMock.setItem
   })
-  instance.db.set = dbSetStub
+  instance.db = dbMock
   // assert
   t.plan(3)
   instance.changes.subscribe(change => {
     t.deepEqual(change, { key: 'counter', value: 5 })
-    t.is(dbSetStub.getCall(0).args[0], 'counterapp.counter')
-    t.is(dbSetStub.getCall(0).args[1], 5)
+    t.is(dbMock.setItem.getCall(0).args[0], 'counter')
+    t.is(dbMock.setItem.getCall(0).args[1], 5)
   })
   // act
   await instance.set('counter', 5)
@@ -29,6 +31,8 @@ test('should set the cache and emit the change', async (t) => {
 test('should observe the key\'s value for changes', (t) => {
   // arrange
   const instance = new Cache()
+  instance.get = sinon.stub().returns(2)
+
   // assert
   t.plan(2)
   // act
