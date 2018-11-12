@@ -175,7 +175,7 @@ export default class Aragon {
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
-    this.signatures = new ReplaySubject(1)
+    this.signatures = new Subject()
   }
 
   /**
@@ -683,7 +683,7 @@ export default class Aragon {
    * @return {Promise<string>} signature hash
    */
   signData (params) {
-    const { fromAddress , data } = params
+    const { fromAddress, data } = params
 
     return new Promise((resolve, reject) => {
       this.signatures.next({
@@ -697,7 +697,6 @@ export default class Aragon {
         }
       })
     })
-    
   }
 
   /**
