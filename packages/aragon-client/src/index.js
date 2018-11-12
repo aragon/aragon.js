@@ -283,7 +283,7 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'sign_data',
       [dataToSign]
-    )
+    ).pluck('result')
   }
 }
 

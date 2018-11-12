@@ -679,11 +679,25 @@ export default class Aragon {
   /**
    * Allows apps to sign arbitrary data via a RPC call
    *
-   * @param {string} data The data to be signed 
-   * @return {void}
+   * @param {Array<Object>} params An object containing the address of the app and the data to be signed
+   * @return {Promise<string>} signature hash
    */
-  signData (data) {
-    this.signatures.next(data)
+  signData (params) {
+    const { fromAddress , data } = params
+
+    return new Promise((resolve, reject) => {
+      this.signatures.next({
+        from: fromAddress,
+        data,
+        accept (signatureHash) {
+          resolve(signatureHash)
+        },
+        reject (err) {
+          reject(err || new Error('The data was not signed'))
+        }
+      })
+    })
+    
   }
 
   /**
