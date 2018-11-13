@@ -27,7 +27,7 @@ import {
   ANY_ENTITY
 } from './utils'
 
-import { getAragonOsInternalAppInfo } from './core/aragonOS'
+import { getAragonOsInternalAppInfo, getKernelNamespace } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
@@ -973,6 +973,11 @@ export default class Aragon {
       if (app) {
         // return the entire app as it contains APM package details
         return [input, `'${app.appName}'`, { type: 'apmPackage', value: app }]
+      }
+
+      const namespace = getKernelNamespace(input)
+      if (namespace) {
+        return [input, `'${namespace.name}'`, { type: 'kernelNamespace', value: namespace }]
       }
 
       return [input, input, { type: 'bytes32', value: input }]

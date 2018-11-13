@@ -17,6 +17,12 @@ const APP_MAPPINGS = {
   [oldWrongAppId('evmreg')]: 'EVM Script Registry'
 }
 
+const KERNEL_NAMESPACES = {
+  [soliditySha3('core')]: 'Core',
+  [soliditySha3('app')]: 'Default apps',
+  [soliditySha3('base')]: 'App code',
+}
+
 function getAragonOsInternalAppInfo (appId) {
   const appName = APP_MAPPINGS[appId]
 
@@ -35,4 +41,10 @@ function getAragonOsInternalAppInfo (appId) {
   }
 }
 
-export { getAragonOsInternalAppInfo }
+function getKernelNamespace (hash) {
+  if (KERNEL_NAMESPACES[hash]) {
+    return { name: KERNEL_NAMESPACES[hash], hash }
+  }
+}
+
+export { getAragonOsInternalAppInfo, getKernelNamespace }
