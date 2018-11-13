@@ -20,7 +20,7 @@ const APP_MAPPINGS = {
 const KERNEL_NAMESPACES = {
   [soliditySha3('core')]: 'Core',
   [soliditySha3('app')]: 'Default apps',
-  [soliditySha3('base')]: 'App code',
+  [soliditySha3('base')]: 'App code'
 }
 
 function getAragonOsInternalAppInfo (appId) {
