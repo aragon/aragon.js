@@ -57,6 +57,10 @@
       "@babel/register"
     ]
   },
+  "browserslist": {
+    "development": ">2%, last 1 edge versions, not ie > 0, not op_mini all",
+    "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
+  },
   "dependencies": {
     "@babel/runtime": "^7.1.2",
     "rxjs": "^5.5.6",
