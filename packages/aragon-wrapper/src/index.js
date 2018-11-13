@@ -8,6 +8,7 @@ import radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
+import { hash as namehash } from 'eth-ens-namehash'
 import apm from '@aragon/apm'
 
 // RPC
@@ -964,6 +965,16 @@ export default class Aragon {
       if (role && role.name) {
         return [input, `'${role.name}'`, { type: 'role', value: role }]
       }
+
+      const app = apps.find(
+        ({ appName }) => appName && namehash(appName) === input
+      )
+
+      if (app) {
+        // return the entire app as it contains APM package details
+        return [input, `'${app.appName}'`, { type: 'apmPackage', value: app }]
+      }
+
       return [input, input, { type: 'bytes32', value: input }]
     }
 
