@@ -21,8 +21,9 @@ export function events (request, proxy, wrapper) {
   const [
     address,
     jsonInterface,
-    fromBlock
+    providedFromBlock
   ] = request.params
+  const fromBlock = providedFromBlock == null ? proxy.initializationBlock : providedFromBlock
 
   const contract = new web3.eth.Contract(
     jsonInterface,

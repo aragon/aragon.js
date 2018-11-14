@@ -590,66 +590,77 @@ export default class Aragon {
   /**
    * Run an app.
    *
-   * @param  {Object} sandboxMessengerProvider
-   *         An object that can communicate with the app sandbox via Aragon RPC.
+   * As there may be race conditions with losing messages from cross-context environments,
+   * running an app is split up into two parts:
+   *
+   *   1. Set up any required state for the app. This step is allowed to be asynchronous.
+   *   2. Connect the app to a running context, by associating the context's message provider
+   *      to the app. This step is synchronous.
+   *
    * @param  {string} proxyAddress
    *         The address of the app proxy.
-   * @return {Object}
+   * @return {Promise<function>}
    */
-  runApp (sandboxMessengerProvider, proxyAddress) {
-    // Set up messenger
-    const messenger = new Messenger(
-      sandboxMessengerProvider
-    )
+  async runApp (proxyAddress, connect) {
+    // Step 1: Set up required state for the app
 
     // Get the application proxy
+    // Finish the observable, so our running contexts don't get reinitialized if new apps appear
     // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const proxy$ = this.appsWithoutIdentifiers
-      .map((apps) => apps.find(
-        (app) => addressesEqual(app.proxyAddress, proxyAddress))
+    const appProxy = await this.appsWithoutIdentifiers
+      .map((apps) => {
+        const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+        // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
+        return makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+      })
+      .take(1)
+      .toPromise()
+    await appProxy.updateInitializationBlock()
+
+    // Step 2: Associate app with running context
+    return (sandboxMessengerProvider) => {
+      // Set up messenger
+      const messenger = new Messenger(
+        sandboxMessengerProvider
       )
-      // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-      .map(
-        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
+
+      // Wrap requests with the application proxy
+      // Note that we have to do this synchronously with the creation of the message provider,
+      // as we otherwise risk race conditions and may lose messages
+      const request$ = messenger.requests()
+        .map(request => ({ request, proxy: appProxy, wrapper: this }))
+        // Use the same request$ result in each handler
+        // Turns request$ into a subject
+        .publishReplay(1)
+      request$.connect()
+
+      // Register request handlers
+      const shutdown = handlers.combineRequestHandlers(
+        handlers.createRequestHandler(request$, 'cache', handlers.cache),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'intent', handlers.intent),
+        handlers.createRequestHandler(request$, 'call', handlers.call),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
+        handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+      ).subscribe(
+        (response) => messenger.sendResponse(response.id, response.payload)
       )
 
-    // Wrap requests with the application proxy
-    const request$ = Observable.combineLatest(
-      messenger.requests(),
-      proxy$,
-      (request, proxy) => ({ request, proxy, wrapper: this })
-    )
-      // Use the same request$ result in each handler
-      // Turns request$ into a subject
-      .publishReplay(1)
-    request$.connect()
+      // App context helper function
+      function setContext (context) {
+        return messenger.send('context', [context])
+      }
 
-    // Register request handlers
-    const shutdown = handlers.combineRequestHandlers(
-      handlers.createRequestHandler(request$, 'cache', handlers.cache),
-      handlers.createRequestHandler(request$, 'events', handlers.events),
-      handlers.createRequestHandler(request$, 'intent', handlers.intent),
-      handlers.createRequestHandler(request$, 'call', handlers.call),
-      handlers.createRequestHandler(request$, 'network', handlers.network),
-      handlers.createRequestHandler(request$, 'notification', handlers.notifications),
-      handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
-      handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-      handlers.createRequestHandler(request$, 'identify', handlers.identifier),
-      handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-      handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
-    ).subscribe(
-      (response) => messenger.sendResponse(response.id, response.payload)
-    )
-
-    // App context helper function
-    function setContext (context) {
-      return messenger.send('context', [context])
-    }
-
-    return {
-      shutdown,
-      setContext
+      return {
+        shutdown,
+        setContext
+      }
     }
   }
 

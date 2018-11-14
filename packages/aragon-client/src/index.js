@@ -91,17 +91,21 @@ export class AppProxy {
    */
   external (address, jsonInterface) {
     const contract = {
-      events: (fromBlock = 0) => {
+      events: (fromBlock) => {
+        const eventArgs = [
+          address,
+          jsonInterface.filter(
+            (item) => item.type === 'event'
+          )
+        ]
+        if (fromBlock != null) {
+          eventArgs.push(fromBlock)
+        }
+
         return defer(
           () => this.rpc.sendAndObserveResponses(
             'external_events',
-            [
-              address,
-              jsonInterface.filter(
-                (item) => item.type === 'event'
-              ),
-              fromBlock
-            ]
+            eventArgs
           ).pluck('result')
         )
       }
