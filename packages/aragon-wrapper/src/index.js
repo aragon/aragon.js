@@ -128,7 +128,7 @@ export const setupTemplates = (from, options = {}) => {
  * })
  */
 export default class Aragon {
-  constructor(daoAddress, options = {}) {
+  constructor (daoAddress, options = {}) {
     const defaultOptions = {
       apm: {},
       defaultGasPriceFn: () => { },
@@ -1001,9 +1001,9 @@ export default class Aragon {
       acc.annotatedDescription.push(annotation)
       return acc
     }, {
-        annotatedDescription: [],
-        description: []
-      })
+      annotatedDescription: [],
+      description: []
+    })
 
     return {
       annotatedDescription: compiled.annotatedDescription,

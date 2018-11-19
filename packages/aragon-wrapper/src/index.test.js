@@ -191,7 +191,7 @@ test('should init the ACL correctly', async (t) => {
     returnValues: {
       app: 'counter',
       role: 'subtract',
-      manager: 'manager',
+      manager: 'manager'
     }
   })
   const instance = new Aragon()
@@ -484,7 +484,7 @@ test('should run the app and reply to a request', async (t) => {
   const requestsStub = of({
     id: 'uuid1',
     method: 'cache',
-    params: ['get', 'settings'],
+    params: ['get', 'settings']
   })
   const messengerStub = {
     sendResponse: sinon.stub(),
