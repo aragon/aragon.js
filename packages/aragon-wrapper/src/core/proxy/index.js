@@ -47,16 +47,15 @@ export default class Proxy {
     if (!this.contract.methods[method]) {
       throw new Error(`No method named ${method} on ${this.address}`)
     }
-    
-    const lastParam = params[params.length - 1] 
+
+    const lastParam = params[params.length - 1]
 
     return (typeof lastParam === 'object' && lastParam !== null)
-      ? this.contract.methods[method](...params.slice(0,-1)).call(lastParam)
+      ? this.contract.methods[method](...params.slice(0, -1)).call(lastParam)
       : this.contract.methods[method](...params).call()
-    
   }
 
-  async updateInitializationBlock() {
+  async updateInitializationBlock () {
     const initBlock = await this.contract.methods.getInitializationBlock().call()
     this.initializationBlock = initBlock
   }

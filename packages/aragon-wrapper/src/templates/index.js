@@ -1,84 +1,122 @@
-import { templates as templateArtifacts } from '@aragon/templates-beta'
 import { resolve as ensResolve } from '../ens'
+import { getRecommendedGasLimit } from '../utils'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 
-// TODO: Load template info dynamically from APM content package.
 // Maybe we can even do a simple markup language that aragon/aragon interprets
 const templates = {
   democracy: {
     name: 'Democracy',
-    abi: templateArtifacts['DemocracyTemplate'].abi,
-    appId: 'democracy-template.aragonpm.eth',
-    params: [
-      'name', // string
-      'holders', // array of addresses
-      'stakes', // array of token balances (token has 18 decimals, 1 token = 10^18)
-      'supportNeeded', // percentage in with 10^18 base (1% = 10^16, 100% = 10^18)
-      'minAcceptanceQuorum', // percentage in with 10^18 base
-      'voteDuration' // in seconds
-    ],
+    appId: 'democracy-kit.aragonpm.eth'
   },
   multisig: {
     name: 'Multisig',
-    abi: templateArtifacts['MultisigTemplate'].abi,
-    appId: 'multisig-template.aragonpm.eth',
-    params: [
-      'name', // string
-      'signers', // array of addresses
-      'neededSignatures', // number of signatures need, must be > 0 and <= signers.length
-    ],
-  },
+    appId: 'multisig-kit.aragonpm.eth'
+  }
 }
 
-const Templates = (web3, apm, from) => {
-  const minGasPrice = web3.utils.toWei('20', 'gwei')
-  const newToken = async (template, name) => {
-    const call = template.methods.newToken(name, name)
+/**
+ * @name Templates
+ * @function
+ * @description Factory for DAO templates.
+ *
+ * @param {string} from
+ *        The address of the account using the factory.
+ * @param {Object} options
+ *        Template factory options.
+ * @param {Object} options.apm
+ *        apm.js instance
+ * @param {Function} options.defaultGasPriceFn
+ *        A factory function to provide the default gas price for transactions.
+ *        It can return a promise of number string or a number string. The function
+ *        has access to a recommended gas limit which can be used for custom
+ *        calculations. This function can also be used to get a good gas price
+ *        estimation from a 3rd party resource.
+ * @param {Object} options.web3
+ *        Web3 instance
+ * @return {Object} Factory object
+ */
+const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
+  const newToken = async (template, { params, options = {} }) => {
+    const [tokenName, tokenSymbol] = params
+    const call = template.methods.newToken(tokenName, tokenSymbol)
     const receipt = await call.send({
       from,
-      gas: 6700000,
-      gasPrice: minGasPrice
+      ...await applyCallGasOptions(call, options)
     })
     return receipt.events.DeployToken.returnValues
   }
 
-  const newInstance = async (template, name, params) => {
-    const call = template.methods.newInstance(name, ...params)
+  const newInstance = async (template, { params, options = {} }) => {
+    const call = template.methods.newInstance(...params)
     const receipt = await call.send({
       from,
-      gas: 6700000,
-      gasPrice: minGasPrice
+      ...await applyCallGasOptions(call, options)
     })
     return receipt.events.DeployInstance.returnValues
   }
 
+  const applyCallGasOptions = async (call, txOptions = {}) => {
+    if (!txOptions.gas) {
+      const estimatedGasLimit = await call.estimateGas({ from })
+      const recommendedGasLimit = await getRecommendedGasLimit(
+        web3,
+        estimatedGasLimit,
+        { gasFuzzFactor: 1.1 }
+      )
+      txOptions.gas = recommendedGasLimit
+    }
+
+    if (!txOptions.gasPrice) {
+      txOptions.gasPrice = await defaultGasPriceFn(txOptions.gas)
+    }
+
+    return txOptions
+  }
+
   return {
-    newDAO: async (templateName, organizationName, params) => {
+    /**
+     * Create a new DAO by sending two transactions:
+     *
+     *   1. Create a new token
+     *   2. Create a new instance of a template (the token is cached in the template contract)
+     *
+     * @param {string} templateName name of the template to use
+     * @param {Object} tokenParams parameters for the token creation transaction
+     * @param {Array<string>} tokenParams.params array of [<Token name>, <Token symbol>]
+     * @param {Object} [tokenParams.options={}] transaction options
+     * @param {Object} instanceParams parameters for the DAO creation transaction
+     * @param {Array<string>} tokenParams.params parameters for the template's `newDAO()` method
+     * @param {Object} [instanceParams.options={}] transaction options
+     * @return {Array<Object>} return values for `DeployEvent` and `DeployInstance`
+     */
+    newDAO: async (templateName, tokenParams, instanceParams) => {
       const tmplObj = templates[templateName]
 
-      if (!tmplObj) throw new Error("No template found for that name")
+      if (!tmplObj) throw new Error('No template found for that name')
 
-      const contractAddress = await apm.getLatestVersionContract(tmplObj.appId)
+      const { contractAddress, abi } = await apm.getLatestVersion(tmplObj.appId)
 
-      if (!contractAddress) throw new Error("No template contract found for that appId")
+      if (!contractAddress) {
+        throw new Error(`No contract found on APM for template '${templateName}'`)
+      }
+      if (!abi) {
+        throw new Error(`Could not fetch ABI for template '${templateName}'`)
+      }
 
-      const template = new web3.eth.Contract(
-        tmplObj.abi,
-        contractAddress
-      )
+      const template = new web3.eth.Contract(abi, contractAddress)
 
-      const token = await newToken(template, organizationName)
-      const instance = await newInstance(template, organizationName, params)
+      const token = await newToken(template, tokenParams)
+      const instance = await newInstance(template, instanceParams)
 
       return [token, instance]
-    },
+    }
   }
 }
 
 // opts will be passed to the ethjs-ens constructor and
 // should at least contain `provider` and `registryAddress`.
-export const isNameUsed = async (name, opts = {} ) => {
+export const isNameUsed = async (name, opts = {}) => {
   try {
     const addr = await ensResolve(`${name}.aragonid.eth`, opts)
     return addr !== zeroAddress

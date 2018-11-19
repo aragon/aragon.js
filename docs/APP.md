@@ -11,6 +11,7 @@
 
 - [AragonApp](#aragonapp)
   - [accounts()](#accounts)
+  - [network()](#network)
   - [identify(identifier)](#identify)
   - [events()](#events)
   - [external(address, jsonInterface)](#external)
@@ -65,7 +66,7 @@ app.increment(1, { gas: 200000, gasPrice: 80000000 })
 Some caveats to customizing transaction parameters:
 
 - `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
-- `gas`: The gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because the intent may require performing a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
+- `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
 
 
 **Parameters**
@@ -97,6 +98,18 @@ None.
 **Returns**
 
 ([`Observable`](https://github.com/tc39/proposal-observable)): An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of account addresses every time a change is detected.
+
+### network
+
+Get the details of the network the app is connected to over time.
+
+**Parameters**
+
+None.
+
+**Returns**
+
+([`Observable`](https://github.com/tc39/proposal-observable)): An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an object with the connected network's `id` and `type` every time the network changes.
 
 ### identify
 

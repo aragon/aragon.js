@@ -53,7 +53,7 @@ test('should create a request handler', async (t) => {
     }
 
     if (request.params[0] === 'set') {
-      return Promise.reject(`no permissions to change ${request.params[1]}!!`)
+      return Promise.reject(new Error(`no permissions to change ${request.params[1]}!!`))
     }
 
     return Promise.resolve(`resolved ${request.params[1]}`)
@@ -63,7 +63,7 @@ test('should create a request handler', async (t) => {
   // assert
   result.subscribe(value => {
     if (value.id === 'uuid1') return t.is(value.payload, 'resolved settings')
-    if (value.id === 'uuid4') return t.is(value.payload, 'no permissions to change settings!!')
+    if (value.id === 'uuid4') return t.is(value.payload.message, 'no permissions to change settings!!')
     if (value.id === 'uuid6') return t.is(value.payload, 'resolved profile')
     if (value.id === 'uuid8') return t.is(value.payload, null)
   })

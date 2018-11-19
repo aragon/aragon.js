@@ -48,7 +48,7 @@ export default class Cache {
       this.getCacheKeyPath(key),
       value
     ).write())
-     
+
     this.changes.next({ key, value })
   }
 

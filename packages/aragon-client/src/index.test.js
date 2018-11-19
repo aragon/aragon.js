@@ -34,6 +34,36 @@ test('should send intent when the method does not exist in target', t => {
   t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['add', 5])
 })
 
+test('should return the network details as an observable', t => {
+  t.plan(3)
+  // arrange
+  const networkDetails = {
+    id: 4,
+    type: 'rinkeby'
+  }
+  const networkFn = Index.AppProxy.prototype.network
+  const observable = of({
+    jsonrpc: '2.0',
+    id: 'uuid1',
+    result: networkDetails
+  })
+  const instanceStub = {
+    rpc: {
+      sendAndObserveResponses: sinon.stub()
+        .returns(observable)
+    }
+  }
+  // act
+  const result = networkFn.call(instanceStub)
+  // assert
+  // the call to sendAndObserveResponse is made before we subscribe
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  result.subscribe(value => {
+    t.deepEqual(value, networkDetails)
+  })
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
+})
+
 test('should return the accounts as an observable', t => {
   t.plan(3)
   // arrange
@@ -115,7 +145,7 @@ test('should return an handle for an external contract events', t => {
   })
   const jsonInterfaceStub = [
     { type: 'event', name: 'SetPermission' },
-    { type: 'function', name: 'grantPermission', constant: true },
+    { type: 'function', name: 'grantPermission', constant: true }
   ]
   const instanceStub = {
     rpc: {
@@ -123,7 +153,7 @@ test('should return an handle for an external contract events', t => {
         .returns(observableA),
 
       sendAndObserveResponse: sinon.stub()
-        .returns(observableB),
+        .returns(observableB)
     }
   }
   // act
