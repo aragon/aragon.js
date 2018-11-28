@@ -13,9 +13,6 @@ test('should set the cache and emit the change', async (t) => {
   const dbMock = {
     setItem: sinon.stub().returns()
   }
-  const setStub = sinon.stub().returns({
-    setItem: dbMock.setItem
-  })
   instance.db = dbMock
   // assert
   t.plan(3)
