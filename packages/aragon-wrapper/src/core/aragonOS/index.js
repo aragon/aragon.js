@@ -7,24 +7,24 @@ const oldWrongAppId = appName => soliditySha3(`${appName}.aragonpm.eth`)
 
 const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
 
-const APP_MAPPINGS = {
-  [aragonpmAppId('acl')]: 'ACL',
-  [aragonpmAppId('evmreg')]: 'EVM Script Registry',
-  [aragonpmAppId('kernel')]: 'Kernel',
+const APP_MAPPINGS = new Map([
+  [aragonpmAppId('acl'), 'ACL'],
+  [aragonpmAppId('evmreg'), 'EVM Script Registry'],
+  [aragonpmAppId('kernel'), 'Kernel'],
 
   // TODO: Remove this when 0.5 Rinkeby DAOs are deprecated
-  [oldWrongAppId('acl')]: 'ACL',
-  [oldWrongAppId('evmreg')]: 'EVM Script Registry'
-}
+  [oldWrongAppId('acl'), 'ACL'],
+  [oldWrongAppId('evmreg'), 'EVM Script Registry']
+])
 
-const KERNEL_NAMESPACES = {
-  [soliditySha3('core')]: 'Core',
-  [soliditySha3('app')]: 'Default apps',
-  [soliditySha3('base')]: 'App code'
-}
+const KERNEL_NAMESPACES = new Map([
+  [soliditySha3('core'), 'Core'],
+  [soliditySha3('app'), 'Default apps'],
+  [soliditySha3('base'), 'App code']
+])
 
 function getAragonOsInternalAppInfo (appId) {
-  const appName = APP_MAPPINGS[appId]
+  const appName = APP_MAPPINGS.get(appId)
 
   if (!appName) {
     return
@@ -42,8 +42,8 @@ function getAragonOsInternalAppInfo (appId) {
 }
 
 function getKernelNamespace (hash) {
-  if (KERNEL_NAMESPACES[hash]) {
-    return { name: KERNEL_NAMESPACES[hash], hash }
+  if (KERNEL_NAMESPACES.has(hash)) {
+    return { name: KERNEL_NAMESPACES.get(hash), hash }
   }
 }
 
