@@ -2,11 +2,25 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "KERNEL_APP_ID",
+    "name": "proxyType",
+    "outputs": [
+      {
+        "name": "proxyTypeId",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "isDepositable",
     "outputs": [
       {
         "name": "",
-        "type": "bytes32"
+        "type": "bool"
       }
     ],
     "payable": false,
@@ -16,39 +30,11 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "APP_ADDR_NAMESPACE",
+    "name": "implementation",
     "outputs": [
       {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "KERNEL_APP",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "CORE_NAMESPACE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
+        "name": "codeAddr",
+        "type": "address"
       }
     ],
     "payable": false,
@@ -72,91 +58,7 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "ACL_APP",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "ACL_APP_ID",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "kernel",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "isUpgradeable",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "APP_BASES_NAMESPACE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "getCode",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "implementation",
     "outputs": [
       {
         "name": "",
@@ -192,17 +94,20 @@
     "type": "fallback"
   },
   {
-    "constant": true,
-    "inputs": [],
-    "name": "isForwarder",
-    "outputs": [
+    "anonymous": false,
+    "inputs": [
       {
-        "name": "",
-        "type": "bool"
+        "indexed": false,
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "value",
+        "type": "uint256"
       }
     ],
-    "payable": false,
-    "stateMutability": "pure",
-    "type": "function"
+    "name": "ProxyDeposit",
+    "type": "event"
   }
 ]

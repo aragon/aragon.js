@@ -14,11 +14,11 @@
 ```javascript
 const aragon = new Aragon('0xdeadbeef')
 
-// Initialises the wrapper and logs the installed apps
-aragon.init(() => {
-  aragon.apps.subscribe(
-    (apps) => console.log(apps)
-  )
+// Initialises the wrapper
+await aragon.init({
+  accounts: {
+    providedAccounts: ["0xbeefdead", "0xbeefbeef"]
+  }
 })
 ```
 
@@ -26,15 +26,44 @@ aragon.init(() => {
 
 Initialise the wrapper.
 
+### **Parameters**
+
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
+      An optional options object for configuring the wrapper.
+    -   `accounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
+          Options object for [`initAccounts()`](#initaccounts)
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
+
+Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/dev/contracts/kernel/Kernel.sol) instance
+
+## initAccounts
+
+Initialise user-controlled accounts.
+
+### **Parameters**
+
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
+    -   `fetchFromWeb3` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)**
+          Whether accounts should also be fetched from the Web3 instance provided to the wrapper
+    -   `providedAccounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
+          An array of accounts that the user controls
+
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
 ## initAcl
 
 Initialise the ACL.
 
+### **Parameters**
+
+-   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
+    -   `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
+          Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/dev/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
+
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-## getAppProxyValues
+## getProxyValues
 
 Get proxy metadata (`appId`, address of the kernel, ...).
 
@@ -65,6 +94,12 @@ Returns **void**
 Initialise forwarder observable.
 
 Returns **void**
+
+## initNetwork
+
+Initialise connected network details observable.
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
 ## runApp
 

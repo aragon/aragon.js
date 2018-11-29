@@ -1,13 +1,13 @@
 {
   "name": "@aragon/wrapper",
-  "version": "2.0.1",
-  "description": "Library for Aragon Wrappers",
+  "version": "3.0.0-beta.3",
+  "description": "Library for Aragon client implementations",
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
-    "build": "babel -d dist src",
+    "build": "babel src -d dist -s",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
@@ -63,12 +63,14 @@
       "@babel/register"
     ]
   },
+  "browserslist": {
+    "development": ">2%, last 1 edge versions, not ie > 0, not op_mini all",
+    "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
+  },
   "dependencies": {
-    "@aragon/apm": "^2.0.0",
+    "@aragon/apm": "^3.0.0",
     "@aragon/messenger": "^1.0.0",
-    "@aragon/templates-beta": "^1.1.3",
     "@babel/runtime": "^7.1.2",
-    "date-fns": "^2.0.0-alpha.7",
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",
     "ethereum-ens": "^0.7.3",
@@ -76,7 +78,7 @@
     "homedir": "^0.6.0",
     "js-sha3": "^0.7.0",
     "lowdb": "^1.0.0",
-    "radspec": "^1.0.1",
+    "radspec": "^1.1.4",
     "rxjs": "^5.5.6",
     "uuid": "^3.2.1",
     "web3": "1.0.0-beta.33",

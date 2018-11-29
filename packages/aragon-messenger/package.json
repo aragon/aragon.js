@@ -10,7 +10,7 @@
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
-    "build": "babel -d dist src",
+    "build": "babel src -d dist -s",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
@@ -56,6 +56,10 @@
     "require": [
       "@babel/register"
     ]
+  },
+  "browserslist": {
+    "development": ">2%, last 1 edge versions, not ie > 0, not op_mini all",
+    "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
   },
   "dependencies": {
     "@babel/runtime": "^7.1.2",
