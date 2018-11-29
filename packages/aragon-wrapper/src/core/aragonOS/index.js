@@ -1,4 +1,5 @@
 import { hash as namehash } from 'eth-ens-namehash'
+import { soliditySha3 } from 'web3-utils'
 import { getAbi, getArtifact } from '../../interfaces'
 
 const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
@@ -6,7 +7,7 @@ const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
 const APP_MAPPINGS = new Map([
   [aragonpmAppId('acl'), 'ACL'],
   [aragonpmAppId('evmreg'), 'EVM Script Registry'],
-  [aragonpmAppId('kernel'), 'Kernel'],
+  [aragonpmAppId('kernel'), 'Kernel']
 ])
 
 const KERNEL_NAMESPACES = new Map([
