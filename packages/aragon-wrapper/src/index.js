@@ -308,13 +308,7 @@ export default class Aragon {
       proxyValues = await Promise.all([
         appProxy.call('kernel').catch(() => null),
         appProxy.call('appId').catch(() => null),
-        appProxy
-          .call('implementation')
-          .catch(() => appProxy
-            // Fallback to old non-ERC897 proxy implementation
-            .call('getCode')
-            .catch(() => null)
-          ),
+        appProxy.call('implementation').catch(() => null),
         appProxyForwarder.call('isForwarder').catch(() => false)
       ]).then((values) => ({
         proxyAddress,
