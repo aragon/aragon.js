@@ -72,7 +72,7 @@ export const detectProvider = () =>
  *        estimation from a 3rd party resource.
  * @param {string|Object} [options.provider=web3.currentProvider]
  *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
- *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws 
+ *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
  * @return {Object} Template factory instance
  */
 export const setupTemplates = (from, options = {}) => {
@@ -114,7 +114,7 @@ export const setupTemplates = (from, options = {}) => {
  *        estimation from a 3rd party resource.
  * @param {string|Object} [options.provider=web3.currentProvider]
  *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
- *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws 
+ *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
@@ -136,7 +136,7 @@ export default class Aragon {
 
     // Set up Web3
     this.web3 = new Web3(options.provider)
-    
+
     // Set up APM
     this.apm = apm(this.web3, options.apm)
 

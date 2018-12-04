@@ -33,10 +33,10 @@ test.afterEach.always(() => {
 
 test('should create an Aragon instance with no options given', t => {
   const { Aragon } = t.context
-  
+
   t.plan(1)
   // act
-  const app = new Aragon(0x0);
+  const app = new Aragon(0x0)
   // assert
   t.not(app.apm, undefined)
 })
