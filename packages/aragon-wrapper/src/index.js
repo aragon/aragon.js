@@ -56,7 +56,7 @@ export const detectProvider = () =>
  *        The address of the account using the factory.
  * @param {Object} options
  *        Template factory options.
- * @param {string} [options.apm]
+ * @param {Object} [options.apm]
  *        Options for apm.js (see https://github.com/aragon/apm.js)
  * @param {string} [options.apm.ensRegistryAddress]
  *        ENS registry for apm.js
@@ -70,8 +70,9 @@ export const detectProvider = () =>
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
- * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
- *        The Web3 provider to use for blockchain communication
+ * @param {string|Object} [options.provider=web3.currentProvider]
+ *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
+ *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws 
  * @return {Object} Template factory instance
  */
 export const setupTemplates = (from, options = {}) => {
@@ -97,7 +98,7 @@ export const setupTemplates = (from, options = {}) => {
  *        The address of the DAO.
  * @param {Object} options
  *        Wrapper options.
- * @param {string} [options.apm]
+ * @param {Object} [options.apm]
  *        Options for apm.js (see https://github.com/aragon/apm.js)
  * @param {string} [options.apm.ensRegistryAddress]
  *        ENS registry for apm.js
@@ -111,8 +112,9 @@ export const setupTemplates = (from, options = {}) => {
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
- * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
- *        The Web3 provider to use for blockchain communication
+ * @param {string|Object} [options.provider=web3.currentProvider]
+ *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
+ *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws 
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
@@ -131,15 +133,6 @@ export default class Aragon {
       provider: detectProvider()
     }
     options = Object.assign(defaultOptions, options)
-
-    // Check for required options
-    if(options.apm === undefined){
-      options.apm = []
-    }
-
-    if(options.ensRegistryAddress === undefined){
-      options.ensRegistryAddress = []
-    }
 
     // Set up Web3
     this.web3 = new Web3(options.provider)
