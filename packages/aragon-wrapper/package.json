@@ -5,10 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
-    "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
+    "lint": "eslint \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
     "build": "babel src -d dist -s",
-    "prepublishOnly": "env NODE_ENV=production npm run build"
+    "prepublishOnly": "env NODE_ENV=production npm run build",
+    "precommit": "lint-staged"
   },
   "repository": {
     "type": "git",
@@ -47,16 +48,20 @@
     "nyc": "^11.4.1",
     "proxyquire": "^2.0.1",
     "sinon": "^6.1.4",
-    "standard": "^12.0.1"
+    "eslint": "^5.9.0",
+    "eslint-config-prettier": "^3.3.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-ava": "^5.1.1",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-node": "^8.0.0",
+    "eslint-plugin-prettier": "^3.0.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "lint-staged": "^8.1.0",
+    "prettier": "^1.15.3"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "standard": {
-    "parser": "babel-eslint",
-    "plugins": [
-      "flowtype"
-    ]
   },
   "ava": {
     "require": [
@@ -66,6 +71,15 @@
   "browserslist": {
     "development": ">2%, last 1 edge versions, not ie > 0, not op_mini all",
     "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
+  },
+  "lint-staged": {
+    "linters": {
+      "*.js": [
+        "eslint --fix",
+        "documentation lint",
+        "git add"
+      ]
+    }
   },
   "dependencies": {
     "@aragon/apm": "^3.0.0",
