@@ -92,7 +92,6 @@
     "ethjs-ens": "^2.0.1",
     "homedir": "^0.6.0",
     "js-sha3": "^0.7.0",
-    "localforage": "^1.7.3",
     "lowdb": "^1.0.0",
     "radspec": "^1.1.4",
     "rxjs": "^5.5.6",
