@@ -2,7 +2,7 @@ import test from 'ava'
 
 import Provider from './Provider'
 
-test('messages member should throw', (t) => {
+test('messages member should throw', t => {
   // arrange
   const instance = new Provider()
   // act
@@ -11,7 +11,7 @@ test('messages member should throw', (t) => {
   t.is(error.message, 'Not implemented')
 })
 
-test('send member should throw', (t) => {
+test('send member should throw', t => {
   // arrange
   const instance = new Provider()
   // act

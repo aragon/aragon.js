@@ -28,21 +28,18 @@ import Provider from './Provider'
  * @extends {Provider}
  */
 export default class DevMessage extends Provider {
-  constructor (id, target, bus) {
+  constructor(id, target, bus) {
     super()
     this.id = id
     this.target = target
     this.bus = bus
   }
 
-  messages () {
-    return this.bus
-      .filter((event) => event.target === this.id)
+  messages() {
+    return this.bus.filter(event => event.target === this.id)
   }
 
-  send (payload) {
-    this.bus.next(
-      Object.assign(payload, { target: this.target })
-    )
+  send(payload) {
+    this.bus.next(Object.assign(payload, { target: this.target }))
   }
 }

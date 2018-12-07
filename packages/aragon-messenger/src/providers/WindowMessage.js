@@ -9,7 +9,7 @@ import { Observable } from 'rxjs/Rx'
  * @extends {Provider}
  */
 export default class WindowMessage extends Provider {
-  constructor (target = window.parent) {
+  constructor(target = window.parent) {
     super()
     this.target = target
   }
@@ -19,9 +19,9 @@ export default class WindowMessage extends Provider {
    *
    * @memberof WindowMessage
    * @instance
-   * @returns {Observable}
+   * @returns {Observable} Messages being sent to this provider
    */
-  messages () {
+  messages() {
     return Observable.fromEvent(window, 'message', false)
       .filter(event => event.source === this.target)
       .pluck('data')
@@ -30,11 +30,12 @@ export default class WindowMessage extends Provider {
   /**
    * Send a payload to the underlying target of this provider.
    *
-   * @param {Object} payload
+   * @param {Object} payload Payload
    * @memberof WindowMessage
    * @instance
+   * @returns {void}
    */
-  send (payload) {
+  send(payload) {
     this.target.postMessage(payload, '*')
   }
 }

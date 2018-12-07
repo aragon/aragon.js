@@ -4,11 +4,11 @@ import { Subject } from 'rxjs'
 import DevMessage from './DevMessage'
 import Provider from './Provider'
 
-test('should extend Provider', (t) => {
+test('should extend Provider', t => {
   t.true(DevMessage.prototype instanceof Provider)
 })
 
-test('should filter the incoming messages from the bus by target', (t) => {
+test('should filter the incoming messages from the bus by target', t => {
   // arrange
   const busMock = new Subject()
   const instance = new DevMessage('id', null, busMock)
@@ -23,7 +23,7 @@ test('should filter the incoming messages from the bus by target', (t) => {
   busMock.next({ data: 'pass', target: 'id' })
 })
 
-test('should attach the target and send via the bus', (t) => {
+test('should attach the target and send via the bus', t => {
   // arrange
   const busMock = new Subject()
   const instance = new DevMessage(null, 'target', busMock)

@@ -6,7 +6,7 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('interfaces: getAbi', async (t) => {
+test('interfaces: getAbi', async t => {
   t.plan(8)
   // arrange
   const availableABIs = [
@@ -16,7 +16,7 @@ test('interfaces: getAbi', async (t) => {
     'aragon/Forwarder',
     'aragon/Kernel',
     'aragon/EVM Script Registry',
-    'standard/ERC20'
+    'standard/ERC20',
   ]
   // act
   availableABIs.map(abiName => {
@@ -29,13 +29,13 @@ test('interfaces: getAbi', async (t) => {
   t.is(emptyResult, null)
 })
 
-test('interfaces: getArtifact', async (t) => {
+test('interfaces: getArtifact', async t => {
   t.plan(7)
   // arrange
   const availableArtifacts = [
     'aragon/ACL',
     'aragon/Kernel',
-    'aragon/EVM Script Registry'
+    'aragon/EVM Script Registry',
   ]
   // act
   availableArtifacts.map(artifactName => {

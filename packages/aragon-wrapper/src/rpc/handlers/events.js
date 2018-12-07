@@ -1,3 +1,3 @@
-export default function (request, proxy) {
+export default function(request, proxy) {
   return proxy.events()
 }

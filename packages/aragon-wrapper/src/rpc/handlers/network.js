@@ -1,3 +1,3 @@
-export default function (request, proxy, wrapper) {
+export default function(request, proxy, wrapper) {
   return wrapper.network
 }

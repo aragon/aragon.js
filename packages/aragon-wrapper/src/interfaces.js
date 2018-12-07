@@ -19,13 +19,13 @@ const ABIS = {
   'aragon/Forwarder': abiAragonForwarder.abi,
   'aragon/Kernel': abiAragonKernel.abi,
   'aragon/EVM Script Registry': abiAragonEVMScriptRegistry.abi,
-  'standard/ERC20': abiERC20.abi
+  'standard/ERC20': abiERC20.abi,
 }
 
 const ARTIFACTS = {
   'aragon/ACL': artifactsAragonACL,
   'aragon/Kernel': artifactsAragonKernel,
-  'aragon/EVM Script Registry': artifactsAragonEVMScriptRegistry
+  'aragon/EVM Script Registry': artifactsAragonEVMScriptRegistry,
 }
 
 export const getAbi = name => ABIS[name] || null

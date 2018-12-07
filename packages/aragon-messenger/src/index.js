@@ -6,7 +6,7 @@ import DevMessage from './providers/DevMessage'
 export const providers = {
   MessagePortMessage,
   WindowMessage,
-  DevMessage
+  DevMessage,
 }
 
 /**
@@ -16,43 +16,41 @@ export const providers = {
  * @class Messenger
  */
 export default class Messenger {
-  constructor (provider = new MessagePortMessage()) {
+  constructor(provider = new MessagePortMessage()) {
     this.provider = provider
   }
 
   /**
    * Get the message bus of incoming messages
    *
-   * @returns {Observable}
+   * @returns {Observable} Message bus
    * @memberof Messenger
    * @instance
    */
-  bus () {
+  bus() {
     return this.provider.messages()
   }
 
   /**
    * Get requests from the message bus.
    *
-   * @returns {Observable}
+   * @returns {Observable} Requests from the message bus
    * @memberof Messenger
    * @instance
    */
-  requests () {
-    return this.bus()
-      .filter((message) => !jsonrpc.isValidResponse(message))
+  requests() {
+    return this.bus().filter(message => !jsonrpc.isValidResponse(message))
   }
 
   /**
    * Get responses from the message bus.
    *
-   * @returns {Observable}
+   * @returns {Observable} Responses from the message bus
    * @memberof Messenger
    * @instance
    */
-  responses () {
-    return this.bus()
-      .filter(jsonrpc.isValidResponse)
+  responses() {
+    return this.bus().filter(jsonrpc.isValidResponse)
   }
 
   /**
@@ -60,11 +58,11 @@ export default class Messenger {
    *
    * @param {string} id The ID of the request being responded to.
    * @param {any} result The result of the request.
-   * @returns {string}
+   * @returns {string} Payload ID
    * @memberof Messenger
    * @instance
    */
-  sendResponse (id, result) {
+  sendResponse(id, result) {
     const payload = jsonrpc.encodeResponse(id, result)
     this.provider.send(payload)
 
@@ -80,7 +78,7 @@ export default class Messenger {
    * @memberof Messenger
    * @instance
    */
-  send (method, params = []) {
+  send(method, params = []) {
     const payload = jsonrpc.encodeRequest(method, params)
     this.provider.send(payload)
 
@@ -96,11 +94,10 @@ export default class Messenger {
    * @memberof Messenger
    * @instance
    */
-  sendAndObserveResponses (method, params = []) {
+  sendAndObserveResponses(method, params = []) {
     const id = this.send(method, params)
 
-    return this.responses()
-      .filter((message) => message.id === id)
+    return this.responses().filter(message => message.id === id)
   }
 
   /**
@@ -112,8 +109,7 @@ export default class Messenger {
    * @memberof Messenger
    * @instance
    */
-  sendAndObserveResponse (method, params = []) {
-    return this.sendAndObserveResponses(method, params)
-      .first()
+  sendAndObserveResponse(method, params = []) {
+    return this.sendAndObserveResponses(method, params).first()
   }
 }

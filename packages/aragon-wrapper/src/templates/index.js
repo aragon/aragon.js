@@ -7,12 +7,12 @@ const zeroAddress = '0x0000000000000000000000000000000000000000'
 const templates = {
   democracy: {
     name: 'Democracy',
-    appId: 'democracy-kit.aragonpm.eth'
+    appId: 'democracy-kit.aragonpm.eth',
   },
   multisig: {
     name: 'Multisig',
-    appId: 'multisig-kit.aragonpm.eth'
-  }
+    appId: 'multisig-kit.aragonpm.eth',
+  },
 }
 
 /**
@@ -42,7 +42,7 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
     const call = template.methods.newToken(tokenName, tokenSymbol)
     const receipt = await call.send({
       from,
-      ...await applyCallGasOptions(call, options)
+      ...(await applyCallGasOptions(call, options)),
     })
     return receipt.events.DeployToken.returnValues
   }
@@ -51,7 +51,7 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
     const call = template.methods.newInstance(...params)
     const receipt = await call.send({
       from,
-      ...await applyCallGasOptions(call, options)
+      ...(await applyCallGasOptions(call, options)),
     })
     return receipt.events.DeployInstance.returnValues
   }
@@ -98,7 +98,9 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
       const { contractAddress, abi } = await apm.getLatestVersion(tmplObj.appId)
 
       if (!contractAddress) {
-        throw new Error(`No contract found on APM for template '${templateName}'`)
+        throw new Error(
+          `No contract found on APM for template '${templateName}'`
+        )
       }
       if (!abi) {
         throw new Error(`Could not fetch ABI for template '${templateName}'`)
@@ -110,7 +112,7 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
       const instance = await newInstance(template, instanceParams)
 
       return [token, instance]
-    }
+    },
   }
 }
 

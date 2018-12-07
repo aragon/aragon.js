@@ -4,7 +4,7 @@ import proxyquire from 'proxyquire'
 import { Observable } from 'rxjs/Rx'
 
 const Index = proxyquire.noCallThru().load('./index', {
-  '@aragon/messenger': {}
+  '@aragon/messenger': {},
 })
 
 test.afterEach.always(() => {
@@ -16,13 +16,12 @@ test('should send intent when the method does not exist in target', t => {
   // arrange
   const observable = Observable.of({
     id: 'uuid1',
-    result: 10
+    result: 10,
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponse: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = Index.AppProxyHandler.get(instanceStub, 'add')(5)
@@ -31,7 +30,10 @@ test('should send intent when the method does not exist in target', t => {
     t.is(value, 10)
   })
   t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'intent')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['add', 5])
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], [
+    'add',
+    5,
+  ])
 })
 
 test('should return the network details as an observable', t => {
@@ -39,19 +41,18 @@ test('should return the network details as an observable', t => {
   // arrange
   const networkDetails = {
     id: 4,
-    type: 'rinkeby'
+    type: 'rinkeby',
   }
   const networkFn = Index.AppProxy.prototype.network
   const observable = Observable.of({
     jsonrpc: '2.0',
     id: 'uuid1',
-    result: networkDetails
+    result: networkDetails,
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponses: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = networkFn.call(instanceStub)
@@ -71,13 +72,12 @@ test('should return the accounts as an observable', t => {
   const observable = Observable.of({
     jsonrpc: '2.0',
     id: 'uuid1',
-    result: ['accountX', 'accountY', 'accountZ']
+    result: ['accountX', 'accountY', 'accountZ'],
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponses: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = accountsFn.call(instanceStub)
@@ -96,8 +96,8 @@ test('should send an identify request', t => {
   const identifyFn = Index.AppProxy.prototype.identify
   const instanceStub = {
     rpc: {
-      send: sinon.stub()
-    }
+      send: sinon.stub(),
+    },
   }
   // act
   identifyFn.call(instanceStub, 'ANT')
@@ -112,13 +112,12 @@ test('should return the events observable', t => {
   const eventsFn = Index.AppProxy.prototype.events
   const observable = Observable.of({
     id: 'uuid1',
-    result: ['eventA', 'eventB']
+    result: ['eventA', 'eventB'],
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponses: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = eventsFn.call(instanceStub)
@@ -137,27 +136,29 @@ test('should return an handle for an external contract events', t => {
   const externalFn = Index.AppProxy.prototype.external
   const observableA = Observable.of({
     id: 'uuid1',
-    result: { name: 'eventA', value: 3000 }
+    result: { name: 'eventA', value: 3000 },
   })
   const observableB = Observable.of({
     id: 'uuid4',
-    result: 'bob was granted permission for the counter app'
+    result: 'bob was granted permission for the counter app',
   })
   const jsonInterfaceStub = [
     { type: 'event', name: 'SetPermission' },
-    { type: 'function', name: 'grantPermission', constant: true }
+    { type: 'function', name: 'grantPermission', constant: true },
   ]
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observableA),
+      sendAndObserveResponses: sinon.stub().returns(observableA),
 
-      sendAndObserveResponse: sinon.stub()
-        .returns(observableB)
-    }
+      sendAndObserveResponse: sinon.stub().returns(observableB),
+    },
   }
   // act
-  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+  const result = externalFn.call(
+    instanceStub,
+    '0xextContract',
+    jsonInterfaceStub
+  )
   // assert
   // the call to sendAndObserveResponse should be defered until we subscribe
   t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
@@ -165,20 +166,29 @@ test('should return an handle for an external contract events', t => {
   result.events(2).subscribe(value => {
     t.deepEqual(value, { name: 'eventA', value: 3000 })
 
-    t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'external_events')
-    t.deepEqual(
-      instanceStub.rpc.sendAndObserveResponses.getCall(0).args[1],
-      ['0xextContract', [jsonInterfaceStub[0]], 2]
+    t.is(
+      instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0],
+      'external_events'
     )
+    t.deepEqual(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[1], [
+      '0xextContract',
+      [jsonInterfaceStub[0]],
+      2,
+    ])
   })
   result.grantPermission('0xbob', '0xcounter').subscribe(value => {
     t.is(value, 'bob was granted permission for the counter app')
 
-    t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_call')
-    t.deepEqual(
-      instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1],
-      ['0xextContract', jsonInterfaceStub[1], '0xbob', '0xcounter']
+    t.is(
+      instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0],
+      'external_call'
     )
+    t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], [
+      '0xextContract',
+      jsonInterfaceStub[1],
+      '0xbob',
+      '0xcounter',
+    ])
   })
 })
 
@@ -188,19 +198,21 @@ test('should return the state from cache', t => {
   const stateFn = Index.AppProxy.prototype.state
   const observable = Observable.of({
     id: 'uuid1',
-    result: { counter: 5 }
+    result: { counter: 5 },
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponses: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = stateFn.call(instanceStub)
   // assert
   t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'cache')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[1], ['get', 'state'])
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[1], [
+    'get',
+    'state',
+  ])
   result.subscribe(value => {
     t.deepEqual(value, { counter: 5 })
   })
@@ -210,27 +222,28 @@ test('should create a store/state reducer', async t => {
   t.plan(2)
   // arrange
   const storeFn = Index.AppProxy.prototype.store
-  const observableA = Observable.from([{
-    actionHistory: [
-      { event: 'Add', payload: 5 }
-    ],
-    counter: 5
-  }, {
-    // this will be ignored, but recalculated correctly because we still have the event
-    actionHistory: [
-      { event: 'Add', payload: 5 },
-      { event: 'Add', payload: 2 }
-    ],
-    counter: 7
-  }])
+  const observableA = Observable.from([
+    {
+      actionHistory: [{ event: 'Add', payload: 5 }],
+      counter: 5,
+    },
+    {
+      // this will be ignored, but recalculated correctly because we still have the event
+      actionHistory: [
+        { event: 'Add', payload: 5 },
+        { event: 'Add', payload: 2 },
+      ],
+      counter: 7,
+    },
+  ])
   const observableB = Observable.from([
     { event: 'Add', payload: 2 },
-    { event: 'Add', payload: 10 }
+    { event: 'Add', payload: 10 },
   ])
   const instanceStub = {
     state: () => observableA,
     events: () => observableB,
-    cache: sinon.stub().returnsArg(1) // should return 2nd argument
+    cache: sinon.stub().returnsArg(1), // should return 2nd argument
   }
   const reducer = (state, action) => {
     if (state === null) state = { actionHistory: [], counter: 0 }
@@ -254,14 +267,14 @@ test('should create a store/state reducer', async t => {
     if (value.counter === 7) {
       t.deepEqual(value.actionHistory, [
         { event: 'Add', payload: 5 },
-        { event: 'Add', payload: 2 }
+        { event: 'Add', payload: 2 },
       ])
     }
     if (value.counter === 17) {
       t.deepEqual(value.actionHistory, [
         { event: 'Add', payload: 5 },
         { event: 'Add', payload: 2 },
-        { event: 'Add', payload: 10 }
+        { event: 'Add', payload: 10 },
       ])
     }
   })
@@ -273,19 +286,21 @@ test('should perform a call to the contract and observe the response', t => {
   const callFn = Index.AppProxy.prototype.call
   const observable = Observable.of({
     id: 'uuid1',
-    result: 'success'
+    result: 'success',
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponse: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = callFn.call(instanceStub, 'transferEth', 10)
   // assert
   t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'call')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['transferEth', 10])
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], [
+    'transferEth',
+    10,
+  ])
   result.subscribe(value => {
     t.deepEqual(value, 'success')
   })
@@ -295,24 +310,27 @@ test('should listen for app contexts sent from the wrapper and return the first 
   t.plan(2)
   // arrange
   const contextFn = Index.AppProxy.prototype.context
-  const observable = Observable.from([{
-    id: 'uuid0',
-    // this will get filtered out
-    params: ['x', 'y']
-  }, {
-    id: 'uuid1',
-    method: 'context',
-    params: ['first', 'second']
-  }, {
-    id: 'uuid4',
-    method: 'context',
-    params: [1, 2]
-  }])
+  const observable = Observable.from([
+    {
+      id: 'uuid0',
+      // this will get filtered out
+      params: ['x', 'y'],
+    },
+    {
+      id: 'uuid1',
+      method: 'context',
+      params: ['first', 'second'],
+    },
+    {
+      id: 'uuid4',
+      method: 'context',
+      params: [1, 2],
+    },
+  ])
   const instanceStub = {
     rpc: {
-      requests: sinon.stub()
-        .returns(observable)
-    }
+      requests: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = contextFn.call(instanceStub)
@@ -328,19 +346,23 @@ test('should send a describeScript request and observe the response', t => {
   const describeScriptFn = Index.AppProxy.prototype.describeScript
   const observable = Observable.of({
     id: 'uuid1',
-    result: 'script executed'
+    result: 'script executed',
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponse: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = describeScriptFn.call(instanceStub, 'goto fail')
   // assert
-  t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'describe_script')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['goto fail'])
+  t.is(
+    instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0],
+    'describe_script'
+  )
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], [
+    'goto fail',
+  ])
   result.subscribe(value => {
     t.deepEqual(value, 'script executed')
   })
@@ -352,19 +374,21 @@ test('should send a web3Eth function request and observe the response', t => {
   const web3EthFn = Index.AppProxy.prototype.web3Eth
   const observable = Observable.of({
     id: 'uuid1',
-    result: ['accountA', 'accountB']
+    result: ['accountA', 'accountB'],
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
-    }
+      sendAndObserveResponse: sinon.stub().returns(observable),
+    },
   }
   // act
   const result = web3EthFn.call(instanceStub, 'getAccounts', 5)
   // assert
   t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'web3_eth')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['getAccounts', 5])
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], [
+    'getAccounts',
+    5,
+  ])
   result.subscribe(value => {
     t.deepEqual(value, ['accountA', 'accountB'])
   })

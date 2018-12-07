@@ -1,14 +1,17 @@
 import test from 'ava'
 import * as script from './'
 
-test('encodeCallScript', (t) => {
-  const callScript = script.encodeCallScript([{
-    to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
-    data: '0xcafe'
-  }, {
-    to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
-    data: '0xbeef'
-  }])
+test('encodeCallScript', t => {
+  const callScript = script.encodeCallScript([
+    {
+      to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+      data: '0xcafe',
+    },
+    {
+      to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
+      data: '0xbeef',
+    },
+  ])
 
   t.is(
     callScript.slice(0, 10),

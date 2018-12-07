@@ -10,7 +10,7 @@ import { Observable } from 'rxjs/Rx'
  */
 export default class MessagePortMessage extends Provider {
   // eslint-disable-next-line no-undef
-  constructor (target = self) {
+  constructor(target = self) {
     super()
     this.target = target
   }
@@ -20,25 +20,28 @@ export default class MessagePortMessage extends Provider {
    *
    * @memberof MessagePortMessage
    * @instance
-   * @returns {Observable}
+   * @returns {Observable} Messages being sent to this provider
    */
-  messages () {
+  messages() {
     return Observable.fromEvent(this.target, 'message', false)
-      .filter((event) =>
-        // We can't use event.source in WebWorker messages as it seems to be null
-        // However, the fallback to check the target should always be true
-        (event.source || event.target) === this.target)
+      .filter(
+        event =>
+          // We can't use event.source in WebWorker messages as it seems to be null
+          // However, the fallback to check the target should always be true
+          (event.source || event.target) === this.target
+      )
       .pluck('data')
   }
 
   /**
    * Send a payload to the underlying target of this provider.
    *
-   * @param {Object} payload
+   * @param {Object} payload Payload
    * @memberof MessagePortMessage
    * @instance
+   * @returns {void}
    */
-  send (payload) {
+  send(payload) {
     this.target.postMessage(payload)
   }
 }

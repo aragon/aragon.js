@@ -8,22 +8,28 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should return an observable from the contract events', async (t) => {
+test('should return an observable from the contract events', async t => {
   t.plan(1)
   // arrange
   const eventEmitter = new EventEmitter()
   const contract = {
     events: {
-      'allEvents': sinon.stub().withArgs(8).returns(eventEmitter)
-    }
+      allEvents: sinon
+        .stub()
+        .withArgs(8)
+        .returns(eventEmitter),
+    },
   }
   const web3Stub = {
     eth: {
-      Contract: sinon.stub().withArgs('addr', 'ji').returns(contract)
-    }
+      Contract: sinon
+        .stub()
+        .withArgs('addr', 'ji')
+        .returns(contract),
+    },
   }
   const requestStub = {
-    params: ['addr', 'ji', 8]
+    params: ['addr', 'ji', 8],
   }
   // act
   const result = events(requestStub, null, { web3: web3Stub })

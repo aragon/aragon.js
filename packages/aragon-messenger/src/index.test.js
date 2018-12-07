@@ -7,11 +7,11 @@ const jsonrpcStub = {}
 class MPM {}
 const Messenger = proxyquire('./index', {
   './jsonrpc': {
-    default: jsonrpcStub
+    default: jsonrpcStub,
   },
   './providers/MessagePortMessage': {
-    default: MPM
-  }
+    default: MPM,
+  },
 }).default
 
 test.afterEach.always(() => {
@@ -68,7 +68,7 @@ test('should encode and send the request', t => {
   t.is(id, 'uuuuidv4')
 })
 
-test('should filter the incoming messages to responses only', (t) => {
+test('should filter the incoming messages to responses only', t => {
   // arrange
   const busMock = new Subject()
   const instance = new Messenger(null)
@@ -86,7 +86,7 @@ test('should filter the incoming messages to responses only', (t) => {
   busMock.next('response')
 })
 
-test('should filter the incoming messages to requests only', (t) => {
+test('should filter the incoming messages to requests only', t => {
   // arrange
   const busMock = new Subject()
   const instance = new Messenger(null)
@@ -104,7 +104,7 @@ test('should filter the incoming messages to requests only', (t) => {
   busMock.next('request')
 })
 
-test('should send and observe responses', (t) => {
+test('should send and observe responses', t => {
   // arrange
   const instance = new Messenger(null)
   sinon.stub(instance, 'send').returns(41)
@@ -122,7 +122,7 @@ test('should send and observe responses', (t) => {
   instance.responses().next({ data: 'thanks', id: 41 })
 })
 
-test('should send and observe only the first response', (t) => {
+test('should send and observe only the first response', t => {
   // arrange
   const instance = new Messenger(null)
   sinon.stub(instance, 'sendAndObserveResponses').returns(new Subject())

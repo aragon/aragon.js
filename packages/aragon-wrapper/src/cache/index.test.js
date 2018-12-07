@@ -7,12 +7,12 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should set the cache and emit the change', (t) => {
+test('should set the cache and emit the change', async t => {
   // arrange
   const instance = new Cache('counterapp')
   const dbWriteStub = sinon.stub().returns()
   const dbSetStub = sinon.stub().returns({
-    write: dbWriteStub
+    write: dbWriteStub,
   })
   instance.db.set = dbSetStub
   // assert
@@ -23,10 +23,10 @@ test('should set the cache and emit the change', (t) => {
     t.is(dbSetStub.getCall(0).args[1], 5)
   })
   // act
-  instance.set('counter', 5)
+  await instance.set('counter', 5)
 })
 
-test('should observe the key\'s value for changes', (t) => {
+test("should observe the key's value for changes", t => {
   // arrange
   const instance = new Cache()
   // assert

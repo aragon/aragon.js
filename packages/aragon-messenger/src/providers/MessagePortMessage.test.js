@@ -10,11 +10,11 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should extend Provider', (t) => {
+test('should extend Provider', t => {
   t.true(MessagePortMessage.prototype instanceof Provider)
 })
 
-test('should assign self if target is undefined', (t) => {
+test('should assign self if target is undefined', t => {
   // arrange
   global.self = sinon.spy()
   // act
@@ -23,7 +23,7 @@ test('should assign self if target is undefined', (t) => {
   t.is(instance.target, global.self)
 })
 
-test('should forward the messages\' data emitted from the given target', (t) => {
+test("should forward the messages' data emitted from the given target", t => {
   // arrange
   const target = new EventEmitter()
   const instance = new MessagePortMessage(target)
@@ -38,7 +38,7 @@ test('should forward the messages\' data emitted from the given target', (t) => 
   target.emit('message', { data: 'pass', source: target })
 })
 
-test('should send the payload through postMessage', (t) => {
+test('should send the payload through postMessage', t => {
   // arrange
   const postMessageMock = sinon.spy()
   const instance = new MessagePortMessage({ postMessage: postMessageMock })

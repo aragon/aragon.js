@@ -5,12 +5,12 @@ import proxyquire from 'proxyquire'
 test.beforeEach(t => {
   const ethjsEnsStub = sinon.stub()
   const ens = proxyquire.noCallThru().load('./index', {
-    'ethjs-ens': ethjsEnsStub
+    'ethjs-ens': ethjsEnsStub,
   })
 
   t.context = {
     ens,
-    ethjsEnsStub
+    ethjsEnsStub,
   }
 })
 
@@ -18,14 +18,14 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should lookup name', (t) => {
+test('should lookup name', t => {
   const { ens, ethjsEnsStub } = t.context
 
   // arrange
   const options = {
     provider: {
-      sendAsync: 2
-    }
+      sendAsync: 2,
+    },
   }
   ethjsEnsStub.prototype.lookup = sinon.stub().returns('0x01')
   // act
@@ -36,14 +36,14 @@ test('should lookup name', (t) => {
   t.is(ethjsEnsStub.getCall(0).args[0], options)
 })
 
-test('should resolve address for node', (t) => {
+test('should resolve address for node', t => {
   const { ens, ethjsEnsStub } = t.context
 
   // arrange
   const hackyOptions = {
     provider: {
-      sendAsync: undefined
-    }
+      sendAsync: undefined,
+    },
   }
   ethjsEnsStub.prototype.resolveAddressForNode = sinon.stub().returns('0x02')
   // act

@@ -5,48 +5,43 @@ import { fromPromise } from 'rxjs/observable/fromPromise'
 import { merge } from 'rxjs/observable/merge'
 
 export const AppProxyHandler = {
-  get (target, name, receiver) {
+  get(target, name, receiver) {
     if (name in target) {
       return target[name]
     }
 
-    return function (...params) {
-      return target.rpc.sendAndObserveResponse(
-        'intent',
-        [name, ...params]
-      ).pluck('result')
+    return function(...params) {
+      return target.rpc
+        .sendAndObserveResponse('intent', [name, ...params])
+        .pluck('result')
     }
-  }
+  },
 }
 
 /**
  * A JavaScript proxy that wraps RPC calls to the wrapper.
  */
 export class AppProxy {
-  constructor (provider) {
+  constructor(provider) {
     this.rpc = new Messenger(provider)
   }
 
   /**
    * Get an array of the accounts the user currently controls over time.
    *
-   * @return {Observable}
+   * @return {Observable} Array of accounts
    */
-  accounts () {
-    return this.rpc.sendAndObserveResponses(
-      'accounts'
-    ).pluck('result')
+  accounts() {
+    return this.rpc.sendAndObserveResponses('accounts').pluck('result')
   }
 
   /**
    * Get the network the app is connected to over time.
    *
-   * @return {Observable}
+   * @return {Observable} Network the app is connected to over time
    */
-  network () {
-    return this.rpc.sendAndObserveResponses(
-      'network'
-    ).pluck('result')
+  network() {
+    return this.rpc.sendAndObserveResponses('network').pluck('result')
   }
 
   /**
@@ -58,14 +53,11 @@ export class AppProxy {
    * Examples include: the name of a token that the app manages,
    * the type of content that a TCR is curating, the name of a group etc.
    *
-   * @param  {string} identifier
+   * @param  {string} identifier App id
    * @return {void}
    */
-  identify (identifier) {
-    this.rpc.send(
-      'identify',
-      [identifier]
-    )
+  identify(identifier) {
+    this.rpc.send('identify', [identifier])
   }
 
   /**
@@ -74,11 +66,9 @@ export class AppProxy {
    * @memberof AppProxy
    * @return {Observable} An observable of contract events (as defined in Web3)
    */
-  events () {
-    return defer(
-      () => this.rpc.sendAndObserveResponses(
-        'events'
-      ).pluck('result')
+  events() {
+    return defer(() =>
+      this.rpc.sendAndObserveResponses('events').pluck('result')
     )
   }
 
@@ -87,36 +77,36 @@ export class AppProxy {
    *
    * @param  {string} address The address of the external contract
    * @param  {Array<Object>} jsonInterface The JSON interface of the external contract
-   * @return {Object}
+   * @return {Object} Handle
    */
-  external (address, jsonInterface) {
+  external(address, jsonInterface) {
     const contract = {
       events: (fromBlock = 0) => {
-        return defer(
-          () => this.rpc.sendAndObserveResponses(
-            'external_events',
-            [
+        return defer(() =>
+          this.rpc
+            .sendAndObserveResponses('external_events', [
               address,
-              jsonInterface.filter(
-                (item) => item.type === 'event'
-              ),
-              fromBlock
-            ]
-          ).pluck('result')
+              jsonInterface.filter(item => item.type === 'event'),
+              fromBlock,
+            ])
+            .pluck('result')
         )
-      }
+      },
     }
 
     // Bind calls
     const callMethods = jsonInterface.filter(
-      (item) => item.type === 'function' && item.constant
+      item => item.type === 'function' && item.constant
     )
-    callMethods.forEach((methodJsonInterface) => {
+    callMethods.forEach(methodJsonInterface => {
       contract[methodJsonInterface.name] = (...params) => {
-        return this.rpc.sendAndObserveResponse(
-          'external_call',
-          [address, methodJsonInterface, ...params]
-        ).pluck('result')
+        return this.rpc
+          .sendAndObserveResponse('external_call', [
+            address,
+            methodJsonInterface,
+            ...params,
+          ])
+          .pluck('result')
       }
     })
 
@@ -131,11 +121,8 @@ export class AppProxy {
    * @param  {string} value The value to cache
    * @return {string}       Will pass through `value`
    */
-  cache (key, value) {
-    this.rpc.send(
-      'cache',
-      ['set', key, value]
-    )
+  cache(key, value) {
+    this.rpc.send('cache', ['set', key, value])
 
     return value
   }
@@ -146,11 +133,10 @@ export class AppProxy {
    * @memberof AppProxy
    * @return {Observable} An observable of application states over time.
    */
-  state () {
-    return this.rpc.sendAndObserveResponses(
-      'cache',
-      ['get', 'state']
-    ).pluck('result')
+  state() {
+    return this.rpc
+      .sendAndObserveResponses('cache', ['get', 'state'])
+      .pluck('result')
   }
 
   /**
@@ -162,11 +148,11 @@ export class AppProxy {
    * Optionally takes an array of other web3 event observables to merge with this app's events
    *
    * @memberof AppProxy
-   * @param  {reducer}      reducer
-   * @param  {Observable[]} [events]
+   * @param  {reducer}      reducer Reducer (state, event)
+   * @param  {Observable[]} [events] Array of web3 events
    * @return {Observable}   An observable of the resulting state from reducing events
    */
-  store (reducer, events = [empty()]) {
+  store(reducer, events = [empty()]) {
     const initialState = this.state().first()
 
     // Wrap the reducer in another reducer that
@@ -177,18 +163,13 @@ export class AppProxy {
     // Also, this supports both sync and async code
     // (because of the `Promise.resolve`).
     const wrappedReducer = (state, event) =>
-      fromPromise(
-        Promise.resolve(reducer(state, event))
-      )
+      fromPromise(Promise.resolve(reducer(state, event)))
 
     const store$ = initialState
-      .switchMap((initialState) =>
-        merge(
-          this.events(),
-          ...events
-        )
+      .switchMap(initialState =>
+        merge(this.events(), ...events)
           .mergeScan(wrappedReducer, initialState, 1)
-          .map((state) => this.cache('state', state))
+          .map(state => this.cache('state', state))
       )
       .publishReplay(1)
     store$.connect()
@@ -204,11 +185,10 @@ export class AppProxy {
    * @param  {...*} params Parameters for the call
    * @return {Observable} An observable that emits the return value(s) of the call.
    */
-  call (method, ...params) {
-    return this.rpc.sendAndObserveResponse(
-      'call',
-      [method, ...params]
-    ).pluck('result')
+  call(method, ...params) {
+    return this.rpc
+      .sendAndObserveResponse('call', [method, ...params])
+      .pluck('result')
   }
 
   /**
@@ -221,11 +201,8 @@ export class AppProxy {
    * @param {Date} [date=new Date()] The notification timestamp
    * @return {void}
    */
-  notify (title, body, context = {}, date = new Date()) {
-    return this.rpc.send(
-      'notification',
-      [title, body, context, date]
-    )
+  notify(title, body, context = {}, date = new Date()) {
+    return this.rpc.send('notification', [title, body, context, date])
   }
 
   /**
@@ -240,23 +217,23 @@ export class AppProxy {
    *
    * @return {Observable} An observable of incoming app contexts
    */
-  context () {
-    return this.rpc.requests()
-      .filter((request) => request.method === 'context')
-      .map((request) => request.params[0])
+  context() {
+    return this.rpc
+      .requests()
+      .filter(request => request.method === 'context')
+      .map(request => request.params[0])
   }
 
   /**
    * Describes the transaction path that an EVM callscript encodes.
    *
-   * @param  {string} script
+   * @param  {string} script EVM callscript
    * @return {Observable} An observable that emits the transaction path the script encodes
    */
-  describeScript (script) {
-    return this.rpc.sendAndObserveResponse(
-      'describe_script',
-      [script]
-    ).pluck('result')
+  describeScript(script) {
+    return this.rpc
+      .sendAndObserveResponse('describe_script', [script])
+      .pluck('result')
   }
 
   /**
@@ -266,11 +243,10 @@ export class AppProxy {
    * @param  {...*} params Parameters for the call
    * @return {Observable} An observable that emits the return value(s) of the call.
    */
-  web3Eth (method, ...params) {
-    return this.rpc.sendAndObserveResponse(
-      'web3_eth',
-      [method, ...params]
-    ).pluck('result')
+  web3Eth(method, ...params) {
+    return this.rpc
+      .sendAndObserveResponse('web3_eth', [method, ...params])
+      .pluck('result')
   }
 }
 
@@ -294,11 +270,8 @@ export class AppProxy {
  * @param {Object} [provider=MessagePortMessage] An RPC provider (will default to using the MessagePort API)
  */
 export default class AragonApp {
-  constructor (provider = new providers.MessagePortMessage()) {
-    return new Proxy(
-      new AppProxy(provider),
-      AppProxyHandler
-    )
+  constructor(provider = new providers.MessagePortMessage()) {
+    return new Proxy(new AppProxy(provider), AppProxyHandler)
   }
 }
 

@@ -4,14 +4,14 @@ import proxyquire from 'proxyquire'
 
 const uuidv4Stub = sinon.stub()
 const jsonrpc = proxyquire('./jsonrpc', {
-  'uuid/v4': uuidv4Stub
+  'uuid/v4': uuidv4Stub,
 })
 
 test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should encode the request', (t) => {
+test('should encode the request', t => {
   // arrange
   uuidv4Stub.returns('some-id')
   // act
@@ -23,7 +23,7 @@ test('should encode the request', (t) => {
   t.deepEqual(encoded.params, [])
 })
 
-test('should encode the response', (t) => {
+test('should encode the response', t => {
   // act
   const encoded = jsonrpc.encodeResponse('1234')
   // assert
@@ -32,7 +32,7 @@ test('should encode the response', (t) => {
   t.is(encoded.result, null)
 })
 
-test('should encode the error response', (t) => {
+test('should encode the error response', t => {
   // act
   const encoded = jsonrpc.encodeResponse('1234', new Error())
   // assert
@@ -41,7 +41,7 @@ test('should encode the error response', (t) => {
   t.is(encoded.error, 'An error occurred')
 })
 
-test('should encode the error response and preserve the message', (t) => {
+test('should encode the error response and preserve the message', t => {
   // act
   const encoded = jsonrpc.encodeResponse('1234', new Error('no-good'))
   // assert
@@ -50,12 +50,12 @@ test('should encode the error response and preserve the message', (t) => {
   t.is(encoded.error, 'no-good')
 })
 
-test('should return true for valid responses', (t) => {
+test('should return true for valid responses', t => {
   // arrange
   const response = {
     jsonrpc: '2.0',
     id: 'some-id',
-    result: 200
+    result: 200,
   }
   // act
   const valid = jsonrpc.isValidResponse(response)
@@ -63,12 +63,12 @@ test('should return true for valid responses', (t) => {
   t.true(valid)
 })
 
-test('should return true for valid error responses', (t) => {
+test('should return true for valid error responses', t => {
   // arrange
   const response = {
     jsonrpc: '2.0',
     id: 'some-id',
-    error: null
+    error: null,
   }
   // act
   const valid = jsonrpc.isValidResponse(response)

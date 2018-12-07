@@ -1,4 +1,4 @@
-export default async function (request, proxy, wrapper) {
+export default async function(request, proxy, wrapper) {
   const transactionPath = await wrapper.getTransactionPath(
     proxy.address,
     request.params[0],

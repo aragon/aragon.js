@@ -5,25 +5,25 @@ import { Observable } from 'rxjs/Rx'
 
 test.beforeEach(t => {
   const aragonOSCoreStub = {
-    getAragonOsInternalAppInfo: sinon.stub()
+    getAragonOsInternalAppInfo: sinon.stub(),
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
     makeAddressMapProxy: sinon.fake.returns({}),
     makeProxy: sinon.stub(),
-    addressesEqual: Object.is
+    addressesEqual: Object.is,
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
-    './utils': utilsStub
+    './utils': utilsStub,
   }).default
 
   t.context = {
     Aragon,
     aragonOSCoreStub,
     messengerConstructorStub,
-    utilsStub
+    utilsStub,
   }
 })
 
@@ -41,7 +41,7 @@ test('should create an Aragon instance with no options given', t => {
   t.not(app.apm, undefined)
 })
 
-test('should throw on init if daoAddress is not a Kernel', async (t) => {
+test('should throw on init if daoAddress is not a Kernel', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -49,23 +49,23 @@ test('should throw on init if daoAddress is not a Kernel', async (t) => {
   const badDaoAddress = '0xbaddao'
   const instance = new Aragon(badDaoAddress)
   // web3 will throw if a bad address ('0x') comes back
-  const kernelProxyCallStub = sinon.stub().withArgs('acl').throws()
+  const kernelProxyCallStub = sinon
+    .stub()
+    .withArgs('acl')
+    .throws()
   instance.kernelProxy = {
     address: badDaoAddress,
-    call: kernelProxyCallStub
+    call: kernelProxyCallStub,
   }
 
   // act and assert
-  await t.throwsAsync(
-    instance.init(),
-    {
-      instanceOf: Error,
-      message: `Provided daoAddress is not a DAO`
-    }
-  )
+  await t.throwsAsync(instance.init(), {
+    instanceOf: Error,
+    message: `Provided daoAddress is not a DAO`,
+  })
 })
 
-test('should use provided accounts', async (t) => {
+test('should use provided accounts', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -78,7 +78,7 @@ test('should use provided accounts', async (t) => {
   t.deepEqual(accounts, ['0x00'])
 })
 
-test('should get the accounts from web3', async (t) => {
+test('should get the accounts from web3', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -86,8 +86,8 @@ test('should get the accounts from web3', async (t) => {
   const instance = new Aragon()
   instance.web3 = {
     eth: {
-      getAccounts: sinon.stub().returns(['0x01', '0x02'])
-    }
+      getAccounts: sinon.stub().returns(['0x01', '0x02']),
+    },
   }
   // act
   await instance.initAccounts({ fetchFromWeb3: true })
@@ -96,7 +96,7 @@ test('should get the accounts from web3', async (t) => {
   t.deepEqual(accounts, ['0x01', '0x02'])
 })
 
-test('should not fetch the accounts if not asked', async (t) => {
+test('should not fetch the accounts if not asked', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -104,8 +104,8 @@ test('should not fetch the accounts if not asked', async (t) => {
   const instance = new Aragon()
   instance.web3 = {
     eth: {
-      getAccounts: sinon.stub().returns(['0x01', '0x02'])
-    }
+      getAccounts: sinon.stub().returns(['0x01', '0x02']),
+    },
   }
   // act
   await instance.initAccounts({ fetchFromWeb3: false })
@@ -114,7 +114,7 @@ test('should not fetch the accounts if not asked', async (t) => {
   t.deepEqual(accounts, [])
 })
 
-test('should get the network details from web3', async (t) => {
+test('should get the network details from web3', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -126,9 +126,9 @@ test('should get the network details from web3', async (t) => {
     eth: {
       net: {
         getId: sinon.stub().returns(testNetworkId),
-        getNetworkType: sinon.stub().returns(testNetworkType)
-      }
-    }
+        getNetworkType: sinon.stub().returns(testNetworkType),
+      },
+    },
   }
   // act
   await instance.initNetwork()
@@ -136,12 +136,12 @@ test('should get the network details from web3', async (t) => {
   instance.network.subscribe(network => {
     t.deepEqual(network, {
       id: testNetworkId,
-      type: testNetworkType
+      type: testNetworkType,
     })
   })
 })
 
-test('should init the ACL correctly', async (t) => {
+test('should init the ACL correctly', async t => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(1)
@@ -153,8 +153,8 @@ test('should init the ACL correctly', async (t) => {
         app: 'counter',
         role: 'add',
         allowed: true,
-        entity: '0x1'
-      }
+        entity: '0x1',
+      },
     })
     observer.next({
       event: 'SetPermission',
@@ -162,8 +162,8 @@ test('should init the ACL correctly', async (t) => {
         app: 'counter',
         role: 'subtract',
         allowed: true,
-        entity: '0x1'
-      }
+        entity: '0x1',
+      },
     })
     observer.next({
       event: 'SetPermission',
@@ -171,8 +171,8 @@ test('should init the ACL correctly', async (t) => {
         app: 'counter',
         role: 'add',
         allowed: true,
-        entity: '0x2'
-      }
+        entity: '0x2',
+      },
     })
     observer.next({
       event: 'SetPermission',
@@ -180,8 +180,8 @@ test('should init the ACL correctly', async (t) => {
         app: 'counter',
         role: 'subtract',
         allowed: true,
-        entity: '0x2'
-      }
+        entity: '0x2',
+      },
     })
     observer.next({
       event: 'SetPermission',
@@ -189,8 +189,8 @@ test('should init the ACL correctly', async (t) => {
         app: 'counter',
         role: 'subtract',
         allowed: false,
-        entity: '0x2'
-      }
+        entity: '0x2',
+      },
     })
     // duplicate, should not affect the final result because we use a Set
     observer.next({
@@ -199,8 +199,8 @@ test('should init the ACL correctly', async (t) => {
         app: 'counter',
         role: 'subtract',
         allowed: false,
-        entity: '0x2'
-      }
+        entity: '0x2',
+      },
     })
   })
   const changePermissionManagerEvents = Observable.create(observer => {
@@ -209,19 +209,21 @@ test('should init the ACL correctly', async (t) => {
       returnValues: {
         app: 'counter',
         role: 'subtract',
-        manager: 'manager'
-      }
+        manager: 'manager',
+      },
     })
   })
   const instance = new Aragon()
   instance.kernelProxy = {
-    call: sinon.stub()
+    call: sinon.stub(),
   }
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub(),
   }
   aclProxyStub.events.withArgs('SetPermission').returns(setPermissionEvents)
-  aclProxyStub.events.withArgs('ChangePermissionManager').returns(changePermissionManagerEvents)
+  aclProxyStub.events
+    .withArgs('ChangePermissionManager')
+    .returns(changePermissionManagerEvents)
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
@@ -231,13 +233,13 @@ test('should init the ACL correctly', async (t) => {
       t.deepEqual(value, {
         counter: {
           add: {
-            allowedEntities: ['0x1', '0x2']
+            allowedEntities: ['0x1', '0x2'],
           },
           subtract: {
             allowedEntities: ['0x1'],
-            manager: 'manager'
-          }
-        }
+            manager: 'manager',
+          },
+        },
       })
       // The permissions observable debounces, so we should only get one value back
       setTimeout(resolve, 2000)
@@ -245,7 +247,7 @@ test('should init the ACL correctly', async (t) => {
   })
 })
 
-test('should init the acl with the default acl fetched from the kernel by default', async (t) => {
+test('should init the acl with the default acl fetched from the kernel by default', async t => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(3)
@@ -254,10 +256,10 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   const fakeAclAddress = '0x321'
   const kernelProxyCallStub = sinon.stub().returns(fakeAclAddress)
   instance.kernelProxy = {
-    call: kernelProxyCallStub
+    call: kernelProxyCallStub,
   }
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub(),
   }
   utilsStub.makeProxy.reset()
   utilsStub.makeProxy.returns(aclProxyStub)
@@ -270,7 +272,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   t.is(utilsStub.makeProxy.firstCall.args[0], fakeAclAddress)
 })
 
-test('should init the acl with the provided acl', async (t) => {
+test('should init the acl with the provided acl', async t => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(2)
@@ -279,10 +281,10 @@ test('should init the acl with the provided acl', async (t) => {
   const fakeAclAddress = '0x321'
   const kernelProxyCallStub = sinon.stub()
   instance.kernelProxy = {
-    call: kernelProxyCallStub
+    call: kernelProxyCallStub,
   }
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub(),
   }
   utilsStub.makeProxy.reset()
   utilsStub.makeProxy.returns(aclProxyStub)
@@ -301,46 +303,49 @@ const appInitTestCases = [
     {
       [kernelAddress]: 'some permissions',
       '0x456': 'some permissions',
-      '0x789': 'some permissions'
-    }
+      '0x789': 'some permissions',
+    },
   ],
   [
     'without kernel in permissions',
     {
       '0x456': 'some permissions',
-      '0x789': 'some permissions'
-    }
-  ]
+      '0x789': 'some permissions',
+    },
+  ],
 ]
-appInitTestCases.forEach(([ testName, permissionsObj ]) => {
-  test(`should init the apps correctly - ${testName}`, async (t) => {
+appInitTestCases.forEach(([testName, permissionsObj]) => {
+  test(`should init the apps correctly - ${testName}`, async t => {
     const { Aragon, aragonOSCoreStub } = t.context
 
     t.plan(2)
     // arrange
     const instance = new Aragon()
-    instance.permissions = Observable.create((observer) => {
+    instance.permissions = Observable.create(observer => {
       observer.next(permissionsObj)
     })
     const appIds = {
       '0x123': 'kernel',
       '0x456': 'counterApp',
-      '0x789': 'votingApp'
+      '0x789': 'votingApp',
     }
-    aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
-      abi: 'abi for kernel',
-      isAragonOsInternalApp: true
-    })
+    aragonOSCoreStub.getAragonOsInternalAppInfo
+      .withArgs(appIds[kernelAddress])
+      .returns({
+        abi: 'abi for kernel',
+        isAragonOsInternalApp: true,
+      })
     instance.kernelProxy = { address: '0x123' }
-    instance.getProxyValues = async (appAddress) => ({
+    instance.getProxyValues = async appAddress => ({
       appId: appIds[appAddress],
       codeAddress: '0x',
       kernelAddress: '0x123',
-      proxyAddress: appAddress
+      proxyAddress: appAddress,
     })
-    instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
-      abi: `abi for ${appId}`
-    })
+    instance.apm.getLatestVersionForContract = appId =>
+      Promise.resolve({
+        abi: `abi for ${appId}`,
+      })
     // act
     await instance.initApps()
     // assert
@@ -352,20 +357,22 @@ appInitTestCases.forEach(([ testName, permissionsObj ]) => {
           codeAddress: '0x',
           isAragonOsInternalApp: true,
           kernelAddress: '0x123',
-          proxyAddress: '0x123'
-        }, {
+          proxyAddress: '0x123',
+        },
+        {
           abi: 'abi for counterApp',
           appId: 'counterApp',
           codeAddress: '0x',
           kernelAddress: '0x123',
-          proxyAddress: '0x456'
-        }, {
+          proxyAddress: '0x456',
+        },
+        {
           abi: 'abi for votingApp',
           appId: 'votingApp',
           codeAddress: '0x',
           kernelAddress: '0x123',
-          proxyAddress: '0x789'
-        }
+          proxyAddress: '0x789',
+        },
       ])
     })
 
@@ -384,41 +391,44 @@ appInitTestCases.forEach(([ testName, permissionsObj ]) => {
           codeAddress: '0x',
           isAragonOsInternalApp: true,
           kernelAddress: '0x123',
-          proxyAddress: '0x123'
-        }, {
+          proxyAddress: '0x123',
+        },
+        {
           abi: 'abi for counterApp',
           appId: 'counterApp',
           codeAddress: '0x',
           kernelAddress: '0x123',
           proxyAddress: '0x456',
-          identifier: 'CNT'
-        }, {
+          identifier: 'CNT',
+        },
+        {
           abi: 'abi for votingApp',
           appId: 'votingApp',
           codeAddress: '0x',
           kernelAddress: '0x123',
-          proxyAddress: '0x789'
-        }
+          proxyAddress: '0x789',
+        },
       ])
     })
   })
 })
 
-test('should init the forwarders correctly', async (t) => {
+test('should init the forwarders correctly', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
   // arrange
   const instance = new Aragon()
-  instance.apps = Observable.create((observer) => {
+  instance.apps = Observable.create(observer => {
     observer.next([
       {
         appId: 'counterApp',
-        isForwarder: true
-      }, {
+        isForwarder: true,
+      },
+      {
         appId: 'votingApp',
-        isForwarder: false
-      }
+        isForwarder: false,
+      },
     ])
   })
   // act
@@ -428,27 +438,30 @@ test('should init the forwarders correctly', async (t) => {
     t.deepEqual(value, [
       {
         appId: 'counterApp',
-        isForwarder: true
-      }
+        isForwarder: true,
+      },
     ])
   })
 })
 
-test('should init the notifications correctly', async (t) => {
+test('should init the notifications correctly', async t => {
   const { Aragon } = t.context
 
   t.plan(7)
   // arrange
   const instance = new Aragon()
-  instance.cache.get = sinon.stub()
-    .withArgs('notifications').returns([
+  instance.cache.get = sinon
+    .stub()
+    .withArgs('notifications')
+    .returns([
       {
         read: true,
-        title: 'send'
-      }, {
+        title: 'send',
+      },
+      {
         read: false,
-        title: 'receive'
-      }
+        title: 'receive',
+      },
     ])
   instance.cache.set = sinon.stub()
   // act
@@ -468,7 +481,7 @@ test('should init the notifications correctly', async (t) => {
   t.is(instance.cache.set.getCall(0).args[1].length, 2)
 })
 
-test('should send notifications correctly', async (t) => {
+test('should send notifications correctly', async t => {
   const { Aragon } = t.context
 
   t.plan(12)
@@ -477,7 +490,13 @@ test('should send notifications correctly', async (t) => {
   // act
   await instance.initNotifications()
   await instance.sendNotification('counterApp', 'add')
-  await instance.sendNotification('counterApp', 'subtract', null, null, new Date(2))
+  await instance.sendNotification(
+    'counterApp',
+    'subtract',
+    null,
+    null,
+    new Date(2)
+  )
 
   // assert
   instance.notifications.subscribe(value => {
@@ -498,44 +517,50 @@ test('should send notifications correctly', async (t) => {
   })
 })
 
-test('should run the app and reply to a request', async (t) => {
+test('should run the app and reply to a request', async t => {
   const { Aragon, messengerConstructorStub, utilsStub } = t.context
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
   t.plan(4)
   // arrange
-  const requestsStub = Observable.create((observer) => {
+  const requestsStub = Observable.create(observer => {
     observer.next({
       id: 'uuid1',
       method: 'cache',
-      params: ['get', 'settings']
+      params: ['get', 'settings'],
     })
   })
   const messengerStub = {
     sendResponse: sinon.stub(),
-    requests: () => requestsStub
+    requests: () => requestsStub,
   }
-  messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
+  messengerConstructorStub
+    .withArgs('someMessageProvider')
+    .returns(messengerStub)
   const instance = new Aragon()
-  instance.cache.observe = sinon.stub()
+  instance.cache.observe = sinon
+    .stub()
     .withArgs('0x789.settings')
-    .returns(Observable.create((observer) => {
-      observer.next('user settings for the voting app')
-    }))
-  instance.appsWithoutIdentifiers = Observable.create((observer) => {
+    .returns(
+      Observable.create(observer => {
+        observer.next('user settings for the voting app')
+      })
+    )
+  instance.appsWithoutIdentifiers = Observable.create(observer => {
     observer.next([
       {
         appId: 'some other app with a different proxy',
-        proxyAddress: '0x456'
-      }, {
+        proxyAddress: '0x456',
+      },
+      {
         appId: 'votingApp',
         kernelAddress: '0x123',
         abi: 'abi for votingApp',
-        proxyAddress: '0x789'
-      }
+        proxyAddress: '0x789',
+      },
     ])
   })
-  utilsStub.makeProxyFromABI = (proxyAddress) => ({ address: proxyAddress })
+  utilsStub.makeProxyFromABI = proxyAddress => ({ address: proxyAddress })
   instance.kernelProxy = { initializationBlock: 0 }
   // act
   const result = await instance.runApp('someMessageProvider', '0x789')
@@ -547,26 +572,30 @@ test('should run the app and reply to a request', async (t) => {
    * is handled by the appropriate requestHandler.
    */
   t.is(messengerStub.sendResponse.getCall(0).args[0], 'uuid1')
-  t.is(messengerStub.sendResponse.getCall(0).args[1], 'user settings for the voting app')
+  t.is(
+    messengerStub.sendResponse.getCall(0).args[1],
+    'user settings for the voting app'
+  )
 })
 
-test('should get the app from a proxy address', async (t) => {
+test('should get the app from a proxy address', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
   // arrange
   const instance = new Aragon()
-  instance.apps = Observable.create((observer) => {
+  instance.apps = Observable.create(observer => {
     observer.next([
       {
         appId: 'some other app with a different proxy',
-        proxyAddress: '0x456'
-      }, {
+        proxyAddress: '0x456',
+      },
+      {
         appId: 'votingApp',
         kernelAddress: '0x123',
         abi: 'abi for votingApp',
-        proxyAddress: '0x789'
-      }
+        proxyAddress: '0x789',
+      },
     ])
   })
   // act
@@ -576,11 +605,11 @@ test('should get the app from a proxy address', async (t) => {
     appId: 'votingApp',
     kernelAddress: '0x123',
     abi: 'abi for votingApp',
-    proxyAddress: '0x789'
+    proxyAddress: '0x789',
   })
 })
 
-test('should get the permission manager', async (t) => {
+test('should get the permission manager', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -590,13 +619,13 @@ test('should get the permission manager', async (t) => {
     observer.next({
       counter: {
         add: {
-          allowedEntities: ['0x1', '0x2']
+          allowedEntities: ['0x1', '0x2'],
         },
         subtract: {
           allowedEntities: ['0x1'],
-          manager: 'im manager'
-        }
-      }
+          manager: 'im manager',
+        },
+      },
     })
   })
   // act
@@ -605,7 +634,7 @@ test('should get the permission manager', async (t) => {
   t.is(result, 'im manager')
 })
 
-test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
+test('should throw if no ABI is found, when calculating the transaction path', async t => {
   const { Aragon } = t.context
 
   t.plan(1)
@@ -615,21 +644,21 @@ test('should throw if no ABI is found, when calculating the transaction path', a
     observer.next({
       counter: {
         add: {
-          allowedEntities: ['0x1', '0x2']
+          allowedEntities: ['0x1', '0x2'],
         },
         subtract: {
           allowedEntities: ['0x1'],
-          manager: 'im manager'
-        }
-      }
+          manager: 'im manager',
+        },
+      },
     })
   })
   instance.forwarders = Observable.create(observer => {
     observer.next([
       {
         appId: 'forwarderA',
-        proxyAddress: '0x999'
-      }
+        proxyAddress: '0x999',
+      },
     ])
   })
   instance.apps = Observable.create(observer => {
@@ -638,23 +667,23 @@ test('should throw if no ABI is found, when calculating the transaction path', a
         appId: 'counterApp',
         kernelAddress: '0x123',
         abi: 'abi for counterApp',
-        proxyAddress: '0x456'
-      }, {
+        proxyAddress: '0x456',
+      },
+      {
         appId: 'votingApp',
         kernelAddress: '0x123',
         // abi: 'abi for votingApp',
-        proxyAddress: '0x789'
-      }
+        proxyAddress: '0x789',
+      },
     ])
   })
   // act
-  return instance.calculateTransactionPath(null, '0x789')
-    .catch(err => {
-      // assert
-      t.is(err.message, 'No ABI specified in artifact for 0x789')
-      /*
-       * Note: This test also "asserts" that the permissions object, the app object and the
-       * forwarders array does not throw any errors when they are being extracted from their observables.
-       */
-    })
+  return instance.calculateTransactionPath(null, '0x789').catch(err => {
+    // assert
+    t.is(err.message, 'No ABI specified in artifact for 0x789')
+    /*
+     * Note: This test also "asserts" that the permissions object, the app object and the
+     * forwarders array does not throw any errors when they are being extracted from their observables.
+     */
+  })
 })

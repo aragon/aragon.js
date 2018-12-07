@@ -5,14 +5,14 @@ export const encodeRequest = (method, params = []) => {
     jsonrpc: '2.0',
     id: uuidv4(),
     method,
-    params
+    params,
   }
 }
 
 export const encodeResponse = (id, result = null) => {
   let response = {
     jsonrpc: '2.0',
-    id
+    id,
   }
 
   if (result instanceof Error) {
@@ -24,15 +24,17 @@ export const encodeResponse = (id, result = null) => {
   return response
 }
 
-export const isValidResponse = (response) => {
-  return !!response &&
+export const isValidResponse = response => {
+  return (
+    !!response &&
     response.jsonrpc === '2.0' &&
-    (typeof response.id === 'string') &&
+    typeof response.id === 'string' &&
     (response.result !== undefined || response.error !== undefined)
+  )
 }
 
 export default {
   encodeRequest,
   encodeResponse,
-  isValidResponse
+  isValidResponse,
 }

@@ -1,4 +1,4 @@
-export default function (request, proxy, wrapper) {
+export default function(request, proxy, wrapper) {
   const cacheKey = `${proxy.address}.${request.params[1]}`
   if (request.params[0] === 'get') {
     return wrapper.cache.observe(cacheKey)
@@ -9,7 +9,5 @@ export default function (request, proxy, wrapper) {
     return Promise.resolve()
   }
 
-  return Promise.reject(
-    new Error('Invalid cache operation')
-  )
+  return Promise.reject(new Error('Invalid cache operation'))
 }

@@ -8,20 +8,20 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should get all the events', (t) => {
+test('should get all the events', t => {
   t.plan(1)
   // arrange
   const eventEmitter = new EventEmitter()
   const contract = {
     events: {
-      'allEvents': () => eventEmitter
-    }
+      allEvents: () => eventEmitter,
+    },
   }
 
   const web3Stub = {
     eth: {
-      Contract: sinon.stub().returns(contract)
-    }
+      Contract: sinon.stub().returns(contract),
+    },
   }
   const instance = new Proxy(null, null, web3Stub)
   // act
@@ -34,20 +34,20 @@ test('should get all the events', (t) => {
   eventEmitter.emit('data', { foo: 'bar' })
 })
 
-test('should get only the requested events', (t) => {
+test('should get only the requested events', t => {
   t.plan(2)
   // arrange
   const eventEmitter = new EventEmitter()
   const contract = {
     events: {
-      'allEvents': () => eventEmitter
-    }
+      allEvents: () => eventEmitter,
+    },
   }
 
   const web3Stub = {
     eth: {
-      Contract: sinon.stub().returns(contract)
-    }
+      Contract: sinon.stub().returns(contract),
+    },
   }
   const instance = new Proxy(null, null, web3Stub)
   // act

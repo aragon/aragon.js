@@ -1,7 +1,5 @@
-export default async function (request, proxy, wrapper) {
+export default async function(request, proxy, wrapper) {
   const script = request.params[0]
 
-  return wrapper.describeTransactionPath(
-    wrapper.decodeTransactionPath(script)
-  )
+  return wrapper.describeTransactionPath(wrapper.decodeTransactionPath(script))
 }

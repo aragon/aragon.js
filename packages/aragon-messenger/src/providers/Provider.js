@@ -9,8 +9,9 @@ export default class Provider {
    *
    * @memberof Provider
    * @instance
+   * @returns {void}
    */
-  messages () {
+  messages() {
     throw new Error('Not implemented')
   }
 
@@ -20,8 +21,9 @@ export default class Provider {
    * @param {Object} payload The payload to send
    * @memberof Provider
    * @instance
+   * @returns {void}
    */
-  send (payload) {
+  send(payload) {
     throw new Error('Not implemented')
   }
 }

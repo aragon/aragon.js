@@ -1,37 +1,24 @@
 import { Observable } from 'rxjs/Rx'
 
-export function call (request, proxy, wrapper) {
+export function call(request, proxy, wrapper) {
   const web3 = wrapper.web3
-  const [
-    address,
-    method,
-    ...params
-  ] = request.params
+  const [address, method, ...params] = request.params
 
-  const contract = new web3.eth.Contract(
-    [method],
-    address
-  )
+  const contract = new web3.eth.Contract([method], address)
 
   return contract.methods[method.name](...params).call()
 }
 
-export function events (request, proxy, wrapper) {
+export function events(request, proxy, wrapper) {
   const web3 = wrapper.web3
-  const [
-    address,
-    jsonInterface,
-    fromBlock
-  ] = request.params
+  const [address, jsonInterface, fromBlock] = request.params
 
-  const contract = new web3.eth.Contract(
-    jsonInterface,
-    address
-  )
+  const contract = new web3.eth.Contract(jsonInterface, address)
 
   return Observable.fromEvent(
     contract.events.allEvents({
-      fromBlock
-    }), 'data'
+      fromBlock,
+    }),
+    'data'
   )
 }

@@ -8,20 +8,20 @@ const PREVIOUS_BLOCK_GAS_LIMIT_FACTOR = 0.95
 export const ANY_ENTITY = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF'
 
 // Check address equality without checksums
-export function addressesEqual (first, second) {
+export function addressesEqual(first, second) {
   first = first && first.toLowerCase()
   second = second && second.toLowerCase()
   return first === second
 }
 
 // "Safer" version of [].includes() for addresses
-export function includesAddress (arr, address) {
+export function includesAddress(arr, address) {
   return arr.some(a => addressesEqual(a, address))
 }
 
-export function makeAddressMapProxy (target) {
+export function makeAddressMapProxy(target) {
   return new Proxy(target, {
-    get (target, property, receiver) {
+    get(target, property, receiver) {
       if (property in target) {
         return target[property]
       }
@@ -31,31 +31,37 @@ export function makeAddressMapProxy (target) {
         return target[property.toLowerCase()]
       }
     },
-    set (target, property, value, receiver) {
+    set(target, property, value, receiver) {
       if (typeof property === 'string' && isAddress(property)) {
         target[property.toLowerCase()] = value
       } else {
         target[property] = value
       }
       return true
-    }
+    },
   })
 }
 
-export function makeProxy (address, interfaceName, web3, initializationBlock) {
+export function makeProxy(address, interfaceName, web3, initializationBlock) {
   const abi = getAbi(`aragon/${interfaceName}`)
   return makeProxyFromABI(address, abi, web3, initializationBlock)
 }
 
-export function makeProxyFromABI (address, abi, web3, initializationBlock) {
+export function makeProxyFromABI(address, abi, web3, initializationBlock) {
   return new ContractProxy(address, abi, web3, initializationBlock)
 }
 
-export async function getRecommendedGasLimit (web3, estimatedGasLimit, { gasFuzzFactor = DEFAULT_GAS_FUZZ_FACTOR } = {}) {
+export async function getRecommendedGasLimit(
+  web3,
+  estimatedGasLimit,
+  { gasFuzzFactor = DEFAULT_GAS_FUZZ_FACTOR } = {}
+) {
   const latestBlock = await web3.eth.getBlock('latest')
   const latestBlockGasLimit = latestBlock.gasLimit
 
-  const upperGasLimit = Math.round(latestBlockGasLimit * PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
+  const upperGasLimit = Math.round(
+    latestBlockGasLimit * PREVIOUS_BLOCK_GAS_LIMIT_FACTOR
+  )
   const bufferedGasLimit = Math.round(estimatedGasLimit * gasFuzzFactor)
 
   if (estimatedGasLimit > upperGasLimit) {

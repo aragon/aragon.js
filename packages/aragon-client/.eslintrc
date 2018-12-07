@@ -15,6 +15,6 @@
         "error",
         "unix"
       ],
-      "ava/no-async-fn-without-await": "warn"
+      "ava/no-async-fn-without-await": "off"
     }
  }
