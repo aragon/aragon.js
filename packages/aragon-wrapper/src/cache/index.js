@@ -1,5 +1,6 @@
 import localforage from 'localforage'
 import { Subject } from 'rxjs/Rx'
+import { concat } from 'rxjs/observable/concat'
 
 /**
  * A cache.
@@ -48,9 +49,14 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    return this.changes
-      .filter((change) => change.key === key)
-      .map((change) => change.value)
-      .startWith(this.get(key, defaultValue))
+    const keyChanges = this.changes
+      .filter(change => change.key === key)
+      .pluck('value')
+    /*
+     * If `get` takes longer than usual, and a new `set` finishes before then,
+     * this.changes will emit new values, but they will be discarded. that's why
+     * we use `concat` and not `merge`.
+     */
+    return concat(this.get(key, defaultValue), keyChanges)
   }
 }
