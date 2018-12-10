@@ -1,7 +1,6 @@
-import low from 'lowdb'
-import Memory from 'lowdb/adapters/Memory'
-import LocalStorage from 'lowdb/adapters/LocalStorage'
+import localforage from 'localforage'
 import { Subject } from 'rxjs/Rx'
+import { concat } from 'rxjs/observable/concat'
 
 /**
  * A cache.
@@ -10,57 +9,35 @@ export default class Cache {
   constructor (prefix) {
     this.prefix = prefix
 
-    // Set up cache DB
-    let adapter = null
-    if (typeof window === 'undefined') {
-      // TODO: Support caching on the file system
-      // const path = require('path')
-      // const os = require('os')
-      // const FileAsync = require('lowdb/adapters/FileAsync')
-
-      // adapter = new FileAsync(
-      //   path.resolve(
-      //     os.homedir(), '.aragon', 'cache.json'
-      //   )
-      // )
-      adapter = new Memory()
-    } else {
-      adapter = new LocalStorage()
-    }
-    this.db = low(adapter)
-
-    // Set default cache state
-    this.db.defaults({}).write()
+    // if (typeof window === 'undefined') {
+    //   // TODO: Support caching on the file system
+    //   const path = require('path')
+    //   const os = require('os')
+    // }
 
     // Set up the changes observable
     this.changes = new Subject()
-  }
 
-  getCacheKeyPath (key) {
-    return `${this.prefix}.${key}`
+    // Set up cache DB
+    this.db = localforage.createInstance({
+      driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
+      name: `localforage/${this.prefix}`
+    })
   }
 
   async set (key, value) {
-    // Some lowdb adapters are synchronous while others are asynchronous so
-    // let's always wrap it in a promise
-    await Promise.resolve(this.db.set(
-      this.getCacheKeyPath(key),
+    await this.db.setItem(
+      key,
       value
-    ).write())
+    )
 
     this.changes.next({ key, value })
   }
 
-  get (key, defaultValue) {
-    return this.db.get(
-      this.getCacheKeyPath(key)
-    ).value() || defaultValue
-  }
-
-  update (key, transition) {
-    return this.set(key,
-      transition(this.get(key))
-    )
+  async get (key, defaultValue) {
+    // If we access a key without data the promise resolve but value is null
+    const value = await this.db.getItem(key)
+    return value || defaultValue
   }
 
   /**
@@ -72,9 +49,14 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    return this.changes
-      .filter((change) => change.key === key)
-      .map((change) => change.value)
-      .startWith(this.get(key, defaultValue))
+    const keyChanges = this.changes
+      .filter(change => change.key === key)
+      .pluck('value')
+    /*
+     * If `get` takes longer than usual, and a new `set` finishes before then,
+     * this.changes will emit new values, but they will be discarded. that's why
+     * we use `concat` and not `merge`.
+     */
+    return concat(this.get(key, defaultValue), keyChanges)
   }
 }

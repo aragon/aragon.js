@@ -474,6 +474,11 @@ test('should send notifications correctly', async (t) => {
   t.plan(12)
   // arrange
   const instance = new Aragon()
+  const dbMock = {
+    getItem: sinon.stub().returns(),
+    setItem: sinon.stub().returns()
+  }
+  instance.cache.db = dbMock
   // act
   await instance.initNotifications()
   await instance.sendNotification('counterApp', 'add')
