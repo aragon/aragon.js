@@ -68,6 +68,15 @@ Some caveats to customizing transaction parameters:
 - `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
 - `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
 
+The intent function returns an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the hash of the transaction that was sent:
+
+```js
+app.increment(1).subscribe(
+  (txHash) => console.log(`Success! Incremented in tx ${txHash}`),
+  (err) => console.log(`Could not increment: ${err}`)
+)
+```
+
 
 **Parameters**
 
