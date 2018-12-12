@@ -1,4 +1,4 @@
-<p align="center"><img width="25%" src="https://wiki.aragon.one/design/logo/png/stroke.png"></p>
+<p align="center"><img width="25%" src="https://wiki.aragon.org/design/logo/png/stroke.png"></p>
 
 <div align="center">
   <!-- Stability -->
@@ -35,7 +35,7 @@
 
 <div align="center">
   <h4>
-    <a href="https://aragon.one">
+    <a href="https://aragon.org">
       Website
     </a>
     <span> | </span>
