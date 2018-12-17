@@ -4,7 +4,7 @@ A JavaScript implementation of aragonAPI, used to interact with aragonOS by hand
 
 ## Guides
 
-- [Background Scripts](BACKGROUND_SCRIPTS.md)
+- [Background Scripts](/docs/BACKGROUND_SCRIPTS.md)
 
 ## References
 

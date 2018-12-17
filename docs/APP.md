@@ -1,9 +1,10 @@
 <!-- 
  Warning!
 
- Depends on PROVIDERS.md to exist in the same directory.
+ Depends on /docs/PROVIDERS.md to exist in the same directory.
  The API Reference section of this document is generated.
 -->
+
 # Apps API Reference (`@aragon/client`)
 
 ## Install
@@ -26,7 +27,6 @@ import AragonApp, { providers } from '@aragon/client'
 const AragonApp = require('@aragon/client').default
 const providers = require('@aragon/client').providers
 ```
-
 
 ## API Reference
 
@@ -66,10 +66,10 @@ This class is used to communicate with the wrapper in which the app is run.
 
 Every method in this class sends an RPC message to the wrapper.
 
-The app communicates with the wrapper using a messaging provider. 
-The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), 
-but you may specify another provider to use (see the exported [providers](PROVIDERS.md) to learn more about them). 
-You will most likely want to use the [`WindowMessage` provider](PROVIDERS.md#windowmessage) in your frontend.
+The app communicates with the wrapper using a messaging provider.
+The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage),
+but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them).
+You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
 
 To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
 
@@ -100,7 +100,7 @@ Some caveats to customizing transaction parameters:
 
 #### Parameters
 
--   `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** A provider used to send and receive messages to and from the wrapper. See [providers](PROVIDERS.md). (optional, default `MessagePortMessage`)
+-   `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md). (optional, default `MessagePortMessage`)
 
 #### Examples
 
@@ -132,7 +132,7 @@ Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/O
 
 Set the app identifier.
 
-This identifier is used to distinguish multiple instances of your app, 
+This identifier is used to distinguish multiple instances of your app,
 so choose something that provides additional context to the app instance.
 
 Examples include: the name of a token that the app manages,
@@ -160,7 +160,7 @@ Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/O
 
 #### external
 
-Creates a handle to interact with an external contract 
+Creates a handle to interact with an external contract
 (i.e. a contract that is **not** your app's smart contract, such as a token).
 
 ##### Parameters
@@ -263,8 +263,7 @@ Perform a read-only call on the app's smart contract.
 ##### Parameters
 
 -   `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the method to call.
--   `params` **...any** An optional variadic number of parameters.
--   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)?** Call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
+-   `params` **...any** An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
 

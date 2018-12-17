@@ -358,8 +358,8 @@ export class AppProxy {
  *
  * The app communicates with the wrapper using a messaging provider.
  * The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage),
- * but you may specify another provider to use (see the exported [providers](PROVIDERS.md) to learn more about them).
- * You will most likely want to use the [`WindowMessage` provider](PROVIDERS.md#windowmessage) in your frontend.
+ * but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them).
+ * You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
  *
  * To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
  *
@@ -397,7 +397,7 @@ export class AppProxy {
  * const frontendOfApp = new AragonApp(
  *   new providers.WindowMessage(window.parent)
  * )
- * @param {Object} [provider=MessagePortMessage] A provider used to send and receive messages to and from the wrapper. See [providers](PROVIDERS.md).
+ * @param {Object} [provider=MessagePortMessage] A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md).
  */
 export default class AragonApp {
   constructor (provider = new providers.MessagePortMessage()) {
