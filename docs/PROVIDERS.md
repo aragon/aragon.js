@@ -1,4 +1,4 @@
-## Providers
+# Providers
 
 ## Import
 
@@ -20,7 +20,7 @@ const providers = require('@aragon/wrapper').providers
 
 A provider is used to send and receive messages between the wrapper and the app.
 
-### MessagePortMessage
+## MessagePortMessage
 
 A provider that communicates through the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage).
 
@@ -30,7 +30,7 @@ Suitable to use in background scripts as WebWorkers are natively compatible with
 
 1. [`target`] (`Object`): The object (that implements the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage)) to send messages to. (optional, default `self`)
 
-### WindowMessage
+## WindowMessage
 
 A provider that communicates through the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage).
 

@@ -1,4 +1,4 @@
-# Aragon Wrapper
+# Wrapper API Reference (`@aragon/wrapper`)
 
 ## An Aragon wrapper.
 
