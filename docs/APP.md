@@ -20,10 +20,8 @@ const providers = require('@aragon/client').providers
 ```
 
 <!-- Warning!! -->
-
-<!-- This document has references to /docs/aragonjs-ref-providers.html. -->
-
-<!-- The rest of this document is generated. -->
+<!-- This document has references to /docs/PROVIDERS.md -->
+<!-- The rest of this document is generated -->
 
 # API Reference
 

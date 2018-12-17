@@ -24,9 +24,9 @@ const Aragon = require('@aragon/client')
 // Set up app
 const app = new Aragon()
 
-// Set app identifier
-// Just an example, should be more descriptive (e.g. for our token manager, we use the ticker of the token it manages)
-app.identify(Math.random())
+// Set the app identifier since multiple instances of this can be installed
+// (e.g. for our token manager, we use the ticker of the token it manages)
+app.identify('Employee counter')
 
 // Listen to events and build app state
 const state$ = app.store((state, event) => {
@@ -35,8 +35,8 @@ const state$ = app.store((state, event) => {
 
   // Build state
   if (event.event === 'Decrement') {
+    // Calculate the next state
     state--
-
     // Send notification
     app.notify('Counter decremented', `The counter was decremented to ${state}`)
   }
