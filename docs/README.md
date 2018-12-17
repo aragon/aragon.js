@@ -1,4 +1,4 @@
-![](/docs/assets/aragonjs.png)
+![](/docs/assets/brand/aragonjs.png)
 
 A JavaScript implementation of aragonAPI, used to interact with aragonOS by handling transaction pathing, upgradeability and state of the contracts.
 
