@@ -22,9 +22,7 @@ A provider is used to send and receive messages between the wrapper and the app.
 
 ## MessagePortMessage
 
-A provider that communicates through the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage).
-
-Suitable to use in background scripts as WebWorkers are natively compatible with the MessageChannel API. 
+A provider communicates through the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage). It is suitable to use in background scripts since WebWorkers are natively compatible with the MessageChannel API. 
 
 **Parameters**
 
@@ -32,9 +30,7 @@ Suitable to use in background scripts as WebWorkers are natively compatible with
 
 ## WindowMessage
 
-A provider that communicates through the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage).
-
-Suitable to use in front-ends connected through an iframe, by passing [window.parent](https://developer.mozilla.org/en-US/docs/Web/API/Window/parent).
+A provider that communicates through the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage).  It is suitable to use in front-ends connected through an iframe by passing [window.parent](https://developer.mozilla.org/en-US/docs/Web/API/Window/parent).
 
 **Example**
 ```
