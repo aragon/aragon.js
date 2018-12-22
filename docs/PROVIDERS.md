@@ -1,4 +1,4 @@
-# Providers
+# Providers API Reference
 
 ## Import
 

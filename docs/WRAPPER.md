@@ -1,3 +1,5 @@
+# Wrapper API Reference
+
 ## Install
 
 ```sh
@@ -19,7 +21,6 @@ const AragonWrapper = require('@aragon/wrapper').default
 const providers = require('@aragon/wrapper').providers
 ```
 
-# API Reference
 
 ## AragonWrapper
 
