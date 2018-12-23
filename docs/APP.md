@@ -1,3 +1,5 @@
+# App
+
 ## Install
 
 ```sh
@@ -20,7 +22,9 @@ const providers = require('@aragon/client').providers
 ```
 
 <!-- Warning!! -->
+
 <!-- This document has references to /docs/PROVIDERS.md -->
+
 <!-- The rest of this document is generated -->
 
 # API Reference

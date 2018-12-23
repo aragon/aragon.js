@@ -6,11 +6,11 @@ A JavaScript implementation of aragonAPI, used to interact with aragonOS by hand
 
 - [Background Scripts](/docs/BACKGROUND_SCRIPTS.md)
 
-## References
+## Docs
 
-- [App API Reference](/docs/APP.md)
-- [Wrapper API Reference](/docs/WRAPPER.md)
-- [Providers API Reference](/docs/PROVIDERS.md)
+- [App](/docs/APP.md)
+- [Wrapper](/docs/WRAPPER.md)
+- [Providers](/docs/PROVIDERS.md)
 
 ## Quick Start for apps
 
