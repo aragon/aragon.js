@@ -35,7 +35,54 @@ test('should send intent when the method does not exist in target', t => {
 })
 
 test('should return the network details as an observable', t => {
-  t.plan(3)
+  t.plan(4)
+  // arrange
+  const networkDetails = {
+    id: 4,
+    type: 'rinkeby'
+  }
+  const networkDetailsUpdated = {
+    id: 1,
+    type: 'mainnet'
+  }
+  const networkFn = Index.AppProxy.prototype.network
+  const observable = Observable.of(
+    {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: networkDetails
+    },
+    {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: networkDetailsUpdated
+    }
+  )
+  const instanceStub = {
+    options: {},
+    rpc: {
+      sendAndObserveResponses: sinon.stub()
+        .returns(observable)
+    }
+  }
+  // act
+  const result = networkFn.call(instanceStub)
+  // assert
+  // the call to sendAndObserveResponse is made before we subscribe
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+
+  let emitNumber = 0
+  result.subscribe(value => {
+    if (emitNumber === 0) t.deepEqual(value, networkDetails)
+    if (emitNumber === 1) t.deepEqual(value, networkDetailsUpdated)
+    emitNumber++
+  })
+
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
+})
+
+test('should return the network details as a promise', async t => {
+  t.plan(2)
   // arrange
   const networkDetails = {
     id: 4,
@@ -48,19 +95,18 @@ test('should return the network details as an observable', t => {
     result: networkDetails
   })
   const instanceStub = {
+    options: {
+      withPromises: true
+    },
     rpc: {
       sendAndObserveResponses: sinon.stub()
         .returns(observable)
     }
   }
   // act
-  const result = networkFn.call(instanceStub)
+  const result = await networkFn.call(instanceStub)
   // assert
-  // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
-  result.subscribe(value => {
-    t.deepEqual(value, networkDetails)
-  })
+  t.deepEqual(result, networkDetails)
   t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
 })
 

@@ -23,7 +23,12 @@ export const AppProxyHandler = {
  * A JavaScript proxy that wraps RPC calls to the wrapper.
  */
 export class AppProxy {
-  constructor (provider) {
+  constructor(provider, options) {
+    const defaultOptions = {
+      withPromises: false
+    }
+
+    this.options = Object.assign({}, defaultOptions, options)
     this.rpc = new Messenger(provider)
   }
 
@@ -44,9 +49,15 @@ export class AppProxy {
    * @return {Observable}
    */
   network () {
-    return this.rpc.sendAndObserveResponses(
+    const observable = this.rpc.sendAndObserveResponses(
       'network'
     ).pluck('result')
+
+    if (this.options.withPromises) {
+      return observable.toPromise()
+    }
+
+    return observable
   }
 
   /**
