@@ -1,6 +1,29 @@
-# Aragon Wrapper
+# Wrapper
 
-## An Aragon wrapper.
+## Install
+
+```sh
+npm install --save @aragon/wrapper
+```
+
+## Import
+
+### ES6
+
+```js
+import AragonWrapper, { providers } from '@aragon/wrapper'
+```
+
+### ES5 (CommonJS)
+
+```js
+const AragonWrapper = require('@aragon/wrapper').default
+const providers = require('@aragon/wrapper').providers
+```
+
+# API Reference
+
+## AragonWrapper
 
 ### **Parameters**
 
@@ -23,11 +46,11 @@ await aragon.init({
 })
 ```
 
-## init
+### init
 
 Initialise the wrapper.
 
-### **Parameters**
+#### **Parameters**
 
 -   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
       An optional options object for configuring the wrapper.
@@ -38,11 +61,11 @@ Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/
 
 Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/dev/contracts/kernel/Kernel.sol) instance
 
-## initAccounts
+### initAccounts
 
 Initialise user-controlled accounts.
 
-### **Parameters**
+#### **Parameters**
 
 -   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
     -   `fetchFromWeb3` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)**
@@ -52,11 +75,11 @@ Initialise user-controlled accounts.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-## initAcl
+### initAcl
 
 Initialise the ACL.
 
-### **Parameters**
+#### **Parameters**
 
 -   `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
     -   `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
@@ -64,67 +87,67 @@ Initialise the ACL.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-## getProxyValues
+### getProxyValues
 
 Get proxy metadata (`appId`, address of the kernel, ...).
 
-### **Parameters**
+#### **Parameters**
 
 -   `proxyAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the proxy to get metadata from
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>**
 
-## isApp
+### isApp
 
 Check if an object is an app.
 
-### **Parameters**
+#### **Parameters**
 
 -   `app` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
 
 Returns **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)**
 
-## initApps
+### initApps
 
 Initialise apps observable.
 
 Returns **void**
 
-## initForwarders
+### initForwarders
 
 Initialise forwarder observable.
 
 Returns **void**
 
-## initNetwork
+### initNetwork
 
 Initialise connected network details observable.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-## runApp
+### runApp
 
 Run an app.
 
-### **Parameters**
+#### **Parameters**
 
 -   `sandbox` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An object that is compatible with the PostMessage API.
 -   `proxyAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the app proxy.
 
 Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
 
-## getAccounts
+### getAccounts
 
 Get the available accounts for the current user.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** An array of addresses
 
-## getTransactionPath
+### getTransactionPath
 
 Calculate the transaction path for a transaction to `destination`
 that invokes `methodName` with `params`.
 
-### **Parameters**
+#### **Parameters**
 
 -   `destination` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
 -   `methodName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
@@ -132,12 +155,12 @@ that invokes `methodName` with `params`.
 
 Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** An array of Ethereum transactions that describe each step in the path
 
-## calculateTransactionPath
+### calculateTransactionPath
 
 Calculate the transaction path for a transaction to `destination`
 that invokes `methodName` with `params`.
 
-### **Parameters**
+#### **Parameters**
 
 -   `sender` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
 -   `destination` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**

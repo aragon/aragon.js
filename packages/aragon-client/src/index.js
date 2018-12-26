@@ -4,6 +4,9 @@ import { empty } from 'rxjs/observable/empty'
 import { fromPromise } from 'rxjs/observable/fromPromise'
 import { merge } from 'rxjs/observable/merge'
 
+/**
+ * @private
+ */
 export const AppProxyHandler = {
   get (target, name, receiver) {
     if (name in target) {
@@ -21,6 +24,7 @@ export const AppProxyHandler = {
 
 /**
  * A JavaScript proxy that wraps RPC calls to the wrapper.
+ * @private
  */
 export class AppProxy {
   constructor (provider) {
@@ -30,7 +34,9 @@ export class AppProxy {
   /**
    * Get an array of the accounts the user currently controls over time.
    *
-   * @return {Observable}
+   * @instance
+   * @memberof AragonApp
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of account addresses every time a change is detected.
    */
   accounts () {
     return this.rpc.sendAndObserveResponses(
@@ -41,7 +47,9 @@ export class AppProxy {
   /**
    * Get the network the app is connected to over time.
    *
-   * @return {Observable}
+   * @instance
+   * @memberof AragonApp
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an object with the connected network's id and type every time the network changes.
    */
   network () {
     return this.rpc.sendAndObserveResponses(
@@ -52,13 +60,19 @@ export class AppProxy {
   /**
    * Set the app identifier.
    *
-   * An app identifier is a way to distinguish multiple instances
-   * of the same app.
+   * This identifier is used to distinguish multiple instances of your app,
+   * so choose something that provides additional context to the app instance.
    *
    * Examples include: the name of a token that the app manages,
    * the type of content that a TCR is curating, the name of a group etc.
    *
-   * @param  {string} identifier
+   * @instance
+   * @memberof AragonApp
+   * @example
+   * app.identify('Customer counter')
+   * // or
+   * app.identify('Employee counter')
+   * @param  {string} identifier The identifier of the app.
    * @return {void}
    */
   identify (identifier) {
@@ -69,10 +83,11 @@ export class AppProxy {
   }
 
   /**
-   * Get events from the application contract.
+   * Listens for events on your app's smart contract from the last unhandled block.
    *
-   * @memberof AppProxy
-   * @return {Observable} An observable of contract events (as defined in Web3)
+   * @instance
+   * @memberof AragonApp
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   events () {
     return defer(
@@ -83,11 +98,22 @@ export class AppProxy {
   }
 
   /**
-   * Create a handle to an external contract.
+   * Creates a handle to interact with an external contract
+   * (i.e. a contract that is **not** your app's smart contract, such as a token).
    *
+   * @instance
+   * @memberof AragonApp
    * @param  {string} address The address of the external contract
-   * @param  {Array<Object>} jsonInterface The JSON interface of the external contract
-   * @return {Object}
+   * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
+   * @return {Object}  An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+   * @example
+   * const token = app.external(tokenAddress, tokenJsonInterface)
+   *
+   * // Retrieve the symbol of the token
+   * token.symbol().subscribe(symbol => console.log(`The token symbol is ${symbol}`))
+   *
+   * // Retrieve the token balance of an account
+   * token.balanceOf(someAccountAddress).subscribe(balance => console.log(`The balance of the account is ${balance}`))
    */
   external (address, jsonInterface) {
     const contract = {
@@ -124,12 +150,13 @@ export class AppProxy {
   }
 
   /**
-   * Cache a value for the application.
+   * Set a value in the application cache.
    *
-   * @memberof AppProxy
-   * @param  {string} key   The cache key
-   * @param  {string} value The value to cache
-   * @return {string}       Will pass through `value`
+   * @instance
+   * @memberof AragonApp
+   * @param  {string} key   The cache key to set a value for
+   * @param  {string} value The value to persist in the cache
+   * @return {string}       This method passes through `value`
    */
   cache (key, value) {
     this.rpc.send(
@@ -141,10 +168,13 @@ export class AppProxy {
   }
 
   /**
-   * Observe the application state.
+   * Observe the cached application state over time.
    *
-   * @memberof AppProxy
-   * @return {Observable} An observable of application states over time.
+   * This method is also used to share state between the background script and front-end of your application.
+   *
+   * @instance
+   * @memberof AragonApp
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   state () {
     return this.rpc.sendAndObserveResponses(
@@ -154,17 +184,51 @@ export class AppProxy {
   }
 
   /**
-   * Listens for events, passes them through `reducer`, caches the resulting state
-   * and returns that state.
+   * Listens for events, passes them through `reducer`, caches the resulting state and re-emits that state for easy chaining.
    *
-   * The reducer takes the signature `(state, event)` a lá Redux.
+   * This is in fact sugar on top of [`state`](#state), [`events`](#events) and [`cache`](#cache).
    *
-   * Optionally takes an array of other web3 event observables to merge with this app's events
+   * The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event.
    *
-   * @memberof AppProxy
-   * @param  {reducer}      reducer
-   * @param  {Observable[]} [events]
-   * @return {Observable}   An observable of the resulting state from reducing events
+   * Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
+   *
+   * Optionally takes an array of other `Observable`s to merge with this app's events; for example you might use an external contract's Web3 events.
+   *
+   * @instance
+   * @memberof AragonApp
+   * @param  {Function} reducer A function that reduces events to a state. This can return a Promise that resolves to a new state.
+   * @param  {Observable[]} [events] An optional array of `Observable`s to merge in with the internal events observable
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
+   * @example
+   * // A simple reducer for a counter app
+   *
+   * const state$ = app.store((state, event) => {
+   *   // Initial state is always null
+   *   if (state === null) state = 0
+   *
+   *   switch (event.event) {
+   *     case 'Increment':
+   *       state++
+   *       return state
+   *     case 'Decrement':
+   *       state--
+   *       return state
+   *   }
+   *
+   *   // We must always return a state, even if unaltered
+   *   return state
+   * })
+   * @example
+   * // A reducer that also reduces events from an external smart contract
+   *
+   * const token = app.external(tokenAddress, tokenJsonInterface)
+   *
+   * const state$ = app.store(
+   *   (state, event) => {
+   *     // ...
+   *   },
+   *   [token.events()]
+   * )
    */
   store (reducer, events = [empty()]) {
     const initialState = this.state().first()
@@ -197,12 +261,13 @@ export class AppProxy {
   }
 
   /**
-   * Perform a call to the application contract.
+   * Perform a read-only call on the app's smart contract.
    *
-   * @memberof AppProxy
-   * @param  {string} method The method to call
-   * @param  {...*} params Parameters for the call
-   * @return {Observable} An observable that emits the return value(s) of the call.
+   * @instance
+   * @memberof AragonApp
+   * @param  {string} method The name of the method to call.
+   * @param  {...*} params An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
    */
   call (method, ...params) {
     return this.rpc.sendAndObserveResponse(
@@ -212,13 +277,16 @@ export class AppProxy {
   }
 
   /**
+   * **NOTE: This call is not currently handled by the wrapper**
+   *
    * Send a notification.
    *
-   * @memberof AppProxy
-   * @param {string} title The notification title
-   * @param {string} body The notification body
-   * @param {object} [context={}] The application context to send back if the notification is clicked
-   * @param {Date} [date=new Date()] The notification timestamp
+   * @instance
+   * @memberof AragonApp
+   * @param {string} title The title of the notification.
+   * @param {string} body The body of the notification.
+   * @param {Object} [context={}] An optional context that will be sent back to the app if the notification is clicked.
+   * @param {Date} [date=new Date()] An optional date that specifies when the notification originally occured.
    * @return {void}
    */
   notify (title, body, context = {}, date = new Date()) {
@@ -229,16 +297,20 @@ export class AppProxy {
   }
 
   /**
-   * Listen for app contexts sent from the wrapper.
    *
-   * An app context is sent from the wrapper and correspond to a specific view
-   * in your app.
+   * **NOTE: The wrapper does not currently send contexts to apps**
    *
-   * For example, when sending a notification, you can optionally supply an
-   * app context. If the notification is clicked, the app is loaded and
-   * the context is sent back to the app.
+   * Listen for app contexts.
    *
-   * @return {Observable} An observable of incoming app contexts
+   * An app context is an application specific message that the wrapper can send to the app.
+   *
+   * For example, if a notification or a shortcut is clicked, the context attached to either of those will be sent to the app.
+   *
+   * App contexts can be used to display specific views in your app or anything else you might find interesting.
+   *
+   * @instance
+   * @memberof AragonApp
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits app contexts as they are received.-
    */
   context () {
     return this.rpc.requests()
@@ -247,10 +319,12 @@ export class AppProxy {
   }
 
   /**
-   * Describes the transaction path that an EVM callscript encodes.
+   * Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
    *
-   * @param  {string} script
-   * @return {Observable} An observable that emits the transaction path the script encodes
+   * @instance
+   * @memberof AragonApp
+   * @param  {string} script The EVM callscript to describe
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
    */
   describeScript (script) {
     return this.rpc.sendAndObserveResponse(
@@ -262,6 +336,9 @@ export class AppProxy {
   /**
    * Invoke a whitelisted web3.eth function.
    *
+   * @instance
+   * @memberof AragonApp
+   * @private
    * @param  {string} method The method to call. Must be in the whitelisted group (mostly getters).
    * @param  {...*} params Parameters for the call
    * @return {Observable} An observable that emits the return value(s) of the call.
@@ -275,23 +352,52 @@ export class AppProxy {
 }
 
 /**
- * An Aragon app.
+ * This class is used to communicate with the wrapper in which the app is run.
  *
- * This class handles communicating with the wrapper using Aragon RPC.
+ * Every method in this class sends an RPC message to the wrapper.
  *
- * The class itself contains "magic methods", that is, undefined methods
- * will instead become an intent that is sent to the wrapper.
+ * The app communicates with the wrapper using a messaging provider.
+ * The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage),
+ * but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them).
+ * You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
  *
- * For example:
+ * To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
+ *
+ * For example, to execute the `increment` function in your app's smart contract:
  *
  * ```js
- * app.transfer('foo', 'bar')
+ * const app = new AragonApp()
+ *
+ * // Sends an intent to the wrapper that we wish to invoke `increment` on our app's smart contract
+ * app.increment(1).subscribe(
+ *   (txHash) => console.log(`Success! Incremented in tx ${txHash}`),
+ *   (err) => console.log(`Could not increment: ${err}`)
+ * )
+ * ```
+ * The intent function returns an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the hash of the transaction that was sent.
+ *
+ * You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
+ *
+ * ```js
+ * app.increment(1, { gas: 200000, gasPrice: 80000000 })
  * ```
  *
- * will result in an intent to send a transaction to the application proxy,
- * invoking the contract function `transfer` with the parameters `foo` and `bar`.
+ * Some caveats to customizing transaction parameters:
  *
- * @param {Object} [provider=MessagePortMessage] An RPC provider (will default to using the MessagePort API)
+ * - `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
+ * - `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
+ *
+ * @example
+ * import AragonApp, { providers } from '@aragon/client'
+ *
+ * // The default provider should be used in background scripts
+ * const backgroundScriptOfApp = new AragonApp()
+ *
+ * // The WindowMessage provider should be used for front-ends
+ * const frontendOfApp = new AragonApp(
+ *   new providers.WindowMessage(window.parent)
+ * )
+ * @param {Object} [provider=MessagePortMessage] A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md).
  */
 export default class AragonApp {
   constructor (provider = new providers.MessagePortMessage()) {
