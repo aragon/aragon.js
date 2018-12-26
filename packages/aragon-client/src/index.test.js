@@ -34,34 +34,60 @@ test('should send intent when the method does not exist in target', t => {
   t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['add', 5])
 })
 
-test('should return the network details as an observable', t => {
+test.only('should return the network details as a promise', async t => {
+  t.plan(2)
+  // arrange
+  const observable = Observable.of({
+    id: 'uuid1',
+    jsonrpc: '2.0',
+    result: { id: 4, type: 'rinkeby' }
+  })
+  const rpc = {
+    sendAndObserveResponses: sinon.stub()
+      .returns(observable)
+  }
+  const networkAPI = new Index.NetworkAPI(rpc)
+  // act
+  const result = await networkAPI.get()
+  // assert
+  t.deepEqual(result, { id: 4, type: 'rinkeby' })
+  t.is(rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
+})
+
+test.only('should emit network updates', async t => {
   t.plan(3)
   // arrange
-  const networkDetails = {
-    id: 4,
-    type: 'rinkeby'
-  }
-  const networkFn = Index.AppProxy.prototype.network
-  const observable = Observable.of({
-    jsonrpc: '2.0',
-    id: 'uuid1',
-    result: networkDetails
-  })
-  const instanceStub = {
-    rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+  const observable = Observable.of(
+    {
+      id: 'uuid1',
+      jsonrpc: '2.0',
+      result: { id: 4, type: 'rinkeby' }
+    },
+    {
+      id: 'uuid1',
+      jsonrpc: '2.0',
+      result: { id: 1, type: 'mainnet' }
     }
+  ).delay(200)
+
+  const rpc = {
+    sendAndObserveResponses: sinon.stub()
+      .returns(observable)
   }
+  const networkAPI = new Index.NetworkAPI(rpc)
   // act
-  const result = networkFn.call(instanceStub)
-  // assert
-  // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
-  result.subscribe(value => {
-    t.deepEqual(value, networkDetails)
+  let emitNumber = 0
+  networkAPI.on('update', value => {
+    // assert
+    if (emitNumber === 0) t.deepEqual(value, { id: 4, type: 'rinkeby' })
+    if (emitNumber === 1) t.deepEqual(value, { id: 1, type: 'mainnet' })
+    emitNumber++
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
+
+  t.is(rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
+
+  // hack so the test doesn't finish prematurely
+  await new Promise(resolve => setTimeout(resolve, 400))
 })
 
 test('should return the accounts as an observable', t => {
