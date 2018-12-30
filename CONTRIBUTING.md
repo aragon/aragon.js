@@ -1,4 +1,4 @@
-# Contributing to Aragon.js
+# Contributing to aragon.js
 
 :tada: Thank you for being interested in contributing to an Aragon Project! :tada: 
 
