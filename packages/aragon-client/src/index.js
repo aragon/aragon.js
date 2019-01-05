@@ -1,35 +1,104 @@
 import Messenger, { providers } from '@aragon/messenger'
-import { defer } from 'rxjs/observable/defer'
-import { empty } from 'rxjs/observable/empty'
 import { fromPromise } from 'rxjs/observable/fromPromise'
 import { merge } from 'rxjs/observable/merge'
 import EventEmitter from 'events'
-import { ReplaySubject } from 'rxjs/Rx'
+import { ReplaySubject, Subject } from 'rxjs/Rx'
 
-/**
- * @private
- */
-export const AppProxyHandler = {
-  get (target, name, receiver) {
-    if (name in target) {
-      return target[name]
-    }
+export class ContractAPI extends EventEmitter {
+  constructor(rpc) {
+    super()
+    this.rpc = rpc
+    // lazily initialize the events (after the first subscribe)
+    this.once('newListener', (event, listener) => {
+      if (event === 'event') {
+        // this event (newListener) is fired BEFORE the listener has been added
+        // defer this with setTimeout to initialize the events after the listender was added 
+        setTimeout(() => this.initializeEvents(), 0)
+      }
+    })
+  }
 
-    return function (...params) {
-      return target.rpc.sendAndObserveResponse(
-        'intent',
-        [name, ...params]
-      ).pluck('result')
-    }
+  initializeEvents () {
+    this.rpc.sendAndObserveResponses('events')
+      .pluck('result')
+      .subscribe(value => {
+        this.emit('event', value)
+      })
+  }
+
+  intent (name, ...params) {
+    return this.rpc.sendAndObserveResponse(
+      'intent',
+      [name, ...params]
+    )
+      .pluck('result')
+      .toPromise()
+  }
+
+  call (method, ...params) {
+    return this.rpc.sendAndObserveResponse(
+      'call',
+      [method, ...params]
+    )
+      .pluck('result')
+      .toPromise()
   }
 }
 
-export class NetworkAPI extends EventEmitter {
-  constructor (rpc) {
+export class ExternalContractAPI extends EventEmitter {
+  constructor(rpc, address, jsonInterface, fromBlock = 0) {
     super()
     this.rpc = rpc
+    this.address = address
+    this.jsonInterface = jsonInterface
+    this.fromBlock = fromBlock
+    // lazily initialize the events (after the first subscribe)
+    this.once('newListener', (event, listener) => {
+      if (event === 'event') {
+        // this event (newListener) is fired BEFORE the listener has been added
+        // defer this with setTimeout to initialize the events after the listender was added 
+        setTimeout(() => this.initializeEvents(), 0)
+      }
+    })
+  }
+
+  initializeEvents () {
+    this.rpc.sendAndObserveResponses(
+      'external_events',
+      [
+        this.address,
+        this.jsonInterface.filter(
+          (item) => item.type === 'event'
+        ),
+        this.fromBlock
+      ]
+    )
+      .pluck('result')
+      .subscribe(value => {
+        this.emit('event', value)
+      })
+  }
+
+  call (method, ...params) {
+    const methodJsonInterface = this.jsonInterface.filter(
+      (item) => item.type === 'function' && item.constant && item.name === method
+    )
+
+    return this.rpc.sendAndObserveResponse(
+      'external_call',
+      [address, methodJsonInterface, ...params]
+    )
+      .pluck('result')
+      .toPromise()
+  }
+}
+
+export class StreamAPI extends EventEmitter {
+  constructor(source) {
+    super()
     this.observable = new ReplaySubject(1)
-    this.rpc.sendAndObserveResponses('network')
+    // eagerly send the request to the wrapper as soon as this is initialized
+    source
       .pluck('result')
       .do(value => { this.emit('update', value) })
       .subscribe(this.observable)
@@ -40,27 +109,15 @@ export class NetworkAPI extends EventEmitter {
   }
 }
 
-/**
- * A JavaScript proxy that wraps RPC calls to the wrapper.
- * @private
- */
-export class AppProxy {
-  constructor (provider) {
+export class AragonApp {
+  constructor(provider = new providers.MessagePortMessage()) {
     this.rpc = new Messenger(provider)
-    this.network = new NetworkAPI(this.rpc)
-  }
-
-  /**
-   * Get an array of the accounts the user currently controls over time.
-   *
-   * @instance
-   * @memberof AragonApp
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of account addresses every time a change is detected.
-   */
-  accounts () {
-    return this.rpc.sendAndObserveResponses(
-      'accounts'
-    ).pluck('result')
+    this.contract = new ContractAPI(this.rpc)
+    this.externalContract = (...args) => new ExternalContractAPI(this.rpc, ...args)
+    this.network = new StreamAPI(this.rpc.sendAndObserveResponses('network'))
+    this.accounts = new StreamAPI(this.rpc.sendAndObserveResponses('accounts'))
+    this.state = new StreamAPI(this.rpc.sendAndObserveResponses('cache', ['get', 'state']))
+    this.dispatcher = new Subject()
   }
 
   /**
@@ -89,73 +146,6 @@ export class AppProxy {
   }
 
   /**
-   * Listens for events on your app's smart contract from the last unhandled block.
-   *
-   * @instance
-   * @memberof AragonApp
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
-   */
-  events () {
-    return defer(
-      () => this.rpc.sendAndObserveResponses(
-        'events'
-      ).pluck('result')
-    )
-  }
-
-  /**
-   * Creates a handle to interact with an external contract
-   * (i.e. a contract that is **not** your app's smart contract, such as a token).
-   *
-   * @instance
-   * @memberof AragonApp
-   * @param  {string} address The address of the external contract
-   * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object}  An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
-   * @example
-   * const token = app.external(tokenAddress, tokenJsonInterface)
-   *
-   * // Retrieve the symbol of the token
-   * token.symbol().subscribe(symbol => console.log(`The token symbol is ${symbol}`))
-   *
-   * // Retrieve the token balance of an account
-   * token.balanceOf(someAccountAddress).subscribe(balance => console.log(`The balance of the account is ${balance}`))
-   */
-  external (address, jsonInterface) {
-    const contract = {
-      events: (fromBlock = 0) => {
-        return defer(
-          () => this.rpc.sendAndObserveResponses(
-            'external_events',
-            [
-              address,
-              jsonInterface.filter(
-                (item) => item.type === 'event'
-              ),
-              fromBlock
-            ]
-          ).pluck('result')
-        )
-      }
-    }
-
-    // Bind calls
-    const callMethods = jsonInterface.filter(
-      (item) => item.type === 'function' && item.constant
-    )
-    callMethods.forEach((methodJsonInterface) => {
-      contract[methodJsonInterface.name] = (...params) => {
-        return this.rpc.sendAndObserveResponse(
-          'external_call',
-          [address, methodJsonInterface, ...params]
-        ).pluck('result')
-      }
-    })
-
-    return contract
-  }
-
-  /**
    * Set a value in the application cache.
    *
    * @instance
@@ -171,22 +161,6 @@ export class AppProxy {
     )
 
     return value
-  }
-
-  /**
-   * Observe the cached application state over time.
-   *
-   * This method is also used to share state between the background script and front-end of your application.
-   *
-   * @instance
-   * @memberof AragonApp
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
-   */
-  state () {
-    return this.rpc.sendAndObserveResponses(
-      'cache',
-      ['get', 'state']
-    ).pluck('result')
   }
 
   /**
@@ -236,8 +210,8 @@ export class AppProxy {
    *   [token.events()]
    * )
    */
-  store (reducer, events = [empty()]) {
-    const initialState = this.state().first()
+  async store (reducer) {
+    const latestCachedState = await this.state.get()
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
@@ -251,35 +225,21 @@ export class AppProxy {
         Promise.resolve(reducer(state, event))
       )
 
-    const store$ = initialState
+    const store$ = latestCachedState
       .switchMap((initialState) =>
         merge(
-          this.events(),
-          ...events
+          Observable.fromEvent(this.contract, 'event'),
+          this.dispatcher
         )
           .mergeScan(wrappedReducer, initialState, 1)
           .map((state) => this.cache('state', state))
       )
       .publishReplay(1)
     store$.connect()
-
-    return store$
   }
 
-  /**
-   * Perform a read-only call on the app's smart contract.
-   *
-   * @instance
-   * @memberof AragonApp
-   * @param  {string} method The name of the method to call.
-   * @param  {...*} params An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
-   */
-  call (method, ...params) {
-    return this.rpc.sendAndObserveResponse(
-      'call',
-      [method, ...params]
-    ).pluck('result')
+  dispatch(event) {
+    this.dispatcher.next(event)
   }
 
   /**
@@ -303,28 +263,6 @@ export class AppProxy {
   }
 
   /**
-   *
-   * **NOTE: The wrapper does not currently send contexts to apps**
-   *
-   * Listen for app contexts.
-   *
-   * An app context is an application specific message that the wrapper can send to the app.
-   *
-   * For example, if a notification or a shortcut is clicked, the context attached to either of those will be sent to the app.
-   *
-   * App contexts can be used to display specific views in your app or anything else you might find interesting.
-   *
-   * @instance
-   * @memberof AragonApp
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits app contexts as they are received.-
-   */
-  context () {
-    return this.rpc.requests()
-      .filter((request) => request.method === 'context')
-      .map((request) => request.params[0])
-  }
-
-  /**
    * Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
    *
    * @instance
@@ -336,7 +274,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'describe_script',
       [script]
-    ).pluck('result')
+    )
+      .pluck('result')
+      .toPromise()
   }
 
   /**
@@ -353,64 +293,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'web3_eth',
       [method, ...params]
-    ).pluck('result')
-  }
-}
-
-/**
- * This class is used to communicate with the wrapper in which the app is run.
- *
- * Every method in this class sends an RPC message to the wrapper.
- *
- * The app communicates with the wrapper using a messaging provider.
- * The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage),
- * but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them).
- * You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
- *
- * To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
- *
- * For example, to execute the `increment` function in your app's smart contract:
- *
- * ```js
- * const app = new AragonApp()
- *
- * // Sends an intent to the wrapper that we wish to invoke `increment` on our app's smart contract
- * app.increment(1).subscribe(
- *   (txHash) => console.log(`Success! Incremented in tx ${txHash}`),
- *   (err) => console.log(`Could not increment: ${err}`)
- * )
- * ```
- * The intent function returns an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the hash of the transaction that was sent.
- *
- * You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
- *
- * ```js
- * app.increment(1, { gas: 200000, gasPrice: 80000000 })
- * ```
- *
- * Some caveats to customizing transaction parameters:
- *
- * - `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
- * - `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
- *
- * @example
- * import AragonApp, { providers } from '@aragon/client'
- *
- * // The default provider should be used in background scripts
- * const backgroundScriptOfApp = new AragonApp()
- *
- * // The WindowMessage provider should be used for front-ends
- * const frontendOfApp = new AragonApp(
- *   new providers.WindowMessage(window.parent)
- * )
- * @param {Object} [provider=MessagePortMessage] A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md).
- */
-export default class AragonApp {
-  constructor (provider = new providers.MessagePortMessage()) {
-    return new Proxy(
-      new AppProxy(provider),
-      AppProxyHandler
     )
+      .pluck('result')
+      .toPromise()
   }
 }
 

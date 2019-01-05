@@ -11,37 +11,36 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should send intent when the method does not exist in target', t => {
+test('should send an intent', async t => {
   t.plan(3)
   // arrange
   const observable = Observable.of({
     id: 'uuid1',
     result: 10
   })
-  const instanceStub = {
-    rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
-    }
+  const rpc = {
+    sendAndObserveResponse: sinon.stub()
+      .returns(observable)
   }
   // act
-  const result = Index.AppProxyHandler.get(instanceStub, 'add')(5)
+  const contract = new Index.ContractAPI(rpc)
+  // act
+  const result = await contract.intent('add', 5)
   // assert
-  result.subscribe(value => {
-    t.is(value, 10)
-  })
-  t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'intent')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['add', 5])
+  t.is(result, 10)
+  t.is(rpc.sendAndObserveResponse.getCall(0).args[0], 'intent')
+  t.deepEqual(rpc.sendAndObserveResponse.getCall(0).args[1], ['add', 5])
 })
 
-test.only('should return the network details as a promise', async t => {
+test.skip('should return the network details as a promise', async t => {
   t.plan(2)
   // arrange
   const observable = Observable.of({
     id: 'uuid1',
     jsonrpc: '2.0',
     result: { id: 4, type: 'rinkeby' }
-  })
+  }).delay(500)
+
   const rpc = {
     sendAndObserveResponses: sinon.stub()
       .returns(observable)
@@ -54,7 +53,7 @@ test.only('should return the network details as a promise', async t => {
   t.is(rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
 })
 
-test.only('should emit network updates', async t => {
+test.skip('should emit network updates', async t => {
   t.plan(3)
   // arrange
   const observable = Observable.of(
@@ -90,10 +89,10 @@ test.only('should emit network updates', async t => {
   await new Promise(resolve => setTimeout(resolve, 400))
 })
 
-test('should return the accounts as an observable', t => {
+test.skip('should return the accounts as an observable', t => {
   t.plan(3)
   // arrange
-  const accountsFn = Index.AppProxy.prototype.accounts
+  const accountsFn = Index.AragonApp.prototype.accounts
   const observable = Observable.of({
     jsonrpc: '2.0',
     id: 'uuid1',
@@ -119,7 +118,7 @@ test('should return the accounts as an observable', t => {
 test('should send an identify request', t => {
   t.plan(2)
   // arrange
-  const identifyFn = Index.AppProxy.prototype.identify
+  const identifyFn = Index.AragonApp.prototype.identify
   const instanceStub = {
     rpc: {
       send: sinon.stub()
@@ -132,35 +131,41 @@ test('should send an identify request', t => {
   t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['ANT'])
 })
 
-test('should return the events observable', t => {
+test('should return the events observable', async t => {
   t.plan(3)
   // arrange
-  const eventsFn = Index.AppProxy.prototype.events
-  const observable = Observable.of({
-    id: 'uuid1',
-    result: ['eventA', 'eventB']
-  })
-  const instanceStub = {
-    rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+  const observable = Observable.of(
+    {
+      id: 'uuid1',
+      result: 'eventA'
+    }, {
+      id: 'uuid3',
+      result: 'eventB'
     }
+  )
+  const rpc = {
+    sendAndObserveResponses: sinon.stub()
+      .returns(observable)
   }
   // act
-  const result = eventsFn.call(instanceStub)
-  // assert
-  // the call to sendAndObserveResponse should be defered until we subscribe
-  t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
-  result.subscribe(value => {
-    t.deepEqual(value, ['eventA', 'eventB'])
+  const contract = new Index.ContractAPI(rpc)
+  let emitNumber = 0
+  contract.on('event', value => {
+    if (emitNumber === 0) t.is(value, 'eventA')
+    if (emitNumber === 1) t.is(value, 'eventB')
+    emitNumber++
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'events')
+  // hack so the test doesn't finish prematurely
+  await new Promise(resolve => setTimeout(resolve, 400))
+
+  // assert
+  t.is(rpc.sendAndObserveResponses.getCall(0).args[0], 'events')
 })
 
-test('should return an handle for an external contract events', t => {
+test.skip('should return an handle for an external contract events', t => {
   t.plan(7)
   // arrange
-  const externalFn = Index.AppProxy.prototype.external
+  const externalFn = Index.AragonApp.prototype.external
   const observableA = Observable.of({
     id: 'uuid1',
     result: { name: 'eventA', value: 3000 }
@@ -208,10 +213,10 @@ test('should return an handle for an external contract events', t => {
   })
 })
 
-test('should return the state from cache', t => {
+test.skip('should return the state from cache', t => {
   t.plan(3)
   // arrange
-  const stateFn = Index.AppProxy.prototype.state
+  const stateFn = Index.AragonApp.prototype.state
   const observable = Observable.of({
     id: 'uuid1',
     result: { counter: 5 }
@@ -232,10 +237,10 @@ test('should return the state from cache', t => {
   })
 })
 
-test('should create a store/state reducer', async t => {
+test.skip('should create a store/state reducer', async t => {
   t.plan(2)
   // arrange
-  const storeFn = Index.AppProxy.prototype.store
+  const storeFn = Index.AragonApp.prototype.store
   const observableA = Observable.from([{
     actionHistory: [
       { event: 'Add', payload: 5 }
@@ -293,34 +298,30 @@ test('should create a store/state reducer', async t => {
   })
 })
 
-test('should perform a call to the contract and observe the response', t => {
+test('should perform a call to the contract and Promise.resolve the response', async t => {
   t.plan(3)
   // arrange
-  const callFn = Index.AppProxy.prototype.call
   const observable = Observable.of({
     id: 'uuid1',
     result: 'success'
   })
-  const instanceStub = {
-    rpc: {
+  const rpc = {
       sendAndObserveResponse: sinon.stub()
         .returns(observable)
-    }
   }
   // act
-  const result = callFn.call(instanceStub, 'transferEth', 10)
+  const contract = new Index.ContractAPI(rpc)
+  const result = await contract.call('getEthBalance', 10)
   // assert
-  t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'call')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['transferEth', 10])
-  result.subscribe(value => {
-    t.deepEqual(value, 'success')
-  })
+  t.is(rpc.sendAndObserveResponse.getCall(0).args[0], 'call')
+  t.deepEqual(rpc.sendAndObserveResponse.getCall(0).args[1], ['getEthBalance', 10])
+  t.deepEqual(result, 'success')
 })
 
-test('should listen for app contexts sent from the wrapper and return the first param', t => {
+test.skip('should listen for app contexts sent from the wrapper and return the first param', t => {
   t.plan(2)
   // arrange
-  const contextFn = Index.AppProxy.prototype.context
+  const contextFn = Index.AragonApp.prototype.context
   const observable = Observable.from([{
     id: 'uuid0',
     // this will get filtered out
@@ -348,10 +349,10 @@ test('should listen for app contexts sent from the wrapper and return the first 
   })
 })
 
-test('should send a describeScript request and observe the response', t => {
+test('should send a describeScript request and Promise.resolve the response', async t => {
   t.plan(3)
   // arrange
-  const describeScriptFn = Index.AppProxy.prototype.describeScript
+  const describeScriptFn = Index.AragonApp.prototype.describeScript
   const observable = Observable.of({
     id: 'uuid1',
     result: 'script executed'
@@ -363,19 +364,17 @@ test('should send a describeScript request and observe the response', t => {
     }
   }
   // act
-  const result = describeScriptFn.call(instanceStub, 'goto fail')
+  const result = await describeScriptFn.call(instanceStub, 'goto fail')
   // assert
   t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'describe_script')
   t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['goto fail'])
-  result.subscribe(value => {
-    t.deepEqual(value, 'script executed')
-  })
+  t.deepEqual(result, 'script executed')
 })
 
-test('should send a web3Eth function request and observe the response', t => {
+test('should send a web3Eth function request and Promise.resolve the response', async t => {
   t.plan(3)
   // arrange
-  const web3EthFn = Index.AppProxy.prototype.web3Eth
+  const web3EthFn = Index.AragonApp.prototype.web3Eth
   const observable = Observable.of({
     id: 'uuid1',
     result: ['accountA', 'accountB']
@@ -387,11 +386,9 @@ test('should send a web3Eth function request and observe the response', t => {
     }
   }
   // act
-  const result = web3EthFn.call(instanceStub, 'getAccounts', 5)
+  const result = await web3EthFn.call(instanceStub, 'getAccounts', 5)
   // assert
   t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'web3_eth')
   t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['getAccounts', 5])
-  result.subscribe(value => {
-    t.deepEqual(value, ['accountA', 'accountB'])
-  })
+  t.deepEqual(result, ['accountA', 'accountB'])
 })
