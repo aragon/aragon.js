@@ -214,20 +214,11 @@ export default class Aragon {
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
-    const aclObservables = [
-      SET_PERMISSION_EVENT,
-      CHANGE_PERMISSION_MANAGER_EVENT
-    ].map(event =>
-      this.aclProxy.events(event)
-    )
-
-    // Set up permissions observable
-
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
-    this.permissions = Observable.merge(...aclObservables)
-      // Keep track of all the types of events that have been processed
-      .scan(([ permissions, eventSet ], event) => {
+    // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
+    this.permissions = this.aclProxy.events()
+      // Keep track of all events types that have been processed
+      .scan((permissions, event) => {
         const eventData = event.returnValues
 
         // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
@@ -237,30 +228,25 @@ export default class Aragon {
           const key = `${eventData.role}.allowedEntities`
 
           // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
+          const allowedEntitiesSet = new Set(dotprop.get(appPermissions, key, []))
 
           if (eventData.allowed) {
-            permissionsForRole.add(eventData.entity)
+            allowedEntitiesSet.add(eventData.entity)
           } else {
-            permissionsForRole.delete(eventData.entity)
+            allowedEntitiesSet.delete(eventData.entity)
           }
 
-          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
+          dotprop.set(appPermissions, key, Array.from(allowedEntitiesSet))
         }
 
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
+          // We only care about the last one. An app permission can have only one manager
           dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
         }
 
         permissions[eventData.app] = appPermissions
-        return [permissions, eventSet.add(event.event)]
-      }, [makeAddressMapProxy({}), new Set()])
-      // Skip until we have received events from all event subscriptions
-      // Note that this is safe as the ACL will always have to emit both
-      // ChangePermissionManager and SetPermission events every time a
-      // permission is created
-      .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
-      .map(([ permissions ]) => permissions)
+        return permissions
+      }, makeAddressMapProxy())
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
