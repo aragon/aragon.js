@@ -19,7 +19,8 @@ export function includesAddress (arr, address) {
   return arr.some(a => addressesEqual(a, address))
 }
 
-export function makeAddressMapProxy (target) {
+// Address map that ensures consistent non-checksummed interpretations of addresses
+export function makeAddressMapProxy (target = {}) {
   return new Proxy(target, {
     get (target, property, receiver) {
       if (property in target) {
