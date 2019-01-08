@@ -146,7 +146,7 @@ test('should init the ACL correctly', async (t) => {
 
   t.plan(1)
   // arrange
-  const setPermissionEvents = Observable.create(observer => {
+  const aclEvents = Observable.create(observer => {
     observer.next({
       event: 'SetPermission',
       returnValues: {
@@ -181,6 +181,15 @@ test('should init the ACL correctly', async (t) => {
         role: 'subtract',
         allowed: true,
         entity: '0x2'
+      }
+    })
+    // Simulate real world mixed order of event types
+    observer.next({
+      event: 'ChangePermissionManager',
+      returnValues: {
+        app: 'counter',
+        role: 'subtract',
+        manager: 'manager'
       }
     })
     observer.next({
@@ -203,25 +212,14 @@ test('should init the ACL correctly', async (t) => {
       }
     })
   })
-  const changePermissionManagerEvents = Observable.create(observer => {
-    observer.next({
-      event: 'ChangePermissionManager',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        manager: 'manager'
-      }
-    })
-  })
+
   const instance = new Aragon()
   instance.kernelProxy = {
     call: sinon.stub()
   }
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents)
   }
-  aclProxyStub.events.withArgs('SetPermission').returns(setPermissionEvents)
-  aclProxyStub.events.withArgs('ChangePermissionManager').returns(changePermissionManagerEvents)
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
