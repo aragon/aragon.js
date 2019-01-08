@@ -141,77 +141,77 @@ test('should get the network details from web3', async (t) => {
   })
 })
 
+const aclEvents = Observable.create(observer => {
+  observer.next({
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'add',
+      allowed: true,
+      entity: '0x1'
+    }
+  })
+  observer.next({
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: true,
+      entity: '0x1'
+    }
+  })
+  observer.next({
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'add',
+      allowed: true,
+      entity: '0x2'
+    }
+  })
+  observer.next({
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: true,
+      entity: '0x2'
+    }
+  })
+  // Simulate real world mixed order of event types
+  observer.next({
+    event: 'ChangePermissionManager',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      manager: 'manager'
+    }
+  })
+  observer.next({
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: false,
+      entity: '0x2'
+    }
+  })
+  // duplicate, should not affect the final result because we use a Set
+  observer.next({
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: false,
+      entity: '0x2'
+    }
+  })
+})
+
 test('should init the ACL correctly', async (t) => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(1)
-  // arrange
-  const aclEvents = Observable.create(observer => {
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'add',
-        allowed: true,
-        entity: '0x1'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: true,
-        entity: '0x1'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'add',
-        allowed: true,
-        entity: '0x2'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: true,
-        entity: '0x2'
-      }
-    })
-    // Simulate real world mixed order of event types
-    observer.next({
-      event: 'ChangePermissionManager',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        manager: 'manager'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: false,
-        entity: '0x2'
-      }
-    })
-    // duplicate, should not affect the final result because we use a Set
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: false,
-        entity: '0x2'
-      }
-    })
-  })
 
   const instance = new Aragon()
   instance.kernelProxy = {
@@ -255,7 +255,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
     call: kernelProxyCallStub
   }
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents)
   }
   utilsStub.makeProxy.reset()
   utilsStub.makeProxy.returns(aclProxyStub)
@@ -280,7 +280,7 @@ test('should init the acl with the provided acl', async (t) => {
     call: kernelProxyCallStub
   }
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents)
   }
   utilsStub.makeProxy.reset()
   utilsStub.makeProxy.returns(aclProxyStub)
