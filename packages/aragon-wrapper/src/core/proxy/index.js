@@ -12,10 +12,14 @@ export default class Proxy {
   }
 
   // TODO: Make this a hot observable
-  events (eventNames) {
+  events (eventNames, fromBlock) {
     // Get all events
     if (!eventNames) {
       eventNames = ['allEvents']
+    }
+
+    if (!fromBlock) {
+      fromBlock = this.initializationBlock
     }
 
     // Convert `eventNames` to an array in order to
@@ -28,12 +32,12 @@ export default class Proxy {
     if (eventNames.length === 1) {
       // Get a specific event
       eventSource = Observable.fromEvent(
-        this.contract.events[eventNames[0]]({ fromBlock: this.initializationBlock }), 'data'
+        this.contract.events[eventNames[0]]({ fromBlock }), 'data'
       )
     } else {
       // Get multiple events
       eventSource = Observable.fromEvent(
-        this.contract.events.allEvents({ fromBlock: this.initializationBlock }), 'data'
+        this.contract.events.allEvents({ fromBlock }), 'data'
       ).filter(
         (event) => eventNames.includes(event.event)
       )
