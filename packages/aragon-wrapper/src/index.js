@@ -230,7 +230,7 @@ export default class Aragon {
     const blockNumbers = new Set([-1])
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
-    const fetchedPermissions = events
+    const fetchedPermissions$ = events
     // Keep track of all events types that have been processed
       .scan((permissions, event) => {
         const lastBlockProcessed = [...blockNumbers].pop()
@@ -281,13 +281,12 @@ export default class Aragon {
       .publishReplay(1)
 
     if (cachedPermissions) {
-      const permissons = Observable.of(cachedPermissions).publish()
-      this.permissions = merge(permissons, fetchedPermissions).publishReplay(1)
+      const cachedPermissions$ = Observable.of(cachedPermissions).publish()
+      this.permissions = merge(cachedPermissions$, fetchedPermissions$).publishReplay(1)
     } else {
-      this.permissions = fetchedPermissions
+      this.permissions = fetchedPermissions$
     }
 
-    // this.permissions.subscribe((v) => console.log('permissions val', v))
     this.permissions.connect()
   }
 
