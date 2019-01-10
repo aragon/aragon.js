@@ -217,6 +217,10 @@ test('should init the ACL correctly', async (t) => {
   instance.kernelProxy = {
     call: sinon.stub()
   }
+  instance.cache = {
+    get: sinon.stub().returns({})
+  }
+
   const aclProxyStub = {
     events: sinon.stub().returns(aclEvents)
   }
@@ -257,6 +261,11 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   const aclProxyStub = {
     events: sinon.stub().returns(aclEvents)
   }
+
+  instance.cache = {
+    get: sinon.stub().returns({})
+  }
+
   utilsStub.makeProxy.reset()
   utilsStub.makeProxy.returns(aclProxyStub)
 
@@ -281,6 +290,9 @@ test('should init the acl with the provided acl', async (t) => {
   }
   const aclProxyStub = {
     events: sinon.stub().returns(aclEvents)
+  }
+  instance.cache = {
+    get: sinon.stub().returns({})
   }
   utilsStub.makeProxy.reset()
   utilsStub.makeProxy.returns(aclProxyStub)
