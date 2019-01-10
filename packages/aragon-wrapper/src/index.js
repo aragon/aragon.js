@@ -1,5 +1,6 @@
 // Externals
 import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { merge } from 'rxjs/observable/merge'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress, toBN } from 'web3-utils'
@@ -229,7 +230,7 @@ export default class Aragon {
     const blockNumbers = new Set([-1])
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
-    this.permissions = events
+    const fetchedPermissions = events
     // Keep track of all events types that have been processed
       .scan((permissions, event) => {
         const lastBlockProcessed = [...blockNumbers].pop()
@@ -279,6 +280,14 @@ export default class Aragon {
       .debounceTime(30)
       .publishReplay(1)
 
+    if (cachedPermissions) {
+      const permissons = Observable.of(cachedPermissions).publish()
+      this.permissions = merge(permissons, fetchedPermissions).publishReplay(1)
+    } else {
+      this.permissions = fetchedPermissions
+    }
+
+    // this.permissions.subscribe((v) => console.log('permissions val', v))
     this.permissions.connect()
   }
 
