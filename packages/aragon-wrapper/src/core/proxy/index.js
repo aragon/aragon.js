@@ -12,14 +12,10 @@ export default class Proxy {
   }
 
   // TODO: Make this a hot observable
-  events (eventNames, fromBlock) {
+  events (eventNames, fromBlock = this.initializationBlock) {
     // Get all events
     if (!eventNames) {
       eventNames = ['allEvents']
-    }
-
-    if (!fromBlock) {
-      fromBlock = this.initializationBlock
     }
 
     // Convert `eventNames` to an array in order to
