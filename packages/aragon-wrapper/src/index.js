@@ -217,42 +217,30 @@ export default class Aragon {
     const ACL_CACHE_KEY = `acl-${aclAddress}`
 
     // Check if we have cached ACL for this address
-    // Cache object for an ACL:
-    // [ { permissions, blockNumber } ]
+    // Cache object for an ACL: { permissions, blockNumber }
     const cached = await this.cache.get(ACL_CACHE_KEY, {})
     const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cached
 
-    let events
-    if (cachedPermissions) {
-      console.log(`using cache from block ${cachedBlockNumber}`)
-      events = this.aclProxy.events(null, cachedBlockNumber)
-    } else {
-      events = this.aclProxy.events()
-    }
+    // When using cache, fetch events from the next block after cache
+    const events = this.aclProxy.events(null, cachedPermissions && (cachedBlockNumber + 1))
 
     // A set for keeping track of the events' blockNumber
+    // -1 is to ensure it passes the first comparisons with event's blockNumber
     const blockNumbers = new Set([-1])
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
     this.permissions = events
-      // Keep track of all events types that have been processed
+    // Keep track of all events types that have been processed
       .scan((permissions, event) => {
-        console.log(event)
-        console.count('processing ACL event')
-
-        // Get the last block processed
         const lastBlockProcessed = [...blockNumbers].pop()
 
         // Cache the permissions when we finished processing a block
         if (event.blockNumber > lastBlockProcessed) {
           blockNumbers.add(event.blockNumber)
 
-          // it: 1 event.blockNumber: 1 lastBlockProcessed: 1 blockNumbers: [-1,1,3]
           if (lastBlockProcessed > 0) {
           // clone the permissions so it can be saved without proxy
             const permissionsToCache = Object.assign({}, permissions)
-            // console.log(`setting permissions cache to blockNumber: ${lastBlockProcessed}`, permissionsToCache)
-            console.count(`setting permissions cache at block: ${lastBlockProcessed}`)
             // cache optimistically without worrying if it succeeded
             this.cache.set(ACL_CACHE_KEY, { permissions: permissionsToCache, blockNumber: lastBlockProcessed })
           }
@@ -289,7 +277,6 @@ export default class Aragon {
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
       .debounceTime(30)
-      .do(() => console.log('unique blocks (should equal cache sets)', blockNumbers.size))
       .publishReplay(1)
 
     this.permissions.connect()
