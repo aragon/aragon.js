@@ -1,21 +1,41 @@
 import test from 'ava'
 import sinon from 'sinon'
 
+import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import Cache from './index'
 
 test.afterEach.always(() => {
   sinon.restore()
 })
 
+test('should set the cache driver to in-memory on non-browser environments', async (t) => {
+  t.plan(3)
+  // arrange
+  const instance = new Cache('counterapp')
+  await instance.init()
+  // assert
+  t.is(instance.db.driver(), memoryStorageDriver._driver)
+  instance.changes.subscribe(change => {
+    t.deepEqual(change, { key: 'counter', value: 5 })
+  })
+  // act
+  await instance.set('counter', 5)
+  // assert
+  t.is(await instance.get('counter'), 5)
+})
+
 test('should set the cache and emit the change', async (t) => {
+  t.plan(3)
   // arrange
   const instance = new Cache('counterapp')
   const dbMock = {
+    driver: () => 'test',
+    ready: () => true,
     setItem: sinon.stub().returns()
   }
   instance.db = dbMock
+  await instance.init()
   // assert
-  t.plan(3)
   instance.changes.subscribe(change => {
     t.deepEqual(change, { key: 'counter', value: 5 })
     t.is(dbMock.setItem.getCall(0).args[0], 'counter')
@@ -30,12 +50,15 @@ test('should observe the key\'s value for changes in the correct order', async (
   // arrange
   const instance = new Cache()
   const dbMock = {
+    driver: () => 'test',
+    ready: () => true,
     setItem: sinon.stub().returns(),
     getItem: sinon.stub().returns(
       new Promise(resolve => setTimeout(resolve, 300))
     )
   }
   instance.db = dbMock
+  await instance.init()
   // act
   const observable = instance.observe('counter', 1)
   // assert

@@ -451,6 +451,8 @@ test('should init the notifications correctly', async (t) => {
       }
     ])
   instance.cache.set = sinon.stub()
+  instance.cache.db.ready = () => true
+  instance.cache.init()
   // act
   await instance.initNotifications()
   // assert
@@ -475,10 +477,13 @@ test('should send notifications correctly', async (t) => {
   // arrange
   const instance = new Aragon()
   const dbMock = {
+    driver: () => 'test',
+    ready: () => true,
     getItem: sinon.stub().returns(),
     setItem: sinon.stub().returns()
   }
   instance.cache.db = dbMock
+  instance.cache.init()
   // act
   await instance.initNotifications()
   await instance.sendNotification('counterApp', 'add')
@@ -522,6 +527,8 @@ test('should run the app and reply to a request', async (t) => {
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
   const instance = new Aragon()
+  instance.cache.db.ready = () => true
+  instance.cache.init()
   instance.cache.observe = sinon.stub()
     .withArgs('0x789.settings')
     .returns(Observable.create((observer) => {
