@@ -22,6 +22,8 @@ export default class Cache {
     this.changes = new Subject()
 
     try {
+      // Make sure localforage has settled down and is not waiting for anything else
+      // before possibly setting new drivers
       await this.db.ready()
     } catch (err) {
       // If localforage isn't able to automatically connect to a driver
