@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "lerna": "^2.4.0",
+    "lerna": "^3.11.1",
     "size-limit": "^0.21.0"
   },
   "scripts": {
