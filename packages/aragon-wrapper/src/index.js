@@ -170,6 +170,7 @@ export default class Aragon {
       throw Error(`Provided daoAddress is not a DAO`)
     }
 
+    await this.cache.init()
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))

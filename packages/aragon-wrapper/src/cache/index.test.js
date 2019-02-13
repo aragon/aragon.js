@@ -1,25 +1,41 @@
 import test from 'ava'
 import sinon from 'sinon'
 
+import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import Cache from './index'
 
 test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('should set the cache and emit the change', async (t) => {
+test('should set the cache driver to in-memory on non-browser environments', async (t) => {
+  t.plan(3)
   // arrange
   const instance = new Cache('counterapp')
-  const dbMock = {
-    setItem: sinon.stub().returns()
-  }
-  instance.db = dbMock
+  await instance.init()
   // assert
-  t.plan(3)
+  t.is(instance.db.driver(), memoryStorageDriver._driver)
   instance.changes.subscribe(change => {
     t.deepEqual(change, { key: 'counter', value: 5 })
-    t.is(dbMock.setItem.getCall(0).args[0], 'counter')
-    t.is(dbMock.setItem.getCall(0).args[1], 5)
+  })
+  // act
+  await instance.set('counter', 5)
+  // assert
+  t.is(await instance.get('counter'), 5)
+})
+
+test('should set the cache and emit the change', async (t) => {
+  t.plan(3)
+  // arrange
+  const instance = new Cache('counterapp')
+  await instance.init()
+  instance.db.setItem = sinon.stub()
+  instance.db.getItem = sinon.stub()
+  // assert
+  instance.changes.subscribe(change => {
+    t.deepEqual(change, { key: 'counter', value: 5 })
+    t.is(instance.db.setItem.getCall(0).args[0], 'counter')
+    t.is(instance.db.setItem.getCall(0).args[1], 5)
   })
   // act
   await instance.set('counter', 5)
@@ -29,20 +45,17 @@ test('should observe the key\'s value for changes in the correct order', async (
   t.plan(4)
   // arrange
   const instance = new Cache()
-  const dbMock = {
-    setItem: sinon.stub().returns(),
-    getItem: sinon.stub().returns(
-      new Promise(resolve => setTimeout(resolve, 300))
-    )
-  }
-  instance.db = dbMock
+  await instance.init()
+  instance.db.getItem = sinon.stub().returns(
+    new Promise(resolve => setTimeout(resolve, 300))
+  )
   // act
   const observable = instance.observe('counter', 1)
   // assert
   let emissionNumber = 0
   observable.subscribe(value => {
     emissionNumber++
-    // first value should be 3 (the default) because getItem returns falsy
+    // first value should be 1 (the default) because getItem returns falsy
     if (emissionNumber === 1) t.is(value, 1)
     if (emissionNumber === 2) t.is(value, 10)
     if (emissionNumber === 3) t.is(value, 11)

@@ -79,6 +79,7 @@
     "homedir": "^0.6.0",
     "js-sha3": "^0.7.0",
     "localforage": "^1.7.3",
+    "localforage-memoryStorageDriver": "^0.9.2",
     "radspec": "^1.1.4",
     "rxjs": "^5.5.6",
     "uuid": "^3.2.1",
