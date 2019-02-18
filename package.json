@@ -7,7 +7,7 @@
     "lint": "lerna run lint",
     "test": "lerna run test",
     "install": "npm run bootstrap",
-    "bootstrap": "lerna bootstrap",
+    "bootstrap": "lerna bootstrap --no-ci",
     "build": "lerna run build",
     "build:watch": "lerna run --parallel build -- -- --watch",
     "build:docs": "lerna run build:docs",
