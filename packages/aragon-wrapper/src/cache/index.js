@@ -54,6 +54,19 @@ export default class Cache {
     return value || defaultValue
   }
 
+  async remove (key) {
+    await this.db.removeItem(key)
+    this.changes.next({ key, value: null })
+  }
+
+  async clear () {
+    await this.db.clear()
+
+    // Reset the changes observable, since we've cleared the entire cache
+    this.changes.complete()
+    this.changes = new Subject()
+  }
+
   /**
    * Observe the value of a key in cache over time
    *
