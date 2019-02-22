@@ -9,7 +9,7 @@
     "install": "npm run bootstrap",
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
-    "build:watch": "lerna run --parallel build -- -- --watch",
+    "build:watch": "lerna run --parallel build:dev -- -- --watch",
     "build:docs": "lerna run build:docs",
     "size": "size-limit",
     "size:why": "size-limit --why"
