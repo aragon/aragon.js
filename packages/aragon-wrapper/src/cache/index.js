@@ -3,6 +3,8 @@ import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import { Subject } from 'rxjs/Rx'
 import { concat } from 'rxjs/observable/concat'
 
+const trackedKeys = new Set()
+
 /**
  * A cache.
  */
@@ -62,9 +64,9 @@ export default class Cache {
   async clear () {
     await this.db.clear()
 
-    // Reset the changes observable, since we've cleared the entire cache
-    this.changes.complete()
-    this.changes = new Subject()
+    for (const key of trackedKeys) {
+      this.changes.next({ key, value: null })
+    }
   }
 
   /**
@@ -76,9 +78,12 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
+    trackedKeys.add(key)
+
     const keyChanges = this.changes
       .filter(change => change.key === key)
       .pluck('value')
+
     /*
      * If `get` takes longer than usual, and a new `set` finishes before then,
      * this.changes will emit new values, but they will be discarded. that's why
