@@ -24,7 +24,7 @@ test('should set the cache driver to in-memory on non-browser environments', asy
   t.is(await instance.get('counter'), 5)
 })
 
-test('should set the cache and emit the change', async (t) => {
+test('should set to the cache and emit the change', async (t) => {
   t.plan(3)
   // arrange
   const instance = new Cache('counterapp')
@@ -39,6 +39,50 @@ test('should set the cache and emit the change', async (t) => {
   })
   // act
   await instance.set('counter', 5)
+})
+
+test('should remove from the cache and emit the change', async (t) => {
+  t.plan(2)
+  // arrange
+  const instance = new Cache('counterapp')
+  await instance.init()
+  instance.db.removeItem = sinon.stub()
+  instance.db.getItem = sinon.stub()
+  // assert
+  instance.changes.subscribe(change => {
+    t.deepEqual(change, { key: 'counter', value: null })
+    t.is(instance.db.removeItem.getCall(0).args[0], 'counter')
+  })
+  // act
+  await instance.remove('counter')
+})
+
+test('should clear from the cache and emit the change', async (t) => {
+  t.plan(2)
+  // arrange
+  const instance = new Cache('counterapp')
+  await instance.init()
+  instance.db.clear = sinon.stub()
+  instance.db.setItem = sinon.stub()
+  instance.db.getItem = sinon.stub()
+
+  const observable = instance.observe('counter', 1)
+
+  // Make sure the get request is finished before we try to clear
+  await new Promise(resolve => setTimeout(resolve, 0))
+
+  // assert
+  let emissionNumber = 0
+  observable.subscribe(value => {
+    emissionNumber++
+    // first value should be 1 (the default) because getItem returns falsy
+    if (emissionNumber === 1) t.is(value, 1)
+    // second value should be the cache clear
+    if (emissionNumber === 2) t.is(value, null)
+  })
+
+  // act
+  await instance.clear()
 })
 
 test('should observe the key\'s value for changes in the correct order', async (t) => {
