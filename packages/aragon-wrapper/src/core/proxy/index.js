@@ -42,7 +42,7 @@ export default class Proxy {
     return eventSource
   }
 
-  call (method, ...params) {
+  async call (method, ...params) {
     if (!this.contract.methods[method]) {
       throw new Error(`No method named ${method} on ${this.address}`)
     }

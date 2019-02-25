@@ -8,6 +8,7 @@
     "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
     "build": "babel src -d dist -s",
+    "build:docs": "documentation readme src/index.js --readme-file='../../docs/APP.md' --section='API Reference' --markdown-toc=false",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
@@ -21,7 +22,7 @@
     "client",
     "blockchain"
   ],
-  "author": "Aragon Institution MTÜ <contact@aragon.one>",
+  "author": "Aragon Association <legal@aragon.org>",
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/aragon/aragon.js/issues"

@@ -2,9 +2,12 @@ import Provider from './Provider'
 import { Observable } from 'rxjs/Rx'
 
 /**
- * A provider that uses the MessagePort postMessage API to pass messages between windows.
+ * A provider that communicates through the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage).
  *
- * @param {Object} [target=self] An MessagePort (WebWorker instances are inherently MessagePorts).
+ * @param {Object} [target=self] The object (that implements the
+ * [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage)) to send messages to.
+ * Example: a WebWorker instance.
+ *
  * @class MessagePortMessage
  * @extends {Provider}
  */
@@ -20,7 +23,7 @@ export default class MessagePortMessage extends Provider {
    *
    * @memberof MessagePortMessage
    * @instance
-   * @returns {Observable}
+   * @returns {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html)
    */
   messages () {
     return Observable.fromEvent(this.target, 'message', false)
