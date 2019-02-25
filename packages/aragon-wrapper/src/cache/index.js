@@ -2,6 +2,7 @@ import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import { Subject } from 'rxjs/Rx'
 import { concat } from 'rxjs/observable/concat'
+import { race } from 'rxjs/observable/race'
 
 /**
  * A cache.
@@ -80,7 +81,8 @@ export default class Cache {
   observe (key, defaultValue) {
     this.#trackedKeys.add(key)
 
-    const keyChanges = this.changes
+    const getResult$ = this.get(key, defaultValue)
+    const keyChange$ = this.changes
       .filter(change => change.key === key)
       .pluck('value')
 
@@ -89,6 +91,6 @@ export default class Cache {
      * this.changes will emit new values, but they will be discarded. that's why
      * we use `concat` and not `merge`.
      */
-    return concat(this.get(key, defaultValue), keyChanges)
+    return race(concat(getResult$, keyChange$), keyChange$)
   }
 }
