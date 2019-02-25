@@ -599,7 +599,7 @@ export default class Aragon {
    *         The address of the app proxy.
    * @return {Promise<function>}
    */
-  async runApp (proxyAddress, connect) {
+  async runApp (proxyAddress) {
     // Step 1: Set up required state for the app
 
     // Get the application proxy

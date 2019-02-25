@@ -124,7 +124,7 @@ export class AppProxy {
             (item) => item.type === 'event'
           )
         ]
-        if (fromBlock != null) {
+        if (typeof fromBlock === 'number') {
           eventArgs.push(fromBlock)
         }
 
