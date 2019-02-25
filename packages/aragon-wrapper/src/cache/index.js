@@ -7,6 +7,8 @@ import { concat } from 'rxjs/observable/concat'
  * A cache.
  */
 export default class Cache {
+  #trackedKeys = new Set()
+
   constructor (prefix) {
     this.prefix = prefix
   }
@@ -54,6 +56,19 @@ export default class Cache {
     return value || defaultValue
   }
 
+  async remove (key) {
+    await this.db.removeItem(key)
+    this.changes.next({ key, value: null })
+  }
+
+  async clear () {
+    await this.db.clear()
+
+    for (const key of this.#trackedKeys) {
+      this.changes.next({ key, value: null })
+    }
+  }
+
   /**
    * Observe the value of a key in cache over time
    *
@@ -63,9 +78,12 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
+    this.#trackedKeys.add(key)
+
     const keyChanges = this.changes
       .filter(change => change.key === key)
       .pluck('value')
+
     /*
      * If `get` takes longer than usual, and a new `set` finishes before then,
      * this.changes will emit new values, but they will be discarded. that's why
