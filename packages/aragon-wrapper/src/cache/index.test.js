@@ -103,7 +103,7 @@ test('should observe the key\'s value for changes in the correct order if getIte
   let emissionNumber = 0
   observable.subscribe(value => {
     emissionNumber++
-    // first value should be 4 because new sets happen immediately
+    // first value should be 1 (the default) because getItem returns falsy
     if (emissionNumber === 1) t.is(value, 1)
     if (emissionNumber === 2) t.is(value, 10)
     if (emissionNumber === 3) t.is(value, 11)
@@ -114,7 +114,7 @@ test('should observe the key\'s value for changes in the correct order if getIte
   setTimeout(() => {
     instance.changes.next({ key: 'counter', value: 10 })
     instance.changes.next({ key: 'counter', value: 11 })
-    instance.changes.next({ key: 'somekey', value: 'hey' }) // will be ignored, w
+    instance.changes.next({ key: 'somekey', value: 'hey' }) // will be ignored
     instance.changes.next({ key: 'counter', value: 12 })
   }, 500)
 
@@ -152,7 +152,7 @@ test('should observe the key\'s value for changes in the correct order if getIte
   setTimeout(() => {
     instance.changes.next({ key: 'counter', value: 10 })
     instance.changes.next({ key: 'counter', value: 11 })
-    instance.changes.next({ key: 'somekey', value: 'hey' }) // will be ignored, w
+    instance.changes.next({ key: 'somekey', value: 'hey' }) // will be ignored
     instance.changes.next({ key: 'counter', value: 12 })
   }, 500)
 
