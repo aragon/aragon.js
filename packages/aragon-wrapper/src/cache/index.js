@@ -3,12 +3,12 @@ import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import { Subject } from 'rxjs/Rx'
 import { concat } from 'rxjs/observable/concat'
 
-const trackedKeys = new Set()
-
 /**
  * A cache.
  */
 export default class Cache {
+  #trackedKeys = new Set()
+
   constructor (prefix) {
     this.prefix = prefix
   }
@@ -64,7 +64,7 @@ export default class Cache {
   async clear () {
     await this.db.clear()
 
-    for (const key of trackedKeys) {
+    for (const key of this.#trackedKeys) {
       this.changes.next({ key, value: null })
     }
   }
@@ -78,7 +78,7 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    trackedKeys.add(key)
+    this.#trackedKeys.add(key)
 
     const keyChanges = this.changes
       .filter(change => change.key === key)
