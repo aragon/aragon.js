@@ -87,9 +87,14 @@ export default class Cache {
       .pluck('value')
 
     /*
-     * If `get` takes longer than usual, and a new `set` finishes before then,
-     * this.changes will emit new values, but they will be discarded. that's why
-     * we use `concat` and not `merge`.
+     * There is an inherent race between `this.get()` and a new item being set
+     * on the cache key. Note that `concat()` only subscribes to the next observable
+     * **AFTER** the previous one ends (it doesn't buffer hot observables).
+     *
+     * Thus, we either want:
+     *   - The concatenated result of `this.get()` and `this.changes`, if `this.changes`
+     *     doesn't emit new items, or
+     *   - Just `this.changes` since `this.get()` may be stale by the time it returns
      */
     return race(concat(getResult$, keyChange$), keyChange$)
   }
