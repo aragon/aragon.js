@@ -603,9 +603,9 @@ export default class Aragon {
     // Step 1: Set up required state for the app
 
     // Get the application proxy
-    // Finish the observable, so our running contexts don't get reinitialized if new apps appear
-    // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const appProxy = await this.appsWithoutIdentifiers
+    // Only get the first result from the observable, so our running contexts don't get
+    // reinitialized if new apps appear
+    const appProxy = await this.apps
       .map((apps) => {
         const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
         // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw

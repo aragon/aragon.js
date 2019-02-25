@@ -523,7 +523,7 @@ test('should run the app and reply to a request', async (t) => {
     .returns(Observable.create((observer) => {
       observer.next('user settings for the voting app')
     }))
-  instance.appsWithoutIdentifiers = Observable.create((observer) => {
+  instance.apps = Observable.create((observer) => {
     observer.next([
       {
         appId: 'some other app with a different proxy',
