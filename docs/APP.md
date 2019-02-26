@@ -64,6 +64,17 @@ You can also pass an optional object after all the required function arguments t
 app.increment(1, { gas: 200000, gasPrice: 80000000 })
 ```
 
+You can include a `token` parameter in this optional object if you need to do a token approval before a transaction. A slightly modified [example](https://github.com/aragon/aragon-apps/blob/master/apps/finance/app/src/App.js#L79) from the Finance app:
+
+```js
+intentParams = {
+  token: { address: tokenAddress, value: amount }
+  gas: 500000
+}
+
+app.deposit(tokenAddress, amount, reference, intentParams)
+```
+
 Some caveats to customizing transaction parameters:
 
 -   `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
@@ -121,7 +132,7 @@ app.identify('Customer counter')
 app.identify('Employee counter')
 ```
 
-Returns **void** 
+Returns **void**
 
 ### events
 
@@ -131,8 +142,7 @@ Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/O
 
 ### external
 
-Creates a handle to interact with an external contract
-(i.e. a contract that is **not** your app's smart contract, such as a token).
+Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token). Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
 
 #### Parameters
 
@@ -251,7 +261,7 @@ Send a notification.
 -   `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An optional context that will be sent back to the app if the notification is clicked. (optional, default `{}`)
 -   `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** An optional date that specifies when the notification originally occured. (optional, default `newDate()`)
 
-Returns **void** 
+Returns **void**
 
 ### context
 
