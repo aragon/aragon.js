@@ -952,7 +952,7 @@ export default class Aragon {
       return { description }
     }
 
-    const apps = await this.apps.take(1).toPromise()
+    const apps = await this.apps.pipe(take(1)).toPromise()
     const roles = apps
       .map(({ roles }) => roles || [])
       .reduce((acc, roles) => acc.concat(roles), []) // flatten
@@ -1280,7 +1280,7 @@ export default class Aragon {
     }
 
     // Get a list of all forwarders (excluding the forwarders with direct permission)
-    const forwarders = await this.forwarders.take(1).toPromise().then(
+    const forwarders = await this.forwarders.pipe(take(1)).toPromise().then(
       (forwarders) => forwarders
         .map((forwarder) => forwarder.proxyAddress)
         .filter((forwarder) => !includesAddress(forwardersWithPermission, forwarder))
