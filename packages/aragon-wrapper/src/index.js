@@ -4,7 +4,7 @@ import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
-import radspec from 'radspec'
+import * as radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
