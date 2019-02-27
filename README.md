@@ -29,7 +29,7 @@
       Website
     </a>
     <span> | </span>
-    <a href="docs/README.md">
+    <a href="https://hack.aragon.org/docs/aragonjs-intro.html">
       Documentation
     </a>
     <span> | </span>
