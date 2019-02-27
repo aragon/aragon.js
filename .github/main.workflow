@@ -1,6 +1,6 @@
 workflow "Lint, test, and build" {
   on = "push"
-  resolves = ["install"]
+  resolves = ["install", "bootstrap"]
 }
 
 action "install" {
