@@ -9,6 +9,7 @@ action "install" {
 }
 
 action "bootstrap" {
+  needs = "install"
   uses = "actions/npm@master"
   args = "run bootstrap"
 }
