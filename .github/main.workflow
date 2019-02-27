@@ -23,13 +23,13 @@ action "lint" {
 action "test" {
   needs = "bootstrap"
   uses = "actions/npm@master"
-  args = "test"
+  args = "run test"
 }
 
 action "build" {
   needs = "bootstrap"
   uses = "actions/npm@master"
-  args = "build"
+  args = "run build"
 }
 
 action "size" {
