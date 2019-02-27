@@ -1,28 +1,28 @@
 workflow "Lint, test, and build" {
   on = "push"
+  resolves = ["build", "lint", "test", "size"]
 }
 
-action "Build" {
+action "build" {
   uses = "actions/npm@master"
   args = "install"
 }
 
-action "Lint" {
-  needs = "Build"
+action "lint" {
+  needs = "build"
   uses = "actions/npm@master"
   args = "run lint"
 }
 
 
-action "Test" {
-  needs = "Build"
+action "test" {
+  needs = "build"
   uses = "actions/npm@master"
   args = "test"
 }
 
-action "Size" {
-  needs = "Build"
+action "size" {
+  needs = "build"
   uses = "actions/npm@master"
   args = "run size"
 }
-
