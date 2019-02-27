@@ -3,6 +3,11 @@ workflow "Lint, test, and build" {
   resolves = ["install", "bootstrap", "lint", "test", "build", "size"]
 }
 
+workflow "Test PRs" {
+  on = "pull_request"
+  resolves = ["install", "bootstrap", "lint", "test", "build", "size"]
+}
+
 action "install" {
   uses = "actions/npm@master"
   args = "install"
