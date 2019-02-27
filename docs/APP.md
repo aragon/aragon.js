@@ -25,8 +25,6 @@ const providers = require('@aragon/client').providers
 
 <!-- This document has references to /docs/PROVIDERS.md -->
 
-<!-- The rest of this document is generated -->
-
 # API Reference
 
 ## AragonApp
