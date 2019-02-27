@@ -21,8 +21,10 @@ export function events (request, proxy, wrapper) {
   const [
     address,
     jsonInterface,
-    fromBlock
+    providedFromBlock
   ] = request.params
+  // Use the app proxy's initialization block by default
+  const fromBlock = providedFromBlock == null ? proxy.initializationBlock : providedFromBlock
 
   const contract = new web3.eth.Contract(
     jsonInterface,

@@ -11,13 +11,14 @@
     "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
     "build": "babel src -d dist -s",
+    "build:dev": "npm run build -- inline",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aragon/aragon.js.git"
   },
-  "author": "Aragon Institution MTÜ <contact@aragon.one>",
+  "author": "Aragon Association <legal@aragon.org>",
   "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/aragon/aragon.js/issues"

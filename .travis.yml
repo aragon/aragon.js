@@ -7,11 +7,14 @@ notifications:
 node_js:
   - '8'
 before_install:
+  # upgrade npm to latest https://github.com/aragon/aragon.js/pull/129#issuecomment-416241702
   - npm install --global npm
 before_script:
   - npm prune
 script:
   - npm run lint
   - npm run test
+  - npm run build
+  - npm run size
 after_success:
   - ./node_modules/.bin/nyc report --reporter=text-lcov | ./node_modules/.bin/coveralls

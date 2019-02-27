@@ -20,7 +20,7 @@ export default class WindowMessage extends Provider {
    *
    * @memberof WindowMessage
    * @instance
-   * @returns {Observable}
+   * @returns {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html)
    */
   messages () {
     return fromEvent(window, 'message', false).pipe(

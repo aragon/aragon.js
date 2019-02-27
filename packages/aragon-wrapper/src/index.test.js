@@ -31,6 +31,16 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
+test('should create an Aragon instance with no options given', t => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // act
+  const app = new Aragon(0x0)
+  // assert
+  t.not(app.apm, undefined)
+})
+
 test('should throw on init if daoAddress is not a Kernel', async (t) => {
   const { Aragon } = t.context
 
@@ -451,8 +461,9 @@ test('should send notifications correctly', async (t) => {
   t.plan(12)
   // arrange
   const instance = new Aragon()
-  // act
+  await instance.cache.init()
   await instance.initNotifications()
+  // act
   await instance.sendNotification('counterApp', 'add')
   await instance.sendNotification('counterApp', 'subtract', null, null, new Date(2))
 
@@ -495,7 +506,7 @@ test('should run the app and reply to a request', async (t) => {
   instance.cache.observe = sinon.stub()
     .withArgs('0x789.settings')
     .returns(of('user settings for the voting app'))
-  instance.appsWithoutIdentifiers = of([
+  instance.apps = of([
     {
       appId: 'some other app with a different proxy',
       proxyAddress: '0x456'
@@ -506,10 +517,14 @@ test('should run the app and reply to a request', async (t) => {
       proxyAddress: '0x789'
     }
   ])
-  utilsStub.makeProxyFromABI = (proxyAddress) => ({ address: proxyAddress })
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+    address: proxyAddress,
+    updateInitializationBlock: () => {}
+  })
   instance.kernelProxy = { initializationBlock: 0 }
   // act
-  const result = await instance.runApp('someMessageProvider', '0x789')
+  const connect = await instance.runApp('0x789')
+  const result = connect('someMessageProvider')
   // assert
   t.true(result.shutdown !== undefined)
   t.true(result.setContext !== undefined)

@@ -8,10 +8,11 @@ import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
-import radspec from 'radspec'
+import * as radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
+import { hash as namehash } from 'eth-ens-namehash'
 import apm from '@aragon/apm'
 
 // RPC
@@ -30,7 +31,7 @@ import {
   ANY_ENTITY
 } from './utils'
 
-import { getAragonOsInternalAppInfo } from './core/aragonOS'
+import { getAragonOsInternalAppInfo, getKernelNamespace } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
@@ -60,7 +61,7 @@ export const detectProvider = () =>
  *        The address of the account using the factory.
  * @param {Object} options
  *        Template factory options.
- * @param {string} [options.apm]
+ * @param {Object} [options.apm]
  *        Options for apm.js (see https://github.com/aragon/apm.js)
  * @param {string} [options.apm.ensRegistryAddress]
  *        ENS registry for apm.js
@@ -74,8 +75,9 @@ export const detectProvider = () =>
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
- * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
- *        The Web3 provider to use for blockchain communication
+ * @param {string|Object} [options.provider=web3.currentProvider]
+ *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
+ *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
  * @return {Object} Template factory instance
  */
 export const setupTemplates = (from, options = {}) => {
@@ -101,7 +103,7 @@ export const setupTemplates = (from, options = {}) => {
  *        The address of the DAO.
  * @param {Object} options
  *        Wrapper options.
- * @param {string} [options.apm]
+ * @param {Object} [options.apm]
  *        Options for apm.js (see https://github.com/aragon/apm.js)
  * @param {string} [options.apm.ensRegistryAddress]
  *        ENS registry for apm.js
@@ -115,8 +117,9 @@ export const setupTemplates = (from, options = {}) => {
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
- * @param {*} [options.provider=wss://rinkeby.eth.aragon.network/ws]
- *        The Web3 provider to use for blockchain communication
+ * @param {string|Object} [options.provider=web3.currentProvider]
+ *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
+ *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
  * @example
  * const aragon = new Aragon('0xdeadbeef')
  *
@@ -171,6 +174,7 @@ export default class Aragon {
       throw Error(`Provided daoAddress is not a DAO`)
     }
 
+    await this.cache.init()
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
@@ -312,13 +316,7 @@ export default class Aragon {
       proxyValues = await Promise.all([
         appProxy.call('kernel').catch(() => null),
         appProxy.call('appId').catch(() => null),
-        appProxy
-          .call('implementation')
-          .catch(() => appProxy
-            // Fallback to old non-ERC897 proxy implementation
-            .call('getCode')
-            .catch(() => null)
-          ),
+        appProxy.call('implementation').catch(() => null),
         appProxyForwarder.call('isForwarder').catch(() => false)
       ]).then((values) => ({
         proxyAddress,
@@ -602,68 +600,78 @@ export default class Aragon {
   /**
    * Run an app.
    *
-   * @param  {Object} sandboxMessengerProvider
-   *         An object that can communicate with the app sandbox via Aragon RPC.
+   * As there may be race conditions with losing messages from cross-context environments,
+   * running an app is split up into two parts:
+   *
+   *   1. Set up any required state for the app. This step is allowed to be asynchronous.
+   *   2. Connect the app to a running context, by associating the context's message provider
+   *      to the app. This step is synchronous.
+   *
    * @param  {string} proxyAddress
    *         The address of the app proxy.
-   * @return {Object}
+   * @return {Promise<function>}
    */
-  runApp (sandboxMessengerProvider, proxyAddress) {
-    // Set up messenger
-    const messenger = new Messenger(
-      sandboxMessengerProvider
-    )
+  async runApp (proxyAddress) {
+    // Step 1: Set up required state for the app
 
     // Get the application proxy
-    // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const proxy$ = this.appsWithoutIdentifiers.pipe(
-      map((apps) => apps.find(
-        (app) => addressesEqual(app.proxyAddress, proxyAddress))
-      ),
-      // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-      map(
-        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
+    // Only get the first result from the observable, so our running contexts don't get
+    // reinitialized if new apps appear
+    const appProxy = await this.apps.pipe(
+      map((apps) => {
+        const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+        // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
+        return makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+      }),
+      take(1)
+    ).toPromise()
+    await appProxy.updateInitializationBlock()
+
+    // Step 2: Associate app with running context
+    return (sandboxMessengerProvider) => {
+      // Set up messenger
+      const messenger = new Messenger(
+        sandboxMessengerProvider
       )
-    )
 
-    // Wrap requests with the application proxy
-    const request$ = combineLatest(
-      messenger.requests(),
-      proxy$,
-      (request, proxy) => ({ request, proxy, wrapper: this })
-    ).pipe(
-      // Use the same request$ result in each handler
-      // Turns request$ into a subject
-      publishReplay(1)
-    )
-    request$.connect()
+      // Wrap requests with the application proxy
+      // Note that we have to do this synchronously with the creation of the message provider,
+      // as we otherwise risk race conditions and may lose messages
+      const request$ = messenger.requests().pipe(
+        map(request => ({ request, proxy: appProxy, wrapper: this })),
+        // Use the same request$ result in each handler
+        // Turns request$ into a subject
+        publishReplay(1)
+      )
+      request$.connect()
 
-    // Register request handlers
-    const shutdown = handlers.combineRequestHandlers(
-      handlers.createRequestHandler(request$, 'cache', handlers.cache),
-      handlers.createRequestHandler(request$, 'events', handlers.events),
-      handlers.createRequestHandler(request$, 'intent', handlers.intent),
-      handlers.createRequestHandler(request$, 'call', handlers.call),
-      handlers.createRequestHandler(request$, 'network', handlers.network),
-      handlers.createRequestHandler(request$, 'notification', handlers.notifications),
-      handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
-      handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-      handlers.createRequestHandler(request$, 'identify', handlers.identifier),
-      handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-      handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
-    ).subscribe(
-      (response) => messenger.sendResponse(response.id, response.payload)
-    )
+      // Register request handlers
+      const shutdown = handlers.combineRequestHandlers(
+        handlers.createRequestHandler(request$, 'cache', handlers.cache),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'intent', handlers.intent),
+        handlers.createRequestHandler(request$, 'call', handlers.call),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
+        handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+      ).subscribe(
+        (response) => messenger.sendResponse(response.id, response.payload)
+      )
 
-    // App context helper function
-    function setContext (context) {
-      return messenger.send('context', [context])
-    }
+      // App context helper function
+      function setContext (context) {
+        return messenger.send('context', [context])
+      }
 
-    return {
-      shutdown,
-      setContext
+      return {
+        shutdown,
+        setContext
+      }
     }
   }
 
@@ -979,6 +987,21 @@ export default class Aragon {
       if (role && role.name) {
         return [input, `'${role.name}'`, { type: 'role', value: role }]
       }
+
+      const app = apps.find(
+        ({ appName }) => appName && namehash(appName) === input
+      )
+
+      if (app) {
+        // return the entire app as it contains APM package details
+        return [input, `'${app.appName}'`, { type: 'apmPackage', value: app }]
+      }
+
+      const namespace = getKernelNamespace(input)
+      if (namespace) {
+        return [input, `'${namespace.name}'`, { type: 'kernelNamespace', value: namespace }]
+      }
+
       return [input, input, { type: 'bytes32', value: input }]
     }
 
