@@ -523,7 +523,7 @@ test('should run the app and reply to a request', async (t) => {
     .returns(Observable.create((observer) => {
       observer.next('user settings for the voting app')
     }))
-  instance.appsWithoutIdentifiers = Observable.create((observer) => {
+  instance.apps = Observable.create((observer) => {
     observer.next([
       {
         appId: 'some other app with a different proxy',
@@ -536,10 +536,14 @@ test('should run the app and reply to a request', async (t) => {
       }
     ])
   })
-  utilsStub.makeProxyFromABI = (proxyAddress) => ({ address: proxyAddress })
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+    address: proxyAddress,
+    updateInitializationBlock: () => {}
+  })
   instance.kernelProxy = { initializationBlock: 0 }
   // act
-  const result = await instance.runApp('someMessageProvider', '0x789')
+  const connect = await instance.runApp('0x789')
+  const result = connect('someMessageProvider')
   // assert
   t.true(result.shutdown !== undefined)
   t.true(result.setContext !== undefined)

@@ -2,11 +2,14 @@ import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import { Subject } from 'rxjs/Rx'
 import { concat } from 'rxjs/observable/concat'
+import { race } from 'rxjs/observable/race'
 
 /**
  * A cache.
  */
 export default class Cache {
+  #trackedKeys = new Set()
+
   constructor (prefix) {
     this.prefix = prefix
   }
@@ -54,6 +57,19 @@ export default class Cache {
     return value || defaultValue
   }
 
+  async remove (key) {
+    await this.db.removeItem(key)
+    this.changes.next({ key, value: null })
+  }
+
+  async clear () {
+    await this.db.clear()
+
+    for (const key of this.#trackedKeys) {
+      this.changes.next({ key, value: null })
+    }
+  }
+
   /**
    * Observe the value of a key in cache over time
    *
@@ -63,14 +79,23 @@ export default class Cache {
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    const keyChanges = this.changes
+    this.#trackedKeys.add(key)
+
+    const getResult$ = this.get(key, defaultValue)
+    const keyChange$ = this.changes
       .filter(change => change.key === key)
       .pluck('value')
+
     /*
-     * If `get` takes longer than usual, and a new `set` finishes before then,
-     * this.changes will emit new values, but they will be discarded. that's why
-     * we use `concat` and not `merge`.
+     * There is an inherent race between `this.get()` and a new item being set
+     * on the cache key. Note that `concat()` only subscribes to the next observable
+     * **AFTER** the previous one ends (it doesn't buffer hot observables).
+     *
+     * Thus, we either want:
+     *   - The concatenated result of `this.get()` and `this.changes`, if `this.changes`
+     *     doesn't emit new items, or
+     *   - Just `this.changes` since `this.get()` may be stale by the time it returns
      */
-    return concat(this.get(key, defaultValue), keyChanges)
+    return race(concat(getResult$, keyChange$), keyChange$)
   }
 }
