@@ -116,15 +116,6 @@ export const setupTemplates = (from, options = {}) => {
  * @param {string|Object} [options.provider=web3.currentProvider]
  *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
  *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
- * @example
- * const aragon = new Aragon('0xdeadbeef')
- *
- * // Initialises the wrapper
- * await aragon.init({
- *   accounts: {
- *     providedAccounts: ["0xbeefdead", "0xbeefbeef"]
- *   }
- * })
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
