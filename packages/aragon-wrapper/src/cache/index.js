@@ -57,6 +57,14 @@ export default class Cache {
     return value || defaultValue
   }
 
+  async getAll () {
+    const all = {}
+    await this.db.iterate((value, key) => {
+      all.key = value
+    })
+    return all
+  }
+
   async remove (key) {
     await this.db.removeItem(key)
     this.changes.next({ key, value: null })

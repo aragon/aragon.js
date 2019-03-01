@@ -35,6 +35,9 @@ import Templates from './templates'
 // Cache
 import Cache from './cache'
 
+// Local address labels
+import { LocalLabelIdentityProvider } from './identity'
+
 // Interfaces
 import { getAbi } from './interfaces'
 
@@ -165,6 +168,7 @@ export default class Aragon {
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
+    await this.initIdentityProviders()
     this.initApps()
     this.initForwarders()
     this.initNetwork()
@@ -446,6 +450,81 @@ export default class Aragon {
   }
 
   /**
+   * Initialise identity providers.
+   *
+   * @return {Promise<void>}
+   */
+  async initIdentityProviders () {
+    const defaultIdentityProviders = [{
+      name: 'local',
+      provider: new LocalLabelIdentityProvider()
+    }]
+    // TODO: detect other installed providers
+    const detectedIdentityProviders = []
+    const identityProviders = [...defaultIdentityProviders, ...detectedIdentityProviders]
+
+    // Init all providers
+    await Promise.all(identityProviders.map(({ provider }) => {
+      // Most providers should have this defined to a noop function by default, but juts in case
+      if (typeof provider.init === 'function') {
+        return provider.init()
+      }
+      return Promise.resolve()
+    }))
+
+    this.identityProviderRegistrar = new Map(
+      identityProviders.map(({ name, provider }) => [name, provider])
+    )
+
+    // Set up identity modification intent observable
+    this.addressIdentityModificationIntents = new Subject()
+  }
+
+  /**
+   * Modify the identity metadata for an address using the requested provider.
+   *
+   * @param  {string} address Address to modify
+   * @param  {Object} metadata Modification metadata object
+   * @param  {string} [providerName='local'] Name of the identity provider to use
+   * @return {void}
+   */
+  async modifyAddressIdentity (address, metadata, providerName = 'local') {
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.resolve === 'function') {
+      return provider.modify(address, metadata)
+    }
+    throw new Error(`Provider (${providerName}) not installed`)
+  }
+
+  /**
+   * Resolve the identity metadata for an address using the requested provider.
+   *
+   * @param  {string} address Address to resolve
+   * @param  {string} [providerName='local'] Name of the identity provider to use
+   * @return {void}
+   */
+  async resolveAddressIdentity (address, providerName = 'local') {
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.resolve === 'function') {
+      return provider.resolve(address)
+    }
+    throw new Error(`Provider (${providerName}) not installed`)
+  }
+
+  /**
+   * Request an identity modification using the requested provider.
+   *
+   * @param  {string} address Address to modify
+   * @param  {string} [providerName='local'] Name of the identity provider to use
+   * @return {void}
+   */
+  async requestAddressIdentityModification (address, providerName) {
+    if (this.identityProviderRegistrar.has(providerName)) {
+      this.addressIdentityModificationIntents.next({ address, providerName })
+    }
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
@@ -634,6 +713,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
@@ -1346,3 +1426,6 @@ export { resolve as ensResolve } from './ens'
 
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/messenger'
+
+// Re-export the AddressIdentityProvider abstract base class
+export { AddressIdentityProvider } from './identity'
