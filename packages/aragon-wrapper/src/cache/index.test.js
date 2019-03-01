@@ -96,9 +96,6 @@ test('should observe the key\'s value for changes in the correct order if getIte
   // act
   const observable = instance.observe('counter', 1)
 
-  // make sure getItem is finished before emitting
-  await new Promise(resolve => setTimeout(resolve, 700))
-
   // assert
   let emissionNumber = 0
   observable.subscribe(value => {

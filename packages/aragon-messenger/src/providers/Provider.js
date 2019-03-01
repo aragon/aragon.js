@@ -6,9 +6,6 @@
 export default class Provider {
   /**
    * An observable of messages being sent to this provider.
-   *
-   * @memberof Provider
-   * @instance
    */
   messages () {
     throw new Error('Not implemented')
@@ -18,8 +15,6 @@ export default class Provider {
    * Send a message to a target.
    *
    * @param {Object} payload The payload to send
-   * @memberof Provider
-   * @instance
    */
   send (payload) {
     throw new Error('Not implemented')

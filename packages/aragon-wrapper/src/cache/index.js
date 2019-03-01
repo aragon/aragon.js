@@ -72,7 +72,6 @@ export default class Cache {
   /**
    * Observe the value of a key in cache over time
    *
-   * @memberof Cache
    * @param  {string} key
    * @param  {*}      defaultValue
    * @return {Observable}

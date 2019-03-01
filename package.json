@@ -1,16 +1,15 @@
 {
   "devDependencies": {
-    "lerna": "^2.4.0",
+    "lerna": "^3.11.1",
     "size-limit": "^0.21.0"
   },
   "scripts": {
     "lint": "lerna run lint",
     "test": "lerna run test",
     "install": "npm run bootstrap",
-    "bootstrap": "lerna bootstrap",
+    "bootstrap": "lerna bootstrap --no-ci",
     "build": "lerna run build",
     "build:watch": "lerna run --parallel build:dev -- -- --watch",
-    "build:docs": "lerna run build:docs",
     "size": "size-limit",
     "size:why": "size-limit --why"
   }

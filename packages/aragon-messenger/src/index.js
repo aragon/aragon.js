@@ -25,8 +25,6 @@ export default class Messenger {
    * Get the message bus of incoming messages
    *
    * @returns {Observable}
-   * @memberof Messenger
-   * @instance
    */
   bus () {
     return this.provider.messages()
@@ -36,8 +34,6 @@ export default class Messenger {
    * Get requests from the message bus.
    *
    * @returns {Observable}
-   * @memberof Messenger
-   * @instance
    */
   requests () {
     return this.bus().pipe(
@@ -49,8 +45,6 @@ export default class Messenger {
    * Get responses from the message bus.
    *
    * @returns {Observable}
-   * @memberof Messenger
-   * @instance
    */
   responses () {
     return this.bus().pipe(
@@ -64,8 +58,6 @@ export default class Messenger {
    * @param {string} id The ID of the request being responded to.
    * @param {any} result The result of the request.
    * @returns {string}
-   * @memberof Messenger
-   * @instance
    */
   sendResponse (id, result) {
     const payload = jsonrpc.encodeResponse(id, result)
@@ -80,8 +72,6 @@ export default class Messenger {
    * @param {string} method The method name to call
    * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {string} The ID of the payload that was sent
-   * @memberof Messenger
-   * @instance
    */
   send (method, params = []) {
     const payload = jsonrpc.encodeRequest(method, params)
@@ -96,8 +86,6 @@ export default class Messenger {
    * @param {string} method The method name to call
    * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {Observable} An observable of responses to the sent request
-   * @memberof Messenger
-   * @instance
    */
   sendAndObserveResponses (method, params = []) {
     const id = this.send(method, params)
@@ -113,8 +101,6 @@ export default class Messenger {
    * @param {string} method The method name to call
    * @param {Array<any>} [params] The parameters to send with the call
    * @returns {Observable} An observable that resolves to the response
-   * @memberof Messenger
-   * @instance
    */
   sendAndObserveResponse (method, params = []) {
     return this.sendAndObserveResponses(method, params).pipe(
