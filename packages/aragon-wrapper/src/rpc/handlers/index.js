@@ -28,10 +28,9 @@ export function createRequestHandler (request$, requestType, handler) {
      * another one of kind 'C' (complete) which we should filter out
      */
     mergeMap(
-      ({ request, proxy, wrapper }) =>
-        {
-          return from(handler(request, proxy, wrapper)).pipe(materialize());
-        },
+      ({ request, proxy, wrapper }) => {
+        return from(handler(request, proxy, wrapper)).pipe(materialize())
+      },
       createResponse
     ),
     // filter empty responses caused by Notifications of kind 'C'
