@@ -1,7 +1,7 @@
 // Externals
 import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
 import {
-  map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, take,
+  map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, first,
   debounceTime, skipWhile
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
@@ -605,17 +605,15 @@ export default class Aragon {
   async runApp (proxyAddress) {
     // Step 1: Set up required state for the app
 
-    // Get the application proxy
     // Only get the first result from the observable, so our running contexts don't get
     // reinitialized if new apps appear
-    const appProxy = await this.apps.pipe(
-      map((apps) => {
-        const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
-        // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-        return makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
-      }),
-      take(1)
-    ).toPromise()
+    const apps = await this.apps.pipe(first()).toPromise()
+
+    const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+
+    // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
+    const appProxy = makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+
     await appProxy.updateInitializationBlock()
 
     // Step 2: Associate app with running context
@@ -682,9 +680,7 @@ export default class Aragon {
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return this.accounts.pipe(
-      take(1)
-    ).toPromise()
+    return this.accounts.pipe(first()).toPromise()
   }
 
   /**
@@ -727,7 +723,7 @@ export default class Aragon {
   getApp (proxyAddress) {
     return this.apps.pipe(
       map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxyAddress))),
-      take(1)
+      first()
     ).toPromise()
   }
 
@@ -816,7 +812,7 @@ export default class Aragon {
    * @return {Promise<string>} The permission manager
    */
   async getPermissionManager (appAddress, roleHash) {
-    const permissions = await this.permissions.pipe(take(1)).toPromise()
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const appPermissions = permissions[appAddress]
 
     return dotprop.get(appPermissions, `${roleHash}.manager`)
@@ -951,7 +947,7 @@ export default class Aragon {
       return { description }
     }
 
-    const apps = await this.apps.pipe(take(1)).toPromise()
+    const apps = await this.apps.pipe(first()).toPromise()
     const roles = apps
       .map(({ roles }) => roles || [])
       .reduce((acc, roles) => acc.concat(roles), []) // flatten
@@ -1102,7 +1098,7 @@ export default class Aragon {
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
     const finalForwarderProvided = isAddress(finalForwarder)
 
-    const permissions = await this.permissions.pipe(take(1)).toPromise()
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
 
     if (!app) {
@@ -1221,7 +1217,7 @@ export default class Aragon {
       } catch (_) { }
     }
 
-    let forwarders = await this.forwarders.pipe(take(1)).toPromise().then(
+    const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
       )
@@ -1294,7 +1290,7 @@ export default class Aragon {
     }
 
     // Get a list of all forwarders (excluding the forwarders with direct permission)
-    const forwarders = await this.forwarders.pipe(take(1)).toPromise().then(
+    const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders
         .map((forwarder) => forwarder.proxyAddress)
         .filter((forwarder) => !includesAddress(forwardersWithPermission, forwarder))
