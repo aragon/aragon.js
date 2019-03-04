@@ -12,6 +12,6 @@ module.exports = [
   {
     name: '@aragon/wrapper',
     path: "packages/aragon-wrapper/dist/index.js",
-    limit: "775 KB"
+    limit: "850 KB"
   }
 ]
