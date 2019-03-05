@@ -22,7 +22,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   async init () {
     await this.identityCache.init()
 
-    this.identities = new BehaviorSubject(await this.identityCache.getAll())
+    this.identities$ = new BehaviorSubject(await this.identityCache.getAll())
       .pipe(
         scan((identities, modifier) => modifier(identities))
       )
@@ -49,7 +49,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     // First save it in the cache
     await this.identityCache.set(address, metadata)
     // Then emit it on the observable
-    this.identities.next((identities) => {
+    this.identities$.next((identities) => {
       identities[address] = metadata
     })
 
