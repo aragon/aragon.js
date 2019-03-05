@@ -1,4 +1,5 @@
-import { BehaviorSubject } from 'rxjs/Rx'
+import { BehaviorSubject } from 'rxjs'
+import { scan } from 'rxjs/operators'
 import Cache from '../cache'
 import AddressIdentityProvider from './AddressIdentityProvider'
 
@@ -21,8 +22,10 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   async init () {
     await this.identityCache.init()
 
-    this.labels = new BehaviorSubject(await this.identityCache.getAll())
-      .scan((labels, modifier) => modifier(labels))
+    this.identities = new BehaviorSubject(await this.identityCache.getAll())
+      .pipe(
+        scan((identities, modifier) => modifier(identities))
+      )
   }
 
   /**
@@ -46,8 +49,8 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     // First save it in the cache
     await this.identityCache.set(address, metadata)
     // Then emit it on the observable
-    this.labels.next((labels) => {
-      labels.address = metadata
+    this.identities.next((identities) => {
+      identities[address] = metadata
     })
 
     // TODO: this should be spec'd out better

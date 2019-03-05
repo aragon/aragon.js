@@ -82,7 +82,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'address_identity',
       ['resolve', address]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -95,7 +97,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'address_identity',
       ['modify', address]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
