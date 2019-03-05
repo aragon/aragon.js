@@ -15,11 +15,11 @@ A JavaScript implementation of aragonAPI, used to interact with aragonOS by hand
 ## Quick Start for apps
 
 ```sh
-npm i @aragon/client
+npm i @aragon/app
 ```
 
 ```js
-const Aragon = require('@aragon/client')
+const Aragon = require('@aragon/app')
 
 // Set up app
 const app = new Aragon()

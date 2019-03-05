@@ -3,7 +3,7 @@
 ## Install
 
 ```sh
-npm install --save @aragon/client
+npm install --save @aragon/app
 ```
 
 ## Import
@@ -11,14 +11,14 @@ npm install --save @aragon/client
 ### ES6
 
 ```js
-import AragonApp, { providers } from '@aragon/client'
+import AragonApp, { providers } from '@aragon/app'
 ```
 
 ### ES5 (CommonJS)
 
 ```js
-const AragonApp = require('@aragon/client').default
-const providers = require('@aragon/client').providers
+const AragonApp = require('@aragon/app').default
+const providers = require('@aragon/app').providers
 ```
 
 <!-- Warning!! -->
@@ -83,7 +83,7 @@ Some caveats to customizing transaction parameters:
 ### Examples
 
 ```javascript
-import AragonApp, { providers } from '@aragon/client'
+import AragonApp, { providers } from '@aragon/app'
 
 // The default provider should be used in background scripts
 const backgroundScriptOfApp = new AragonApp()
