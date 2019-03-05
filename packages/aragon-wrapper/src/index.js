@@ -40,7 +40,7 @@ import Templates from './templates'
 import Cache from './cache'
 
 // Local address labels
-import { LocalLabelIdentityProvider } from './identity'
+import { LocalIdentityProvider } from './identity'
 
 // Interfaces
 import { getAbi } from './interfaces'
@@ -466,7 +466,7 @@ export default class Aragon {
   async initIdentityProviders () {
     const defaultIdentityProviders = [{
       name: 'local',
-      provider: new LocalLabelIdentityProvider()
+      provider: new LocalIdentityProvider()
     }]
     // TODO: detect other installed providers
     const detectedIdentityProviders = []
