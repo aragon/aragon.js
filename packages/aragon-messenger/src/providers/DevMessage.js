@@ -1,5 +1,5 @@
 import Provider from './Provider'
-
+import { filter } from 'rxjs/operators'
 /**
  * A development message provider that communicates using an RxJS subject.
  *
@@ -40,8 +40,9 @@ export default class DevMessage extends Provider {
   }
 
   messages () {
-    return this.bus
-      .filter((event) => event.target === this.id)
+    return this.bus.pipe(
+      filter(event => event.target === this.id)
+    )
   }
 
   send (payload) {
