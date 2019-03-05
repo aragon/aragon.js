@@ -1,4 +1,5 @@
-import { Observable } from 'rxjs/Rx'
+import { from, merge } from 'rxjs'
+import { filter, mergeMap, materialize } from 'rxjs/operators'
 
 export function createResponse ({ request: { id } }, { error, value = null, kind }) {
   if (kind === 'C') {
@@ -14,29 +15,31 @@ export function createResponse ({ request: { id } }, { error, value = null, kind
 
 export function createRequestHandler (request$, requestType, handler) {
   // Filter request types to match provided params
-  const filteredRequest$ = request$
-    .filter(({ request }) => request.method === requestType)
+  const filteredRequest$ = request$.pipe(
+    filter(({ request }) => request.method === requestType)
+  )
 
   // Send request to handler and return response
-  return filteredRequest$.mergeMap(
+  return filteredRequest$.pipe(
     /**
      * Turn the promise returned by the handler into an observable and materialize it, i.e:
      * - if the promise rejects emit a Notification of kind 'E' with an error property
      * - if the promise resolves emit a Notification of kind 'N' (next) with a value property AND
      * another one of kind 'C' (complete) which we should filter out
      */
-    ({ request, proxy, wrapper }) => Observable.from(
-      handler(request, proxy, wrapper)
-    ).materialize(),
-    createResponse
-  ).filter(
+    mergeMap(
+      ({ request, proxy, wrapper }) => {
+        return from(handler(request, proxy, wrapper)).pipe(materialize())
+      },
+      createResponse
+    ),
     // filter empty responses caused by Notifications of kind 'C'
-    (response) => response.payload !== undefined || response.error !== undefined
+    filter((response) => response.payload !== undefined || response.error !== undefined)
   )
 }
 
 export function combineRequestHandlers (...handlers) {
-  return Observable.merge(
+  return merge(
     ...handlers
   )
 }

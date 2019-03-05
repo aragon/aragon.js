@@ -1,4 +1,5 @@
-import { Observable } from 'rxjs/Rx'
+import { fromEvent } from 'rxjs'
+import { filter } from 'rxjs/operators'
 
 export default class Proxy {
   constructor (address, jsonInterface, web3, initializationBlock = 0) {
@@ -27,15 +28,15 @@ export default class Proxy {
     let eventSource
     if (eventNames.length === 1) {
       // Get a specific event
-      eventSource = Observable.fromEvent(
+      eventSource = fromEvent(
         this.contract.events[eventNames[0]]({ fromBlock: this.initializationBlock }), 'data'
       )
     } else {
       // Get multiple events
-      eventSource = Observable.fromEvent(
+      eventSource = fromEvent(
         this.contract.events.allEvents({ fromBlock: this.initializationBlock }), 'data'
-      ).filter(
-        (event) => eventNames.includes(event.event)
+      ).pipe(
+        filter((event) => eventNames.includes(event.event))
       )
     }
 

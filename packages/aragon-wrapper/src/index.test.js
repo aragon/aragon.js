@@ -1,7 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { Observable } from 'rxjs/Rx'
+import { of, from } from 'rxjs'
 
 test.beforeEach(t => {
   const aragonOSCoreStub = {
@@ -146,72 +146,63 @@ test('should init the ACL correctly', async (t) => {
 
   t.plan(1)
   // arrange
-  const setPermissionEvents = Observable.create(observer => {
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'add',
-        allowed: true,
-        entity: '0x1'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: true,
-        entity: '0x1'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'add',
-        allowed: true,
-        entity: '0x2'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: true,
-        entity: '0x2'
-      }
-    })
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: false,
-        entity: '0x2'
-      }
-    })
+  const setPermissionEvents = from([{
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'add',
+      allowed: true,
+      entity: '0x1'
+    }
+  }, {
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: true,
+      entity: '0x1'
+    }
+  }, {
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'add',
+      allowed: true,
+      entity: '0x2'
+    }
+  }, {
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: true,
+      entity: '0x2'
+    }
+  }, {
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: false,
+      entity: '0x2'
+    }
+  }, {
     // duplicate, should not affect the final result because we use a Set
-    observer.next({
-      event: 'SetPermission',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        allowed: false,
-        entity: '0x2'
-      }
-    })
-  })
-  const changePermissionManagerEvents = Observable.create(observer => {
-    observer.next({
-      event: 'ChangePermissionManager',
-      returnValues: {
-        app: 'counter',
-        role: 'subtract',
-        manager: 'manager'
-      }
-    })
+    event: 'SetPermission',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      allowed: false,
+      entity: '0x2'
+    }
+  }])
+  const changePermissionManagerEvents = of({
+    event: 'ChangePermissionManager',
+    returnValues: {
+      app: 'counter',
+      role: 'subtract',
+      manager: 'manager'
+    }
   })
   const instance = new Aragon()
   instance.kernelProxy = {
@@ -312,16 +303,14 @@ const appInitTestCases = [
     }
   ]
 ]
-appInitTestCases.forEach(([ testName, permissionsObj ]) => {
+appInitTestCases.forEach(([testName, permissionsObj]) => {
   test(`should init the apps correctly - ${testName}`, async (t) => {
     const { Aragon, aragonOSCoreStub } = t.context
 
     t.plan(2)
     // arrange
     const instance = new Aragon()
-    instance.permissions = Observable.create((observer) => {
-      observer.next(permissionsObj)
-    })
+    instance.permissions = of(permissionsObj)
     const appIds = {
       '0x123': 'kernel',
       '0x456': 'counterApp',
@@ -410,17 +399,15 @@ test('should init the forwarders correctly', async (t) => {
   t.plan(1)
   // arrange
   const instance = new Aragon()
-  instance.apps = Observable.create((observer) => {
-    observer.next([
-      {
-        appId: 'counterApp',
-        isForwarder: true
-      }, {
-        appId: 'votingApp',
-        isForwarder: false
-      }
-    ])
-  })
+  instance.apps = of([
+    {
+      appId: 'counterApp',
+      isForwarder: true
+    }, {
+      appId: 'votingApp',
+      isForwarder: false
+    }
+  ])
   // act
   await instance.initForwarders()
   // assert
@@ -505,12 +492,10 @@ test('should run the app and reply to a request', async (t) => {
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
   t.plan(4)
   // arrange
-  const requestsStub = Observable.create((observer) => {
-    observer.next({
-      id: 'uuid1',
-      method: 'cache',
-      params: ['get', 'settings']
-    })
+  const requestsStub = of({
+    id: 'uuid1',
+    method: 'cache',
+    params: ['get', 'settings']
   })
   const messengerStub = {
     sendResponse: sinon.stub(),
@@ -520,22 +505,18 @@ test('should run the app and reply to a request', async (t) => {
   const instance = new Aragon()
   instance.cache.observe = sinon.stub()
     .withArgs('0x789.settings')
-    .returns(Observable.create((observer) => {
-      observer.next('user settings for the voting app')
-    }))
-  instance.apps = Observable.create((observer) => {
-    observer.next([
-      {
-        appId: 'some other app with a different proxy',
-        proxyAddress: '0x456'
-      }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
-        abi: 'abi for votingApp',
-        proxyAddress: '0x789'
-      }
-    ])
-  })
+    .returns(of('user settings for the voting app'))
+  instance.apps = of([
+    {
+      appId: 'some other app with a different proxy',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
   utilsStub.makeProxyFromABI = (proxyAddress) => ({
     address: proxyAddress,
     updateInitializationBlock: () => {}
@@ -561,19 +542,17 @@ test('should get the app from a proxy address', async (t) => {
   t.plan(1)
   // arrange
   const instance = new Aragon()
-  instance.apps = Observable.create((observer) => {
-    observer.next([
-      {
-        appId: 'some other app with a different proxy',
-        proxyAddress: '0x456'
-      }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
-        abi: 'abi for votingApp',
-        proxyAddress: '0x789'
-      }
-    ])
-  })
+  instance.apps = of([
+    {
+      appId: 'some other app with a different proxy',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
   // act
   const result = await instance.getApp('0x789')
   // assert
@@ -591,18 +570,16 @@ test('should get the permission manager', async (t) => {
   t.plan(1)
   // arrange
   const instance = new Aragon()
-  instance.permissions = Observable.create(observer => {
-    observer.next({
-      counter: {
-        add: {
-          allowedEntities: ['0x1', '0x2']
-        },
-        subtract: {
-          allowedEntities: ['0x1'],
-          manager: 'im manager'
-        }
+  instance.permissions = of({
+    counter: {
+      add: {
+        allowedEntities: ['0x1', '0x2']
+      },
+      subtract: {
+        allowedEntities: ['0x1'],
+        manager: 'im manager'
       }
-    })
+    }
   })
   // act
   const result = await instance.getPermissionManager('counter', 'subtract')
@@ -616,42 +593,36 @@ test('should throw if no ABI is found, when calculating the transaction path', a
   t.plan(1)
   // arrange
   const instance = new Aragon()
-  instance.permissions = Observable.create(observer => {
-    observer.next({
-      counter: {
-        add: {
-          allowedEntities: ['0x1', '0x2']
-        },
-        subtract: {
-          allowedEntities: ['0x1'],
-          manager: 'im manager'
-        }
+  instance.permissions = of({
+    counter: {
+      add: {
+        allowedEntities: ['0x1', '0x2']
+      },
+      subtract: {
+        allowedEntities: ['0x1'],
+        manager: 'im manager'
       }
-    })
+    }
   })
-  instance.forwarders = Observable.create(observer => {
-    observer.next([
-      {
-        appId: 'forwarderA',
-        proxyAddress: '0x999'
-      }
-    ])
-  })
-  instance.apps = Observable.create(observer => {
-    observer.next([
-      {
-        appId: 'counterApp',
-        kernelAddress: '0x123',
-        abi: 'abi for counterApp',
-        proxyAddress: '0x456'
-      }, {
-        appId: 'votingApp',
-        kernelAddress: '0x123',
-        // abi: 'abi for votingApp',
-        proxyAddress: '0x789'
-      }
-    ])
-  })
+  instance.forwarders = of([
+    {
+      appId: 'forwarderA',
+      proxyAddress: '0x999'
+    }
+  ])
+  instance.apps = of([
+    {
+      appId: 'counterApp',
+      kernelAddress: '0x123',
+      abi: 'abi for counterApp',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      // abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
   // act
   return instance.calculateTransactionPath(null, '0x789')
     .catch(err => {

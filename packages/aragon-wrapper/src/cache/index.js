@@ -1,8 +1,7 @@
+import { Subject, concat, race } from 'rxjs'
+import { filter, pluck } from 'rxjs/operators'
 import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
-import { Subject } from 'rxjs/Rx'
-import { concat } from 'rxjs/observable/concat'
-import { race } from 'rxjs/observable/race'
 
 /**
  * A cache.
@@ -89,9 +88,10 @@ export default class Cache {
     this.#trackedKeys.add(key)
 
     const getResult$ = this.get(key, defaultValue)
-    const keyChange$ = this.changes
-      .filter(change => change.key === key)
-      .pluck('value')
+    const keyChange$ = this.changes.pipe(
+      filter(change => change.key === key),
+      pluck('value')
+    )
 
     /*
      * There is an inherent race between `this.get()` and a new item being set

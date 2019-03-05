@@ -1,5 +1,9 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
+import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import {
+  map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, first,
+  debounceTime, skipWhile
+} from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress, toBN } from 'web3-utils'
@@ -82,7 +86,7 @@ export const detectProvider = () =>
 export const setupTemplates = (from, options = {}) => {
   const defaultOptions = {
     apm: {},
-    defaultGasPriceFn: () => {},
+    defaultGasPriceFn: () => { },
     provider: detectProvider()
   }
   options = Object.assign(defaultOptions, options)
@@ -124,7 +128,7 @@ export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
       apm: {},
-      defaultGasPriceFn: () => {},
+      defaultGasPriceFn: () => { },
       provider: detectProvider()
     }
     options = Object.assign(defaultOptions, options)
@@ -221,9 +225,9 @@ export default class Aragon {
 
     // Permissions Object:
     // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
-    this.permissions = Observable.merge(...aclObservables)
+    this.permissions = merge(...aclObservables).pipe(
       // Keep track of all the types of events that have been processed
-      .scan(([ permissions, eventSet ], event) => {
+      scan(([permissions, eventSet], event) => {
         const eventData = event.returnValues
 
         // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
@@ -250,18 +254,19 @@ export default class Aragon {
 
         permissions[eventData.app] = appPermissions
         return [permissions, eventSet.add(event.event)]
-      }, [makeAddressMapProxy({}), new Set()])
+      }, [makeAddressMapProxy({}), new Set()]),
       // Skip until we have received events from all event subscriptions
       // Note that this is safe as the ACL will always have to emit both
       // ChangePermissionManager and SetPermission events every time a
       // permission is created
-      .skipWhile(([ permissions, eventSet ]) => eventSet.size < aclObservables.length)
-      .map(([ permissions ]) => permissions)
+      skipWhile(([permissions, eventSet]) => eventSet.size < aclObservables.length),
+      map(([permissions]) => permissions),
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
-      .debounceTime(30)
-      .publishReplay(1)
+      debounceTime(30),
+      publishReplay(1)
+    )
     this.permissions.connect()
   }
 
@@ -349,25 +354,24 @@ export default class Aragon {
   initApps () {
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
-    this.appsWithoutIdentifiers = this.permissions
-      .map(Object.keys)
+    this.appsWithoutIdentifiers = this.permissions.pipe(
+      map(Object.keys),
       // Add Kernel as the first "app"
-      .map((addresses) => {
+      map((addresses) => {
         const appsWithoutKernel = addresses.filter((address) => !this.isKernelAddress(address))
         return [this.kernelProxy.address].concat(appsWithoutKernel)
-      })
+      }),
       // Get proxy values
-      .switchMap(
+      switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getProxyValues(app))
         )
-      )
-      .map(
-        (appMetadata) => appMetadata.filter(
-          (app) => this.isApp(app) || this.isKernelAddress(app.proxyAddress))
-      )
+      ),
+      map(appMetadata => appMetadata.filter(
+        (app) => this.isApp(app) || this.isKernelAddress(app.proxyAddress)
+      )),
       // Get artifact info
-      .flatMap(
+      flatMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
             if (!app.appId || !app.codeAddress) {
@@ -383,7 +387,7 @@ export default class Aragon {
               (await this.apm
                 .getLatestVersionForContract(app.appId, app.codeAddress)
                 // Just silence any errors
-                .catch(() => {}))
+                .catch(() => { }))
 
             if (!cachedAppInfo && appInfo) {
               dotprop.set(appInfoCache, cacheKey, appInfo)
@@ -392,32 +396,36 @@ export default class Aragon {
             return Object.assign(app, appInfo)
           })
         )
-      )
+      ),
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
       // this entire operator chain on identifier emits (doing so causes unnecessary apm fetches)
-      .publishReplay(1)
+      publishReplay(1)
+    )
     this.appsWithoutIdentifiers.connect()
 
-    this.apps = this.appsWithoutIdentifiers
-      .combineLatest(
-        this.identifiers.scan(
+    this.apps = combineLatest(
+      this.appsWithoutIdentifiers,
+      this.identifiers.pipe(
+        scan(
           (identifiers, { address, identifier }) =>
             Object.assign(identifiers, { [address]: identifier }),
-          {}
-        ).startWith({}),
-        function attachIdentifiers (apps, identifiers) {
-          return apps.map(
-            (app) => {
-              if (identifiers[app.proxyAddress]) {
-                return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
-              }
-
-              return app
+          {}),
+        startWith({})
+      ),
+      function attachIdentifiers (apps, identifiers) {
+        return apps.map(
+          (app) => {
+            if (identifiers[app.proxyAddress]) {
+              return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
             }
-          )
-        }
-      )
-      .publishReplay(1)
+
+            return app
+          }
+        )
+      }
+    ).pipe(
+      publishReplay(1)
+    )
     this.apps.connect()
   }
 
@@ -441,11 +449,12 @@ export default class Aragon {
    * @return {void}
    */
   initForwarders () {
-    this.forwarders = this.apps
-      .map(
+    this.forwarders = this.apps.pipe(
+      map(
         (apps) => apps.filter((app) => app.isForwarder)
-      )
-      .publishReplay(1)
+      ),
+      publishReplay(1)
+    )
     this.forwarders.connect()
   }
 
@@ -556,10 +565,11 @@ export default class Aragon {
       })
     }
 
-    this.notifications = new BehaviorSubject(cached)
-      .scan((notifications, { modifier, notification }) => modifier(notifications, notification))
-      .do((notifications) => this.cache.set('notifications', notifications))
-      .publishReplay(1)
+    this.notifications = new BehaviorSubject(cached).pipe(
+      scan((notifications, { modifier, notification }) => modifier(notifications, notification)),
+      tap((notifications) => this.cache.set('notifications', notifications)),
+      publishReplay(1)
+    )
     this.notifications.connect()
   }
 
@@ -637,7 +647,9 @@ export default class Aragon {
   clearNotification (id) {
     this.notifications.next({
       modifier: (notifications) => {
-        return notifications.filter(notification => notification.id !== id)
+        return notifications.pipe(
+          filter(notification => notification.id !== id)
+        )
       }
     })
   }
@@ -672,17 +684,15 @@ export default class Aragon {
   async runApp (proxyAddress) {
     // Step 1: Set up required state for the app
 
-    // Get the application proxy
     // Only get the first result from the observable, so our running contexts don't get
     // reinitialized if new apps appear
-    const appProxy = await this.apps
-      .map((apps) => {
-        const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
-        // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-        return makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
-      })
-      .take(1)
-      .toPromise()
+    const apps = await this.apps.pipe(first()).toPromise()
+
+    const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+
+    // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
+    const appProxy = makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+
     await appProxy.updateInitializationBlock()
 
     // Step 2: Associate app with running context
@@ -695,11 +705,12 @@ export default class Aragon {
       // Wrap requests with the application proxy
       // Note that we have to do this synchronously with the creation of the message provider,
       // as we otherwise risk race conditions and may lose messages
-      const request$ = messenger.requests()
-        .map(request => ({ request, proxy: appProxy, wrapper: this }))
+      const request$ = messenger.requests().pipe(
+        map(request => ({ request, proxy: appProxy, wrapper: this })),
         // Use the same request$ result in each handler
         // Turns request$ into a subject
-        .publishReplay(1)
+        publishReplay(1)
+      )
       request$.connect()
 
       // Register request handlers
@@ -749,9 +760,7 @@ export default class Aragon {
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return this.accounts
-      .take(1)
-      .toPromise()
+    return this.accounts.pipe(first()).toPromise()
   }
 
   /**
@@ -792,9 +801,10 @@ export default class Aragon {
    * @return {Promise<Object>} The app object
    */
   getApp (proxyAddress) {
-    return this.apps.map(
-      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
-    ).take(1).toPromise()
+    return this.apps.pipe(
+      map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxyAddress))),
+      first()
+    ).toPromise()
   }
 
   /**
@@ -882,7 +892,7 @@ export default class Aragon {
    * @return {Promise<string>} The permission manager
    */
   async getPermissionManager (appAddress, roleHash) {
-    const permissions = await this.permissions.take(1).toPromise()
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const appPermissions = permissions[appAddress]
 
     return dotprop.get(appPermissions, `${roleHash}.manager`)
@@ -1017,7 +1027,7 @@ export default class Aragon {
       return { description }
     }
 
-    const apps = await this.apps.take(1).toPromise()
+    const apps = await this.apps.pipe(first()).toPromise()
     const roles = apps
       .map(({ roles }) => roles || [])
       .reduce((acc, roles) => acc.concat(roles), []) // flatten
@@ -1168,7 +1178,7 @@ export default class Aragon {
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
     const finalForwarderProvided = isAddress(finalForwarder)
 
-    const permissions = await this.permissions.take(1).toPromise()
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
 
     if (!app) {
@@ -1287,7 +1297,7 @@ export default class Aragon {
       } catch (_) { }
     }
 
-    const forwarders = await this.forwarders.take(1).toPromise().then(
+    const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
       )
@@ -1360,7 +1370,7 @@ export default class Aragon {
     }
 
     // Get a list of all forwarders (excluding the forwarders with direct permission)
-    const forwarders = await this.forwarders.take(1).toPromise().then(
+    const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders
         .map((forwarder) => forwarder.proxyAddress)
         .filter((forwarder) => !includesAddress(forwardersWithPermission, forwarder))

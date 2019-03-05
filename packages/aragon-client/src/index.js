@@ -1,8 +1,6 @@
 import Messenger, { providers } from '@aragon/messenger'
-import { defer } from 'rxjs/observable/defer'
-import { empty } from 'rxjs/observable/empty'
-import { fromPromise } from 'rxjs/observable/fromPromise'
-import { merge } from 'rxjs/observable/merge'
+import { defer, empty, from, merge } from 'rxjs'
+import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
 
 export const AppProxyHandler = {
   get (target, name, receiver) {
@@ -14,7 +12,9 @@ export const AppProxyHandler = {
       return target.rpc.sendAndObserveResponse(
         'intent',
         [name, ...params]
-      ).pluck('result')
+      ).pipe(
+        pluck('result')
+      )
     }
   }
 }
@@ -35,7 +35,9 @@ export class AppProxy {
   accounts () {
     return this.rpc.sendAndObserveResponses(
       'accounts'
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -46,7 +48,9 @@ export class AppProxy {
   network () {
     return this.rpc.sendAndObserveResponses(
       'network'
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -105,7 +109,9 @@ export class AppProxy {
     return defer(
       () => this.rpc.sendAndObserveResponses(
         'events'
-      ).pluck('result')
+      ).pipe(
+        pluck('result')
+      )
     )
   }
 
@@ -134,7 +140,9 @@ export class AppProxy {
           () => this.rpc.sendAndObserveResponses(
             'external_events',
             eventArgs
-          ).pluck('result')
+          ).pipe(
+            pluck('result')
+          )
         )
       }
     }
@@ -148,7 +156,9 @@ export class AppProxy {
         return this.rpc.sendAndObserveResponse(
           'external_call',
           [address, methodJsonInterface, ...params]
-        ).pluck('result')
+        ).pipe(
+          pluck('result')
+        )
       }
     })
 
@@ -182,7 +192,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponses(
       'cache',
       ['get', 'state']
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -201,7 +213,7 @@ export class AppProxy {
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   store (reducer, events = [empty()]) {
-    const initialState = this.state().first()
+    const initialState = this.state().pipe(first())
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
@@ -211,20 +223,22 @@ export class AppProxy {
     // Also, this supports both sync and async code
     // (because of the `Promise.resolve`).
     const wrappedReducer = (state, event) =>
-      fromPromise(
+      from(
         Promise.resolve(reducer(state, event))
       )
 
-    const store$ = initialState
-      .switchMap((initialState) =>
+    const store$ = initialState.pipe(
+      switchMap((initialState) =>
         merge(
           this.events(),
           ...events
+        ).pipe(
+          mergeScan(wrappedReducer, initialState, 1),
+          map((state) => this.cache('state', state))
         )
-          .mergeScan(wrappedReducer, initialState, 1)
-          .map((state) => this.cache('state', state))
-      )
-      .publishReplay(1)
+      ),
+      publishReplay(1)
+    )
     store$.connect()
 
     return store$
@@ -241,7 +255,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'call',
       [method, ...params]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -276,9 +292,10 @@ export class AppProxy {
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits app contexts as they are received.-
    */
   context () {
-    return this.rpc.requests()
-      .filter((request) => request.method === 'context')
-      .map((request) => request.params[0])
+    return this.rpc.requests().pipe(
+      filter((request) => request.method === 'context'),
+      map((request) => request.params[0])
+    )
   }
 
   /**
@@ -291,7 +308,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'describe_script',
       [script]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -305,7 +324,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'web3_eth',
       [method, ...params]
-    ).pluck('result')
+    ).pipe(
+      pluck('result')
+    )
   }
 }
 

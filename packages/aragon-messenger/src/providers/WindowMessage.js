@@ -1,5 +1,6 @@
 import Provider from './Provider'
-import { Observable } from 'rxjs/Rx'
+import { fromEvent } from 'rxjs'
+import { filter, pluck } from 'rxjs/operators'
 
 /**
  * A provider that uses the Window postMessage API to pass messages between windows (e.g. iframes).
@@ -24,9 +25,10 @@ export default class WindowMessage extends Provider {
    * @returns {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html)
    */
   messages () {
-    return Observable.fromEvent(window, 'message', false)
-      .filter(event => event.source === this.target)
-      .pluck('data')
+    return fromEvent(window, 'message', false).pipe(
+      filter((event) => event.source === this.target),
+      pluck('data')
+    )
   }
 
   /**
