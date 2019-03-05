@@ -1,5 +1,5 @@
 import { BehaviorSubject } from 'rxjs'
-import { scan } from 'rxjs/operators'
+import { scan, publishReplay } from 'rxjs/operators'
 import Cache from '../cache'
 import AddressIdentityProvider from './AddressIdentityProvider'
 
@@ -24,8 +24,13 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
 
     this.identities$ = new BehaviorSubject(await this.identityCache.getAll())
       .pipe(
-        scan((identities, modifier) => modifier(identities))
+        scan((identities, { address, metadata }) => {
+          identities[address] = metadata
+          return identities
+        }),
+        publishReplay(1)
       )
+    this.identities$.connect()
   }
 
   /**
@@ -49,9 +54,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     // First save it in the cache
     await this.identityCache.set(address, metadata)
     // Then emit it on the observable
-    this.identities$.next((identities) => {
-      identities[address] = metadata
-    })
+    this.identities$.next({ address, metadata })
 
     // TODO: this should be spec'd out better
     return {
@@ -66,5 +69,6 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    */
   async clear () {
     await this.identityCache.clear()
+    // TODO this.identities$ needs to be updated
   }
 }
