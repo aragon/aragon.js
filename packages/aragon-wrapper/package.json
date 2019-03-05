@@ -1,6 +1,6 @@
 {
   "name": "@aragon/wrapper",
-  "version": "3.0.0-beta.5",
+  "version": "3.0.0",
   "description": "Library for Aragon client implementations",
   "main": "dist/index.js",
   "scripts": {
