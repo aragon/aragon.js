@@ -1,11 +1,11 @@
 export default function (request, proxy, wrapper) {
-  const [operation, address, providerName] = request.params
+  const [operation, address] = request.params
   if (operation === 'resolve') {
-    return wrapper.resolveAddressIdentity(address, providerName)
+    return wrapper.resolveAddressIdentity(address)
   }
 
   if (operation === 'modify') {
-    return wrapper.requestAddressIdentityModification(address, providerName)
+    return wrapper.requestAddressIdentityModification(address)
   }
 
   return Promise.reject(

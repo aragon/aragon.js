@@ -76,13 +76,12 @@ export class AppProxy {
    * Resolve an address' identity, using the requested provider.
    *
    * @param  {string} address Address to resolve.
-   * @param  {string} providerName Provider to use.
    * @return {Observable} Single-emission observable that emits the resolved identity
    */
-  resolveAddressIdentity (address, providerName = 'local') {
+  resolveAddressIdentity (address) {
     return this.rpc.sendAndObserveResponse(
       'address_identity',
-      ['resolve', address, providerName]
+      ['resolve', address]
     ).pluck('result')
   }
 
@@ -90,13 +89,12 @@ export class AppProxy {
    * Request an address' identity be modified with the requested provider.
    *
    * @param  {string} address Address to modify.
-   * @param  {string} providerName Provider to use.
    * @return {Observable} Single-emission observable that emits if the modification was successful
    */
-  requestAddressIdentityModification (address, providerName = 'local') {
+  requestAddressIdentityModification (address) {
     return this.rpc.sendAndObserveResponse(
       'address_identity',
-      ['modify', address, providerName]
+      ['modify', address]
     ).pluck('result')
   }
 
