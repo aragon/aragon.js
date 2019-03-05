@@ -1,5 +1,5 @@
 export default function (request, proxy, wrapper) {
-  const [operation, address, providerName] = request
+  const [operation, address, providerName] = request.params
   if (operation === 'resolve') {
     return wrapper.resolveAddressIdentity(address, providerName)
   }
