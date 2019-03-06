@@ -495,11 +495,11 @@ export default class Aragon {
    * @param  {string} address Address to modify
    * @param  {Object} metadata Modification metadata object
    * @param  {string} [providerName='local'] Name of the identity provider to use
-   * @return {void}
+   * @return {Promise<void>}
    */
-  async modifyAddressIdentity (address, metadata, providerName = 'local') {
+  modifyAddressIdentity (address, metadata, providerName = 'local') {
     const provider = this.identityProviderRegistrar.get(providerName)
-    if (provider && typeof provider.resolve === 'function') {
+    if (provider && typeof provider.modify === 'function') {
       return provider.modify(address, metadata)
     }
     throw new Error(`Provider (${providerName}) not installed`)
@@ -512,7 +512,7 @@ export default class Aragon {
    * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {void}
    */
-  async resolveAddressIdentity (address, providerName = 'local') {
+  resolveAddressIdentity (address, providerName = 'local') {
     const provider = this.identityProviderRegistrar.get(providerName)
     if (provider && typeof provider.resolve === 'function') {
       return provider.resolve(address)
@@ -527,10 +527,12 @@ export default class Aragon {
    * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {void}
    */
-  async requestAddressIdentityModification (address, providerName) {
+  async requestAddressIdentityModification (address, providerName = 'local') {
     if (this.identityProviderRegistrar.has(providerName)) {
       this.addressIdentityModificationIntents.next({ address, providerName })
+      return
     }
+    throw new Error(`Provider (${providerName}) not installed`)
   }
 
   /**

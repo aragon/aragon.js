@@ -39,7 +39,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * @param  {string} address Address to resolve
    * @return {Promise} Resolved metadata or rejected error
    */
-  async resolve (address) {
+  resolve (address) {
     return this.identityCache.get(address)
   }
 
