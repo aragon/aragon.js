@@ -1,2 +1,2 @@
-export { AddressIdentityProvider } from './AddressIdentityProvider'
-export { LocalIdentityProvider } from './LocalIdentityProvider'
+export { default as AddressIdentityProvider } from './AddressIdentityProvider'
+export { default as LocalIdentityProvider } from './LocalIdentityProvider'
