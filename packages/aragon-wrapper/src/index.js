@@ -484,9 +484,8 @@ export default class Aragon {
     this.identityProviderRegistrar = new Map(
       identityProviders.map(({ name, provider }) => [name, provider])
     )
-
     // Set up identity modification intent observable
-    this.addressIdentityModificationIntents = new Subject()
+    this.identityIntents = new Subject()
   }
 
   /**
@@ -529,7 +528,7 @@ export default class Aragon {
    */
   async requestAddressIdentityModification (address, providerName = 'local') {
     if (this.identityProviderRegistrar.has(providerName)) {
-      this.addressIdentityModificationIntents.next({ address, providerName })
+      this.identityIntents.next({ address, providerName })
       return
     }
     throw new Error(`Provider (${providerName}) not installed`)
