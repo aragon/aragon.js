@@ -54,19 +54,19 @@ The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https
   <tbody>
     <tr>
       <td>
-      @aragon/app
+      @aragon/api
       </td>
       <td>
         <!-- NPM version -->
-        <a href="https://npmjs.org/package/@aragon/app">
-          <img src="https://img.shields.io/npm/v/@aragon/app.svg?style=flat-square"
+        <a href="https://npmjs.org/package/@aragon/api">
+          <img src="https://img.shields.io/npm/v/@aragon/api.svg?style=flat-square"
             alt="NPM version" />
         </a>
       </td>
       <td>
         <!-- Downloads -->
-        <a href="https://npmjs.org/package/@aragon/app">
-          <img src="https://img.shields.io/npm/dm/@aragon/app.svg?style=flat-square"
+        <a href="https://npmjs.org/package/@aragon/api">
+          <img src="https://img.shields.io/npm/dm/@aragon/api.svg?style=flat-square"
             alt="Downloads" />
         </a>
       </td>

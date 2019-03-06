@@ -2,19 +2,19 @@
 
 ## Import
 
-Providers are usually being imported from `@aragon/app` or `@aragon/wrapper`.
+Providers are usually being imported from `@aragon/api` or `@aragon/wrapper`.
 
 ### ES6
 
 ```js
-import { providers } from '@aragon/app'
+import { providers } from '@aragon/api'
 import { providers } from '@aragon/wrapper'
 ```
 
 ### ES5 (CommonJS)
 
 ```js
-const providers = require('@aragon/app').providers
+const providers = require('@aragon/api').providers
 const providers = require('@aragon/wrapper').providers
 ```
 
