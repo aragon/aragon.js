@@ -50,7 +50,11 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * @param  {Object} metadata Metadata to modify
    * @return {Promise} Resolved success action or rejected error
    */
-  async modify (address, metadata) {
+  async modify (address, { name = '', createdAt = Date.now() } = {}) {  
+    if (!name) {
+      throw new Error('name is required when modifying a local identity')
+    }
+    const metadata = { name, createdAt }
     // First save it in the cache
     await this.identityCache.set(address, metadata)
     // Then emit it on the observable
