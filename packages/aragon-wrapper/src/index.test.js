@@ -92,7 +92,7 @@ test('should get the accounts from web3', async (t) => {
   const instance = new Aragon()
   instance.web3 = {
     eth: {
-      getAccounts: sinon.stub().returns(['0x01', '0x02'])
+      getAccounts: sinon.stub().resolves(['0x01', '0x02'])
     }
   }
   // act
@@ -110,7 +110,7 @@ test('should not fetch the accounts if not asked', async (t) => {
   const instance = new Aragon()
   instance.web3 = {
     eth: {
-      getAccounts: sinon.stub().returns(['0x01', '0x02'])
+      getAccounts: sinon.stub().resolves(['0x01', '0x02'])
     }
   }
   // act
@@ -131,8 +131,8 @@ test('should get the network details from web3', async (t) => {
   instance.web3 = {
     eth: {
       net: {
-        getId: sinon.stub().returns(testNetworkId),
-        getNetworkType: sinon.stub().returns(testNetworkType)
+        getId: sinon.stub().resolves(testNetworkId),
+        getNetworkType: sinon.stub().resolves(testNetworkType)
       }
     }
   }
@@ -253,7 +253,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   }
   const kernelProxyStub = {
     call: sinon.stub()
-      .withArgs('acl').returns(defaultAclAddress)
+      .withArgs('acl').resolves(defaultAclAddress)
   }
   utilsStub.makeProxy
     .returns(kernelProxyStub)
@@ -280,7 +280,7 @@ test('should init the acl with the provided acl', async (t) => {
   }
   const kernelProxyStub = {
     call: sinon.stub()
-      .withArgs('acl').returns(defaultAclAddress)
+      .withArgs('acl').resolves(defaultAclAddress)
   }
   utilsStub.makeProxy
     .returns(kernelProxyStub)
@@ -357,7 +357,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
     instance.permissions = of(permissionsObj)
     instance.kernelProxy = {
       address: kernelAddress,
-      call: sinon.stub().withArgs('KERNEL_APP_ID').returns('kernel')
+      call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel')
     }
     // act
     await instance.initApps()
