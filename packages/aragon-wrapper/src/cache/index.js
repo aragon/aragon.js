@@ -59,7 +59,7 @@ export default class Cache {
   async getAll () {
     const all = {}
     await this.db.iterate((value, key) => {
-      all.key = value
+      all[key] = value
     })
     return all
   }
