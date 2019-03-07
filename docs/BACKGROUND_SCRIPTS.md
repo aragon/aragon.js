@@ -6,10 +6,10 @@ Background scripts are parts of your app that are always run as soon as the Arag
 
 ## Setup
 
-First you need to instantiate an instance of the [`AragonApp`](/docs/APP.md#aragonapp) class from `@aragon/client`.
+First you need to instantiate an instance of the [`AragonApp`](/docs/APP.md#aragonapp) class from `@aragon/api`.
 
 ```js
-import Aragon from '@aragon/client'
+import Aragon from '@aragon/api'
 const app = new Aragon()
 ```
 

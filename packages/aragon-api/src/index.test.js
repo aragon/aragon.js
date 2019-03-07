@@ -4,7 +4,7 @@ import proxyquire from 'proxyquire'
 import { of, from } from 'rxjs'
 
 const Index = proxyquire.noCallThru().load('./index', {
-  '@aragon/messenger': {}
+  '@aragon/rpc-messenger': {}
 })
 
 test.afterEach.always(() => {
