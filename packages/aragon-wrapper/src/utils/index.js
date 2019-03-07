@@ -67,3 +67,5 @@ export async function getRecommendedGasLimit (web3, estimatedGasLimit, { gasFuzz
     return upperGasLimit
   }
 }
+
+export { default as AsyncRequestCache } from './AsyncRequestCache'

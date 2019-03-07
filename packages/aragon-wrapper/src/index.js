@@ -1,7 +1,7 @@
 // Externals
 import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
 import {
-  map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, first,
+  map, startWith, scan, tap, publishReplay, switchMap, filter, first,
   debounceTime, skipWhile
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
@@ -28,6 +28,7 @@ import {
   makeProxy,
   makeProxyFromABI,
   getRecommendedGasLimit,
+  AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
 
@@ -41,12 +42,6 @@ import Cache from './cache'
 
 // Interfaces
 import { getAbi } from './interfaces'
-
-// Cache for proxy values
-const proxyValuesCache = makeAddressMapProxy({})
-
-// Cache for app info, usually fetched from apm
-const appInfoCache = {}
 
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
@@ -267,62 +262,6 @@ export default class Aragon {
   }
 
   /**
-   * Get proxy metadata (`appId`, address of the kernel, ...).
-   *
-   * @param  {string} proxyAddress The address of the proxy to get metadata from
-   * @return {Promise<Object>}
-   */
-  async getProxyValues (proxyAddress) {
-    // This function caches information about the AppProxy, as it is called for
-    // all the apps everytime a permission changes and this data won't change
-    // once it's fetched
-    const cachedValue = proxyValuesCache[proxyAddress]
-    if (cachedValue && cachedValue.kernelAddress && cachedValue.appId && cachedValue.codeAddress) {
-      return cachedValue
-    }
-
-    let proxyValues
-
-    if (this.isKernelAddress(proxyAddress)) {
-      const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3, this.kernelProxy.initializationBlock)
-
-      proxyValues = await Promise.all([
-        // Use Kernel ABI
-        this.kernelProxy.call('KERNEL_APP_ID').catch(() => null),
-        // Use ERC897 proxy ABI
-        // Note that this won't work on old Aragon Core 0.5 Kernels,
-        // as they had not implemented ERC897 yet
-        kernelProxy
-          .call('implementation')
-          .catch(() => null)
-      ]).then((values) => ({
-        proxyAddress,
-        appId: values[0],
-        codeAddress: values[1]
-      }))
-    } else {
-      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
-      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3, this.kernelProxy.initializationBlock)
-
-      proxyValues = await Promise.all([
-        appProxy.call('kernel').catch(() => null),
-        appProxy.call('appId').catch(() => null),
-        appProxy.call('implementation').catch(() => null),
-        appProxyForwarder.call('isForwarder').catch(() => false)
-      ]).then((values) => ({
-        proxyAddress,
-        kernelAddress: values[0],
-        appId: values[1],
-        codeAddress: values[2],
-        isForwarder: values[3]
-      }))
-    }
-
-    proxyValuesCache[proxyAddress] = proxyValues
-    return proxyValues
-  }
-
-  /**
    * Check if an object is an app.
    *
    * @param  {Object}  app
@@ -348,59 +287,99 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // TODO: Refactor this a bit because it's pretty much an eye sore
-    this.identifiers = new Subject()
-    this.appsWithoutIdentifiers = this.permissions.pipe(
+    // Cache requests so we don't make unnecessary calls when a call is already in-flight
+    const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
+      const [appId, codeAddress] = cacheKey.split('.')
+      return getAragonOsInternalAppInfo(appId) ||
+        this.apm.getLatestVersionForContract(appId, codeAddress)
+    })
+
+    const proxyContractValueCache = new AsyncRequestCache((proxyAddress) => {
+      if (this.isKernelAddress(proxyAddress)) {
+        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3, this.kernelProxy.initializationBlock)
+
+        return Promise.all([
+          // Use Kernel ABI
+          this.kernelProxy.call('KERNEL_APP_ID'),
+          // Use ERC897 proxy ABI
+          // Note that this won't work on old Aragon Core 0.5 Kernels,
+          // as they had not implemented ERC897 yet
+          kernelProxy.call('implementation')
+        ]).then((values) => ({
+          appId: values[0],
+          codeAddress: values[1]
+        }))
+      }
+
+      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
+      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3, this.kernelProxy.initializationBlock)
+
+      return Promise.all([
+        appProxy.call('kernel'),
+        appProxy.call('appId'),
+        appProxy.call('implementation'),
+        // Not all apps implement the forwarding interface
+        appProxyForwarder.call('isForwarder').catch(() => false)
+      ]).then((values) => ({
+        kernelAddress: values[0],
+        appId: values[1],
+        codeAddress: values[2],
+        isForwarder: values[3]
+      }))
+    })
+
+    // Get all app proxy addresses
+    const baseApps$ = this.permissions.pipe(
       map(Object.keys),
       // Add Kernel as the first "app"
-      map((addresses) => {
-        const appsWithoutKernel = addresses.filter((address) => !this.isKernelAddress(address))
+      map((proxyAddresses) => {
+        const appsWithoutKernel = proxyAddresses.filter((address) => !this.isKernelAddress(address))
         return [this.kernelProxy.address].concat(appsWithoutKernel)
       }),
       // Get proxy values
       switchMap(
-        (appAddresses) => Promise.all(
-          appAddresses.map((app) => this.getProxyValues(app))
+        (proxyAddresses) => Promise.all(
+          proxyAddresses.map(async (proxyAddress) => {
+            let proxyValues
+            try {
+              proxyValues = await proxyContractValueCache.request(proxyAddress)
+            } catch (_) {}
+
+            return {
+              proxyAddress,
+              ...proxyValues
+            }
+          })
         )
       ),
-      map(appMetadata => appMetadata.filter(
-        (app) => this.isApp(app) || this.isKernelAddress(app.proxyAddress)
-      )),
-      // Get artifact info
-      flatMap(
+      // Filter to remove any non-apps assigned in permissions
+      map(appProxies => appProxies.filter(
+        (appProxy) => this.isApp(appProxy) || this.isKernelAddress(appProxy.proxyAddress)
+      ))
+    )
+
+    // Get artifact info for apps
+    const appsWithInfo$ = baseApps$.pipe(
+      switchMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
-            if (!app.appId || !app.codeAddress) {
-              return app
-            }
-
-            const cacheKey = `${app.appId}.${app.codeAddress}`
-            const cachedAppInfo = dotprop.get(appInfoCache, cacheKey)
-
-            const appInfo =
-              cachedAppInfo ||
-              getAragonOsInternalAppInfo(app.appId) ||
-              (await this.apm
-                .getLatestVersionForContract(app.appId, app.codeAddress)
-                // Just silence any errors
-                .catch(() => { }))
-
-            if (!cachedAppInfo && appInfo) {
-              dotprop.set(appInfoCache, cacheKey, appInfo)
+            let appInfo
+            if (app.appId && app.codeAddress) {
+              const cacheKey = `${app.appId}.${app.codeAddress}`
+              try {
+                appInfo = await applicationInfoCache.request(cacheKey)
+              } catch (_) { }
             }
 
             return Object.assign(app, appInfo)
           })
         )
-      ),
-      // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
-      // this entire operator chain on identifier emits (doing so causes unnecessary apm fetches)
-      publishReplay(1)
+      )
     )
-    this.appsWithoutIdentifiers.connect()
 
+    this.identifiers = new Subject()
     this.apps = combineLatest(
-      this.appsWithoutIdentifiers,
+      appsWithInfo$,
       this.identifiers.pipe(
         scan(
           (identifiers, { address, identifier }) =>
