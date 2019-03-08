@@ -550,6 +550,10 @@ export default class Aragon {
    * @return {Observable<address>}
    */
   identityEvents () {
+    // TODO this might be heavy when local identities are cleared.
+    // The alternative would be to listen to localIdentityProivder.identities$
+    // for empty objects (triggered when cleared)
+    // but we still need to emit events for individual address changes, hence this approach
     return this.identityProviderRegistrar.get('local').changes()
   }
 
