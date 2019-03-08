@@ -1,5 +1,10 @@
 export default function (request, proxy, wrapper) {
   const [operation, address] = request.params
+
+  if (operation === 'events') {
+    return wrapper.identityEvents()
+  }
+
   if (operation === 'resolve') {
     return wrapper.resolveAddressIdentity(address)
   }

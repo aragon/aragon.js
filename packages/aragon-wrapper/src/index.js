@@ -545,6 +545,15 @@ export default class Aragon {
   }
 
   /**
+   * Request local identity change events
+   *
+   * @return {Observable<address>}
+   */
+  identityEvents () {
+    return this.identityProviderRegistrar.get('local').changes()
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}

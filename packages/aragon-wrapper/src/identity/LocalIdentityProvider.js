@@ -1,5 +1,5 @@
-import { BehaviorSubject } from 'rxjs'
-import { scan, publishReplay } from 'rxjs/operators'
+import { BehaviorSubject, Observable } from 'rxjs'
+import { scan, publishReplay, map } from 'rxjs/operators'
 import Cache from '../cache'
 import AddressIdentityProvider from './AddressIdentityProvider'
 
@@ -45,6 +45,16 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     return this.identityCache.get(address)
   }
 
+  /**
+   * Returns the cache changes observable
+   * Emits a string of an address that has been either changed or deleted
+   * @return {Observable<string>} address changed cache changes
+   */
+  changes () {
+    return this.identityCache.changes.pipe(
+      map(({ key }) => key)
+    )
+  }
   /**
    * Modify the locally-stored label of an address
    *
