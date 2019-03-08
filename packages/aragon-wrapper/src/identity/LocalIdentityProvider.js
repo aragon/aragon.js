@@ -24,7 +24,9 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
 
     this.identities$ = new BehaviorSubject(await this.identityCache.getAll())
       .pipe(
-        scan((identities, { address, metadata }) => {
+        scan((identities, { address, metadata, clear }) => {
+          if (clear) return {}
+
           identities[address] = metadata
           return identities
         }),
@@ -73,6 +75,8 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    */
   async clear () {
     await this.identityCache.clear()
-    // TODO this.identities$ needs to be updated
+
+    // clear the observable (feels clunky/ugly with clear)
+    this.identities$.next({ clear: true })
   }
 }

@@ -535,6 +535,16 @@ export default class Aragon {
   }
 
   /**
+   * Request an identity modification using the requested provider.
+   *
+   * @param  {string} [providerName='local'] Name of the identity provider to use
+   * @return {Promise<void>}
+   */
+  clearLocalIdentities () {
+    return this.identityProviderRegistrar.get('local').clear()
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
