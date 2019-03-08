@@ -1,5 +1,5 @@
-import { BehaviorSubject } from 'rxjs'
-import { scan, publishReplay, map } from 'rxjs/operators'
+import { BehaviorSubject, merge } from 'rxjs'
+import { scan, publishReplay, pluck, map, filter } from 'rxjs/operators'
 import Cache from '../cache'
 import AddressIdentityProvider from './AddressIdentityProvider'
 
@@ -51,9 +51,16 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * @return {Observable<string>} address changed cache changes
    */
   changes () {
-    return this.identityCache.changes.pipe(
-      map(({ key }) => key)
+    const singleAddressChanges$ = this.identityCache.changes.pipe(
+      pluck('key')
     )
+
+    // Emit `all` when identities is cleared
+    const clearChanges$ = this.identities$.pipe(
+      filter(identities => Object.keys(identities).length === 0),
+      map(_ => 'all')
+    )
+    return merge(singleAddressChanges$, clearChanges$)
   }
   /**
    * Modify the locally-stored label of an address
