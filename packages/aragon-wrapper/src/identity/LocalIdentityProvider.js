@@ -62,7 +62,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * @param  {Object} metadata Metadata to modify
    * @return {Promise} Resolved success action or rejected error
    */
-  async modify (address, { name = '', createdAt = Date.now() } = {}) {  
+  async modify (address, { name = '', createdAt = Date.now() } = {}) {
     if (!name) {
       throw new Error('name is required when modifying a local identity')
     }
