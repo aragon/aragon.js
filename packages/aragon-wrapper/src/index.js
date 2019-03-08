@@ -526,7 +526,7 @@ export default class Aragon {
    * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {void}
    */
-  async requestAddressIdentityModification (address, providerName = 'local') {
+  requestAddressIdentityModification (address, providerName = 'local') {
     if (this.identityProviderRegistrar.has(providerName)) {
       this.identityIntents.next({ address, providerName })
       return
