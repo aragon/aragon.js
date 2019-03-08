@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable } from 'rxjs'
+import { BehaviorSubject } from 'rxjs'
 import { scan, publishReplay, map } from 'rxjs/operators'
 import Cache from '../cache'
 import AddressIdentityProvider from './AddressIdentityProvider'
