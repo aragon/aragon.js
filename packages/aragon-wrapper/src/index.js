@@ -1,8 +1,7 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge, of } from 'rxjs'
 import {
-  map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, first,
-  debounceTime
+  map, startWith, scan, tap, publish, publishReplay, switchMap, flatMap, filter, first, debounceTime
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -277,8 +276,8 @@ export default class Aragon {
     )
 
     if (cachedPermissions) {
-      const permissons = Observable.of(cachedPermissions).publish()
-      this.permissions = merge(permissons, fetchedPermissions).publishReplay(1)
+      const permissons = of(cachedPermissions).pipe(publish())
+      this.permissions = merge(permissons, fetchedPermissions).pipe(publishReplay(1))
     } else {
       this.permissions = fetchedPermissions
     }
