@@ -1,28 +1,44 @@
+import { Subject, concat, race } from 'rxjs'
+import { filter, pluck } from 'rxjs/operators'
 import localforage from 'localforage'
-import { Subject } from 'rxjs/Rx'
-import { concat } from 'rxjs/observable/concat'
+import memoryStorageDriver from 'localforage-memoryStorageDriver'
 
 /**
  * A cache.
  */
 export default class Cache {
+  #trackedKeys = new Set()
+
   constructor (prefix) {
     this.prefix = prefix
+  }
 
-    // if (typeof window === 'undefined') {
-    //   // TODO: Support caching on the file system
-    //   const path = require('path')
-    //   const os = require('os')
-    // }
-
+  async init () {
     // Set up the changes observable
     this.changes = new Subject()
 
     // Set up cache DB
     this.db = localforage.createInstance({
-      driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
+      driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver._driver],
       name: `localforage/${this.prefix}`
     })
+
+    try {
+      // Make sure localforage has settled down and is not waiting for anything else
+      // before possibly setting new drivers
+      await this.db.ready()
+    } catch (err) {
+      // If localforage isn't able to automatically connect to a driver
+      // due to lack of support in the environment (e.g. node),
+      // use an in-memory driver instead
+      // TODO: this doesn't provide an persistent cache for node
+      if (this.db.driver() === null) {
+        await this.db.defineDriver(memoryStorageDriver)
+        await this.db.setDriver(memoryStorageDriver._driver)
+      }
+
+      await this.db.ready()
+    }
   }
 
   async set (key, value) {
@@ -40,23 +56,45 @@ export default class Cache {
     return value || defaultValue
   }
 
+  async remove (key) {
+    await this.db.removeItem(key)
+    this.changes.next({ key, value: null })
+  }
+
+  async clear () {
+    await this.db.clear()
+
+    for (const key of this.#trackedKeys) {
+      this.changes.next({ key, value: null })
+    }
+  }
+
   /**
    * Observe the value of a key in cache over time
    *
-   * @memberof Cache
    * @param  {string} key
    * @param  {*}      defaultValue
    * @return {Observable}
    */
   observe (key, defaultValue) {
-    const keyChanges = this.changes
-      .filter(change => change.key === key)
-      .pluck('value')
+    this.#trackedKeys.add(key)
+
+    const getResult$ = this.get(key, defaultValue)
+    const keyChange$ = this.changes.pipe(
+      filter(change => change.key === key),
+      pluck('value')
+    )
+
     /*
-     * If `get` takes longer than usual, and a new `set` finishes before then,
-     * this.changes will emit new values, but they will be discarded. that's why
-     * we use `concat` and not `merge`.
+     * There is an inherent race between `this.get()` and a new item being set
+     * on the cache key. Note that `concat()` only subscribes to the next observable
+     * **AFTER** the previous one ends (it doesn't buffer hot observables).
+     *
+     * Thus, we either want:
+     *   - The concatenated result of `this.get()` and `this.changes`, if `this.changes`
+     *     doesn't emit new items, or
+     *   - Just `this.changes` since `this.get()` may be stale by the time it returns
      */
-    return concat(this.get(key, defaultValue), keyChanges)
+    return race(concat(getResult$, keyChange$), keyChange$)
   }
 }

@@ -8,18 +8,18 @@ A JavaScript implementation of aragonAPI, used to interact with aragonOS by hand
 
 ## Docs
 
-- [App](/docs/APP.md)
+- [App API](/docs/APP.md)
 - [Wrapper](/docs/WRAPPER.md)
 - [Providers](/docs/PROVIDERS.md)
 
 ## Quick Start for apps
 
 ```sh
-npm i @aragon/client
+npm i @aragon/api
 ```
 
 ```js
-const Aragon = require('@aragon/client')
+const Aragon = require('@aragon/api')
 
 // Set up app
 const app = new Aragon()

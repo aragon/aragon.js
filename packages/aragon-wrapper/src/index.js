@@ -1,11 +1,14 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, Observable } from 'rxjs/Rx'
-import { merge } from 'rxjs/observable/merge'
+import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import {
+  map, startWith, scan, tap, publishReplay, switchMap, flatMap, filter, first,
+  debounceTime
+} from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
-import radspec from 'radspec'
+import * as radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
@@ -13,7 +16,7 @@ import { hash as namehash } from 'eth-ens-namehash'
 import apm from '@aragon/apm'
 
 // RPC
-import Messenger from '@aragon/messenger'
+import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
@@ -80,7 +83,7 @@ export const detectProvider = () =>
 export const setupTemplates = (from, options = {}) => {
   const defaultOptions = {
     apm: {},
-    defaultGasPriceFn: () => {},
+    defaultGasPriceFn: () => { },
     provider: detectProvider()
   }
   options = Object.assign(defaultOptions, options)
@@ -117,21 +120,12 @@ export const setupTemplates = (from, options = {}) => {
  * @param {string|Object} [options.provider=web3.currentProvider]
  *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
  *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
- * @example
- * const aragon = new Aragon('0xdeadbeef')
- *
- * // Initialises the wrapper
- * await aragon.init({
- *   accounts: {
- *     providedAccounts: ["0xbeefdead", "0xbeefbeef"]
- *   }
- * })
  */
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
       apm: {},
-      defaultGasPriceFn: () => {},
+      defaultGasPriceFn: () => { },
       provider: detectProvider()
     }
     options = Object.assign(defaultOptions, options)
@@ -171,6 +165,7 @@ export default class Aragon {
       throw Error(`Provided daoAddress is not a DAO`)
     }
 
+    await this.cache.init()
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
@@ -230,9 +225,9 @@ export default class Aragon {
     const blockNumbers = new Set([-1])
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
-    const fetchedPermissions = events
-    // Keep track of all events types that have been processed
-      .scan((permissions, event) => {
+    const fetchedPermissions = events.pipe(
+      // Keep track of all events types that have been processed
+      scan((permissions, event) => {
         const lastBlockProcessed = [...blockNumbers].pop()
 
         // Cache the permissions when we finished processing a block
@@ -240,7 +235,7 @@ export default class Aragon {
           blockNumbers.add(event.blockNumber)
 
           if (lastBlockProcessed > 0) {
-          // clone the permissions so it can be saved without proxy
+            // clone the permissions so it can be saved without proxy
             const permissionsToCache = Object.assign({}, permissions)
             // cache optimistically without worrying if it succeeded
             this.cache.set(ACL_CACHE_KEY, { permissions: permissionsToCache, blockNumber: lastBlockProcessed })
@@ -273,12 +268,13 @@ export default class Aragon {
 
         permissions[eventData.app] = appPermissions
         return permissions
-      }, makeAddressMapProxy(cachedPermissions || {}))
+      }, makeAddressMapProxy(cachedPermissions || {})),
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
-      .debounceTime(30)
-      .publishReplay(1)
+      debounceTime(30),
+      publishReplay(1)
+    )
 
     if (cachedPermissions) {
       const permissons = Observable.of(cachedPermissions).publish()
@@ -375,25 +371,24 @@ export default class Aragon {
   initApps () {
     // TODO: Refactor this a bit because it's pretty much an eye sore
     this.identifiers = new Subject()
-    this.appsWithoutIdentifiers = this.permissions
-      .map(Object.keys)
+    this.appsWithoutIdentifiers = this.permissions.pipe(
+      map(Object.keys),
       // Add Kernel as the first "app"
-      .map((addresses) => {
+      map((addresses) => {
         const appsWithoutKernel = addresses.filter((address) => !this.isKernelAddress(address))
         return [this.kernelProxy.address].concat(appsWithoutKernel)
-      })
+      }),
       // Get proxy values
-      .switchMap(
+      switchMap(
         (appAddresses) => Promise.all(
           appAddresses.map((app) => this.getProxyValues(app))
         )
-      )
-      .map(
-        (appMetadata) => appMetadata.filter(
-          (app) => this.isApp(app) || this.isKernelAddress(app.proxyAddress))
-      )
+      ),
+      map(appMetadata => appMetadata.filter(
+        (app) => this.isApp(app) || this.isKernelAddress(app.proxyAddress)
+      )),
       // Get artifact info
-      .flatMap(
+      flatMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
             if (!app.appId || !app.codeAddress) {
@@ -409,7 +404,7 @@ export default class Aragon {
               (await this.apm
                 .getLatestVersionForContract(app.appId, app.codeAddress)
                 // Just silence any errors
-                .catch(() => {}))
+                .catch(() => { }))
 
             if (!cachedAppInfo && appInfo) {
               dotprop.set(appInfoCache, cacheKey, appInfo)
@@ -418,32 +413,36 @@ export default class Aragon {
             return Object.assign(app, appInfo)
           })
         )
-      )
+      ),
       // Replaying the last emitted value is necessary for this.apps' combineLatest to not rerun
       // this entire operator chain on identifier emits (doing so causes unnecessary apm fetches)
-      .publishReplay(1)
+      publishReplay(1)
+    )
     this.appsWithoutIdentifiers.connect()
 
-    this.apps = this.appsWithoutIdentifiers
-      .combineLatest(
-        this.identifiers.scan(
+    this.apps = combineLatest(
+      this.appsWithoutIdentifiers,
+      this.identifiers.pipe(
+        scan(
           (identifiers, { address, identifier }) =>
             Object.assign(identifiers, { [address]: identifier }),
-          {}
-        ).startWith({}),
-        function attachIdentifiers (apps, identifiers) {
-          return apps.map(
-            (app) => {
-              if (identifiers[app.proxyAddress]) {
-                return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
-              }
-
-              return app
+          {}),
+        startWith({})
+      ),
+      function attachIdentifiers (apps, identifiers) {
+        return apps.map(
+          (app) => {
+            if (identifiers[app.proxyAddress]) {
+              return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
             }
-          )
-        }
-      )
-      .publishReplay(1)
+
+            return app
+          }
+        )
+      }
+    ).pipe(
+      publishReplay(1)
+    )
     this.apps.connect()
   }
 
@@ -467,11 +466,12 @@ export default class Aragon {
    * @return {void}
    */
   initForwarders () {
-    this.forwarders = this.apps
-      .map(
+    this.forwarders = this.apps.pipe(
+      map(
         (apps) => apps.filter((app) => app.isForwarder)
-      )
-      .publishReplay(1)
+      ),
+      publishReplay(1)
+    )
     this.forwarders.connect()
   }
 
@@ -507,10 +507,11 @@ export default class Aragon {
       })
     }
 
-    this.notifications = new BehaviorSubject(cached)
-      .scan((notifications, { modifier, notification }) => modifier(notifications, notification))
-      .do((notifications) => this.cache.set('notifications', notifications))
-      .publishReplay(1)
+    this.notifications = new BehaviorSubject(cached).pipe(
+      scan((notifications, { modifier, notification }) => modifier(notifications, notification)),
+      tap((notifications) => this.cache.set('notifications', notifications)),
+      publishReplay(1)
+    )
     this.notifications.connect()
   }
 
@@ -588,7 +589,9 @@ export default class Aragon {
   clearNotification (id) {
     this.notifications.next({
       modifier: (notifications) => {
-        return notifications.filter(notification => notification.id !== id)
+        return notifications.pipe(
+          filter(notification => notification.id !== id)
+        )
       }
     })
   }
@@ -609,66 +612,76 @@ export default class Aragon {
   /**
    * Run an app.
    *
-   * @param  {Object} sandboxMessengerProvider
-   *         An object that can communicate with the app sandbox via Aragon RPC.
+   * As there may be race conditions with losing messages from cross-context environments,
+   * running an app is split up into two parts:
+   *
+   *   1. Set up any required state for the app. This step is allowed to be asynchronous.
+   *   2. Connect the app to a running context, by associating the context's message provider
+   *      to the app. This step is synchronous.
+   *
    * @param  {string} proxyAddress
    *         The address of the app proxy.
-   * @return {Object}
+   * @return {Promise<function>}
    */
-  runApp (sandboxMessengerProvider, proxyAddress) {
-    // Set up messenger
-    const messenger = new Messenger(
-      sandboxMessengerProvider
-    )
+  async runApp (proxyAddress) {
+    // Step 1: Set up required state for the app
 
-    // Get the application proxy
-    // NOTE: we **CANNOT** use this.apps here, as it'll trigger an endless spiral of infinite streams
-    const proxy$ = this.appsWithoutIdentifiers
-      .map((apps) => apps.find(
-        (app) => addressesEqual(app.proxyAddress, proxyAddress))
+    // Only get the first result from the observable, so our running contexts don't get
+    // reinitialized if new apps appear
+    const apps = await this.apps.pipe(first()).toPromise()
+
+    const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
+
+    // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
+    const appProxy = makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+
+    await appProxy.updateInitializationBlock()
+
+    // Step 2: Associate app with running context
+    return (sandboxMessengerProvider) => {
+      // Set up messenger
+      const messenger = new Messenger(
+        sandboxMessengerProvider
       )
-      // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-      .map(
-        (app) => makeProxyFromABI(app.proxyAddress, app.abi, this.web3, this.kernelProxy.initializationBlock)
+
+      // Wrap requests with the application proxy
+      // Note that we have to do this synchronously with the creation of the message provider,
+      // as we otherwise risk race conditions and may lose messages
+      const request$ = messenger.requests().pipe(
+        map(request => ({ request, proxy: appProxy, wrapper: this })),
+        // Use the same request$ result in each handler
+        // Turns request$ into a subject
+        publishReplay(1)
+      )
+      request$.connect()
+
+      // Register request handlers
+      const shutdown = handlers.combineRequestHandlers(
+        handlers.createRequestHandler(request$, 'cache', handlers.cache),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'intent', handlers.intent),
+        handlers.createRequestHandler(request$, 'call', handlers.call),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
+        handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+      ).subscribe(
+        (response) => messenger.sendResponse(response.id, response.payload)
       )
 
-    // Wrap requests with the application proxy
-    const request$ = Observable.combineLatest(
-      messenger.requests(),
-      proxy$,
-      (request, proxy) => ({ request, proxy, wrapper: this })
-    )
-      // Use the same request$ result in each handler
-      // Turns request$ into a subject
-      .publishReplay(1)
-    request$.connect()
+      // App context helper function
+      function setContext (context) {
+        return messenger.send('context', [context])
+      }
 
-    // Register request handlers
-    const shutdown = handlers.combineRequestHandlers(
-      handlers.createRequestHandler(request$, 'cache', handlers.cache),
-      handlers.createRequestHandler(request$, 'events', handlers.events),
-      handlers.createRequestHandler(request$, 'intent', handlers.intent),
-      handlers.createRequestHandler(request$, 'call', handlers.call),
-      handlers.createRequestHandler(request$, 'network', handlers.network),
-      handlers.createRequestHandler(request$, 'notification', handlers.notifications),
-      handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
-      handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-      handlers.createRequestHandler(request$, 'identify', handlers.identifier),
-      handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-      handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-      handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
-    ).subscribe(
-      (response) => messenger.sendResponse(response.id, response.payload)
-    )
-
-    // App context helper function
-    function setContext (context) {
-      return messenger.send('context', [context])
-    }
-
-    return {
-      shutdown,
-      setContext
+      return {
+        shutdown,
+        setContext
+      }
     }
   }
 
@@ -688,9 +701,7 @@ export default class Aragon {
    * @return {Promise<Array<string>>} An array of addresses
    */
   getAccounts () {
-    return this.accounts
-      .take(1)
-      .toPromise()
+    return this.accounts.pipe(first()).toPromise()
   }
 
   /**
@@ -731,9 +742,10 @@ export default class Aragon {
    * @return {Promise<Object>} The app object
    */
   getApp (proxyAddress) {
-    return this.apps.map(
-      (apps) => apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
-    ).take(1).toPromise()
+    return this.apps.pipe(
+      map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxyAddress))),
+      first()
+    ).toPromise()
   }
 
   /**
@@ -821,7 +833,7 @@ export default class Aragon {
    * @return {Promise<string>} The permission manager
    */
   async getPermissionManager (appAddress, roleHash) {
-    const permissions = await this.permissions.take(1).toPromise()
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const appPermissions = permissions[appAddress]
 
     return dotprop.get(appPermissions, `${roleHash}.manager`)
@@ -956,7 +968,7 @@ export default class Aragon {
       return { description }
     }
 
-    const apps = await this.apps.take(1).toPromise()
+    const apps = await this.apps.pipe(first()).toPromise()
     const roles = apps
       .map(({ roles }) => roles || [])
       .reduce((acc, roles) => acc.concat(roles), []) // flatten
@@ -1107,7 +1119,7 @@ export default class Aragon {
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
     const finalForwarderProvided = isAddress(finalForwarder)
 
-    const permissions = await this.permissions.take(1).toPromise()
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
 
     if (!app) {
@@ -1226,7 +1238,7 @@ export default class Aragon {
       } catch (_) { }
     }
 
-    const forwarders = await this.forwarders.take(1).toPromise().then(
+    const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
       )
@@ -1299,7 +1311,7 @@ export default class Aragon {
     }
 
     // Get a list of all forwarders (excluding the forwarders with direct permission)
-    const forwarders = await this.forwarders.take(1).toPromise().then(
+    const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders
         .map((forwarder) => forwarder.proxyAddress)
         .filter((forwarder) => !includesAddress(forwardersWithPermission, forwarder))
@@ -1364,4 +1376,4 @@ export { isNameUsed } from './templates'
 export { resolve as ensResolve } from './ens'
 
 // Re-export the Aragon RPC providers
-export { providers } from '@aragon/messenger'
+export { providers } from '@aragon/rpc-messenger'

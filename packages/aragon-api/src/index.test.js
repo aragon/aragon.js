@@ -1,10 +1,10 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { Observable } from 'rxjs/Rx'
+import { of, from } from 'rxjs'
 
 const Index = proxyquire.noCallThru().load('./index', {
-  '@aragon/messenger': {}
+  '@aragon/rpc-messenger': {}
 })
 
 test.afterEach.always(() => {
@@ -14,7 +14,7 @@ test.afterEach.always(() => {
 test('should send intent when the method does not exist in target', t => {
   t.plan(3)
   // arrange
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: 10
   })
@@ -42,7 +42,7 @@ test('should return the network details as an observable', t => {
     type: 'rinkeby'
   }
   const networkFn = Index.AppProxy.prototype.network
-  const observable = Observable.of({
+  const observable = of({
     jsonrpc: '2.0',
     id: 'uuid1',
     result: networkDetails
@@ -68,7 +68,7 @@ test('should return the accounts as an observable', t => {
   t.plan(3)
   // arrange
   const accountsFn = Index.AppProxy.prototype.accounts
-  const observable = Observable.of({
+  const observable = of({
     jsonrpc: '2.0',
     id: 'uuid1',
     result: ['accountX', 'accountY', 'accountZ']
@@ -110,7 +110,7 @@ test('should return the events observable', t => {
   t.plan(3)
   // arrange
   const eventsFn = Index.AppProxy.prototype.events
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: ['eventA', 'eventB']
   })
@@ -135,11 +135,11 @@ test('should return an handle for an external contract events', t => {
   t.plan(7)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
-  const observableA = Observable.of({
+  const observableA = of({
     id: 'uuid1',
     result: { name: 'eventA', value: 3000 }
   })
-  const observableB = Observable.of({
+  const observableB = of({
     id: 'uuid4',
     result: 'bob was granted permission for the counter app'
   })
@@ -186,7 +186,7 @@ test('should return the state from cache', t => {
   t.plan(3)
   // arrange
   const stateFn = Index.AppProxy.prototype.state
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: { counter: 5 }
   })
@@ -206,11 +206,11 @@ test('should return the state from cache', t => {
   })
 })
 
-test('should create a store/state reducer', async t => {
+test('should create a store reducer', async t => {
   t.plan(2)
   // arrange
   const storeFn = Index.AppProxy.prototype.store
-  const observableA = Observable.from([{
+  const observableA = from([{
     actionHistory: [
       { event: 'Add', payload: 5 }
     ],
@@ -223,7 +223,7 @@ test('should create a store/state reducer', async t => {
     ],
     counter: 7
   }])
-  const observableB = Observable.from([
+  const observableB = from([
     { event: 'Add', payload: 2 },
     { event: 'Add', payload: 10 }
   ])
@@ -271,7 +271,7 @@ test('should perform a call to the contract and observe the response', t => {
   t.plan(3)
   // arrange
   const callFn = Index.AppProxy.prototype.call
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: 'success'
   })
@@ -295,7 +295,7 @@ test('should listen for app contexts sent from the wrapper and return the first 
   t.plan(2)
   // arrange
   const contextFn = Index.AppProxy.prototype.context
-  const observable = Observable.from([{
+  const observable = from([{
     id: 'uuid0',
     // this will get filtered out
     params: ['x', 'y']
@@ -326,7 +326,7 @@ test('should send a describeScript request and observe the response', t => {
   t.plan(3)
   // arrange
   const describeScriptFn = Index.AppProxy.prototype.describeScript
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: 'script executed'
   })
@@ -350,7 +350,7 @@ test('should send a web3Eth function request and observe the response', t => {
   t.plan(3)
   // arrange
   const web3EthFn = Index.AppProxy.prototype.web3Eth
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: ['accountA', 'accountB']
   })

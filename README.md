@@ -29,7 +29,7 @@
       Website
     </a>
     <span> | </span>
-    <a href="docs/README.md">
+    <a href="https://hack.aragon.org/docs/aragonjs-intro.html">
       Documentation
     </a>
     <span> | </span>
@@ -54,38 +54,38 @@ The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https
   <tbody>
     <tr>
       <td>
-      @aragon/client
+      @aragon/api
       </td>
       <td>
         <!-- NPM version -->
-        <a href="https://npmjs.org/package/@aragon/client">
-          <img src="https://img.shields.io/npm/v/@aragon/client.svg?style=flat-square"
+        <a href="https://npmjs.org/package/@aragon/api">
+          <img src="https://img.shields.io/npm/v/@aragon/api.svg?style=flat-square"
             alt="NPM version" />
         </a>
       </td>
       <td>
         <!-- Downloads -->
-        <a href="https://npmjs.org/package/@aragon/client">
-          <img src="https://img.shields.io/npm/dm/@aragon/client.svg?style=flat-square"
+        <a href="https://npmjs.org/package/@aragon/api">
+          <img src="https://img.shields.io/npm/dm/@aragon/api.svg?style=flat-square"
             alt="Downloads" />
         </a>
       </td>
     </tr>
     <tr>
       <td>
-      @aragon/messenger
+      @aragon/rpc-messenger
       </td>
       <td>
         <!-- NPM version -->
-        <a href="https://npmjs.org/package/@aragon/messenger">
-          <img src="https://img.shields.io/npm/v/@aragon/messenger.svg?style=flat-square"
+        <a href="https://npmjs.org/package/@aragon/rpc-messenger">
+          <img src="https://img.shields.io/npm/v/@aragon/rpc-messenger.svg?style=flat-square"
             alt="NPM version" />
         </a>
       </td>
       <td>
         <!-- Downloads -->
-        <a href="https://npmjs.org/package/@aragon/messenger">
-          <img src="https://img.shields.io/npm/dm/@aragon/messenger.svg?style=flat-square"
+        <a href="https://npmjs.org/package/@aragon/rpc-messenger">
+          <img src="https://img.shields.io/npm/dm/@aragon/rpc-messenger.svg?style=flat-square"
             alt="Downloads" />
         </a>
       </td>

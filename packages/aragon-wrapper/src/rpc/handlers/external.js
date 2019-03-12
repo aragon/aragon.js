@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs/Rx'
+import { fromEvent } from 'rxjs'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
@@ -21,15 +21,17 @@ export function events (request, proxy, wrapper) {
   const [
     address,
     jsonInterface,
-    fromBlock
+    providedFromBlock
   ] = request.params
+  // Use the app proxy's initialization block by default
+  const fromBlock = providedFromBlock == null ? proxy.initializationBlock : providedFromBlock
 
   const contract = new web3.eth.Contract(
     jsonInterface,
     address
   )
 
-  return Observable.fromEvent(
+  return fromEvent(
     contract.events.allEvents({
       fromBlock
     }), 'data'

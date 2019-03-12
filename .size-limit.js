@@ -1,17 +1,17 @@
 module.exports = [
   {
-    name: '@aragon/client',
-    path: "packages/aragon-client/dist/index.js",
+    name: '@aragon/api',
+    path: "packages/aragon-api/dist/index.js",
     limit: "45 KB"
   },
   {
-    name: '@aragon/messenger',
-    path: "packages/aragon-messenger/dist/index.js",
+    name: '@aragon/rpc-messenger',
+    path: "packages/aragon-rpc-messenger/dist/index.js",
     limit: "40 KB"
   },
   {
     name: '@aragon/wrapper',
     path: "packages/aragon-wrapper/dist/index.js",
-    limit: "750 KB"
+    limit: "850 KB"
   }
 ]
