@@ -1,0 +1,34 @@
+{
+  "name": "@aragon/api-react",
+  "version": "1.0.0-beta.1",
+  "description": "Aragon app API for React",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aragon/aragon.js.git"
+  },
+  "author": "Aragon Association <legal@aragon.org>",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/aragon/aragon.js/issues"
+  },
+  "homepage": "https://github.com/aragon/aragon.js#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "babel src -d dist -s"
+  },
+  "peerDependencies": {
+    "react": "^16.8.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.3.4",
+    "@babel/preset-env": "^7.3.4"
+  },
+  "dependencies": {
+    "rxjs": "^6.2.1",
+    "@aragon/api": "^1.0.0-beta.1"
+  }
+}
