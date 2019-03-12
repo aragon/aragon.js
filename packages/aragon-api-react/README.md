@@ -2,7 +2,7 @@
 
 This module lets you interact with aragonAPI using a [React Hook](https://reactjs.org/docs/hooks-intro.html) or, alternatively, with a [render prop](https://reactjs.org/docs/render-props.html).
 
-This module is using [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md) under the hood, so being familiar with it can be quite useful.
+[`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md) is used under the hood, so being familiar with it can be quite useful.
 
 ## Usage
 
