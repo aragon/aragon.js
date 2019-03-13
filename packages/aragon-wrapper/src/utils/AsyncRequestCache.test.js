@@ -11,7 +11,7 @@ test('AsyncRequestCache should cache requests', async (t) => {
   // arrange
   const requestKey = 'key'
   const requestFn = sinon.spy(async key => {
-    wait(100)
+    await wait(100)
     return key
   })
   const cache = new AsyncRequestCache(requestFn)
@@ -35,7 +35,7 @@ test('AsyncRequestCache can cache more than one key', async (t) => {
   const firstKey = 'first'
   const secondKey = 'second'
   const requestFn = sinon.spy(async key => {
-    wait(100)
+    await wait(100)
     return key
   })
   const cache = new AsyncRequestCache(requestFn)
@@ -62,7 +62,7 @@ test('AsyncRequestCache does not cache result if unsuccessful', async (t) => {
   // arrange
   const requestKey = 'key'
   const requestFn = sinon.spy(async key => {
-    wait(100)
+    await wait(100)
     throw new Error('error')
   })
   const cache = new AsyncRequestCache(requestFn)
@@ -79,7 +79,7 @@ test('AsyncRequestCache deduplicates in-flight requests', async (t) => {
   // arrange
   const requestKey = 'key'
   const requestFn = sinon.spy(async key => {
-    wait(100)
+    await wait(100)
     if (requestFn.callCount === 1) {
       throw new Error('error')
     }
