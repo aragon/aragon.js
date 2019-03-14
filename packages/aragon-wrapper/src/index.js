@@ -16,7 +16,7 @@ import { hash as namehash } from 'eth-ens-namehash'
 import apm from '@aragon/apm'
 
 // RPC
-import Messenger from '@aragon/messenger'
+import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
@@ -1457,8 +1457,6 @@ export default class Aragon {
 export { isNameUsed } from './templates'
 export { resolve as ensResolve } from './ens'
 
-// Re-export the Aragon RPC providers
-export { providers } from '@aragon/messenger'
-
 // Re-export the AddressIdentityProvider abstract base class
 export { AddressIdentityProvider } from './identity'
+export { providers } from '@aragon/rpc-messenger'

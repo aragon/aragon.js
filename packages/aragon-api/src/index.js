@@ -1,6 +1,6 @@
-import Messenger, { providers } from '@aragon/messenger'
 import { defer, empty, from, merge } from 'rxjs'
 import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
+import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const AppProxyHandler = {
   get (target, name, receiver) {

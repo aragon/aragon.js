@@ -1,7 +1,7 @@
 {
-  "name": "@aragon/messenger",
-  "version": "1.0.0",
-  "description": "RPC messenger for Aragon tools",
+  "name": "@aragon/rpc-messenger",
+  "version": "1.0.0-beta.1",
+  "description": "Aragon RPC messenger",
   "main": "dist/index.js",
   "files": [
     "dist"

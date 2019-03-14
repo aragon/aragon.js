@@ -14,7 +14,7 @@ test.beforeEach(t => {
     addressesEqual: Object.is
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
-    '@aragon/messenger': messengerConstructorStub,
+    '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
     './utils': utilsStub
   }).default
