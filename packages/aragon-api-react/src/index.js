@@ -2,13 +2,26 @@ import React, { useState, useEffect } from 'react'
 import Aragon, { providers } from '@aragon/api'
 import { map } from 'rxjs/operators'
 
-function useAragonApi(
-  appStateReducer = state => (state === null ? {} : state)
-) {
+const noop = () => {}
+
+const defaultReducer = state => (state === null ? {} : state)
+
+const postMessage = (name, value) => {
+  window.parent.postMessage({ from: 'app', name, value }, '*')
+}
+
+const requestMenu = () => {
+  postMessage('requestMenu', true)
+}
+
+function useAragonApi(appStateReducer = defaultReducer, options = {}) {
   const [api, setApi] = useState(null)
   const [connectedAccount, setConnectedAccount] = useState('')
   const [network, setNetwork] = useState('')
   const [appState, setAppState] = useState(null)
+  const [displayMenuButton, setDisplayMenuButton] = useState(false)
+
+  const onMessage = options._onMessage || noop
 
   // On mount: instantiate Aragon().
   useEffect(() => {
@@ -24,6 +37,9 @@ function useAragonApi(
     const handleMessage = ({ data }) => {
       if (data.from !== 'wrapper') {
         return
+      }
+      if (data.name === 'displayMenuButton') {
+        setDisplayMenuButton(data.value)
       }
       if (data.name === 'ready') {
         subscribers = [
@@ -42,12 +58,12 @@ function useAragonApi(
           api.network().subscribe(network => setNetwork(network || '')),
         ]
 
-        window.parent.postMessage(
-          { from: 'app', name: 'ready', value: true },
-          '*'
-        )
+        postMessage('ready', true)
       }
+
+      onMessage(data.name, data.value)
     }
+
     window.addEventListener('message', handleMessage)
 
     return () => {
@@ -57,16 +73,21 @@ function useAragonApi(
   }, [api])
 
   return {
+    // appStateReducer(null) is called to get the initial state
+    appState: appState === null ? appStateReducer(null) : appState,
     api,
     network,
     connectedAccount,
 
-    // appStateReducer(null) is called to get the initial state
-    appState: appState === null ? appStateReducer(null) : appState,
+    displayMenuButton,
+    requestMenu,
+
+    _sendMessage: postMessage,
   }
 }
 
 // render prop API
-const AragonApi = ({ reducer, children }) => children(useAragonApi(reducer))
+const AragonApi = ({ reducer, options, children }) =>
+  children(useAragonApi(reducer, options))
 
 export { useAragonApi, AragonApi }

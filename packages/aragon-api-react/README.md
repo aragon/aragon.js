@@ -48,37 +48,7 @@ function App() {
 }
 ```
 
-### network
-
-An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries.
-
-Example:
-
-```jsx
-function App() {
-  const { network } = useAragonApi()
-  return (
-    <div>Current network: {network.type}</div>
-  )
-}
-```
-
-### connectedAccount
-
-The connected Ethereum account. Its value is `""` (empty string) when there is no account connected.
-
-Example:
-
-```jsx
-function App() {
-  const { connectedAccount } = useAragonApi()
-  return (
-    <div>Account: {connectedAccount? connectedAccount : 'Not connected'}</div>
-  )
-}
-```
-
-### appState 
+### appState
 
 The app state, after having passed the background script state through the optional `reducer` parameter. This is where you can process the state coming from the background script before passing it to your app. If not provided, the state is passed as is from the background script.
 
@@ -111,6 +81,44 @@ function App() {
   )
 }
 ```
+
+### connectedAccount
+
+The connected Ethereum account. Its value is `""` (empty string) when there is no account connected.
+
+Example:
+
+```jsx
+function App() {
+  const { connectedAccount } = useAragonApi()
+  return (
+    <div>Account: {connectedAccount? connectedAccount : 'Not connected'}</div>
+  )
+}
+```
+
+### network
+
+An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries.
+
+Example:
+
+```jsx
+function App() {
+  const { network } = useAragonApi()
+  return (
+    <div>Current network: {network.type}</div>
+  )
+}
+```
+
+### displayMenuButton
+
+Whether or not to display the menu button (`Boolean`), depending on it being automatically hidden or not in the client.
+
+### requestMenu()
+
+Call this function to display the Aragon menu, when hidden automatically. This should be called when the user clicks on the menu button.
 
 ## Render prop: `<AragonApi reducer={reducer} />`
 
