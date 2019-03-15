@@ -50,7 +50,7 @@ function App() {
 
 ### network
 
-An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network, having an `id` and a `type`.
+An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries.
 
 Example:
 
