@@ -528,18 +528,18 @@ export default class Aragon {
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
-    return new Promise((resolve, reject) => {
-      if (this.identityProviderRegistrar.has(providerName)) {
+    if (this.identityProviderRegistrar.has(providerName)) {
+      return new Promise((resolve, reject) => {
         this.identityIntents.next({
           address,
           providerName,
           resolve,
           reject
         })
-      }
+      })
+    }
 
-      throw new Error(`Provider (${providerName}) not installed`)
-    })
+    throw new Error(`Provider (${providerName}) not installed`)
   }
 
   /**
