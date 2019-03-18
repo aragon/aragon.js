@@ -103,7 +103,21 @@ export class AppProxy {
   }
 
   /**
-   * Listens for events on your app's smart contract from the last unhandled block.
+   * Request an address' identity be modified with the requested provider.
+   *
+   * @param  {string} address Address to modify.
+   * @return {Observable}  Observable that emits when a single or all identities have been modified
+   */
+  identityEvents (address) {
+    return this.rpc.sendAndObserveResponses(
+      'address_identity',
+      ['events']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
