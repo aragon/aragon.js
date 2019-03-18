@@ -496,7 +496,8 @@ export default class Aragon {
    * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {Promise<void>}
    */
-  modifyAddressIdentity (address, metadata, providerName = 'local') {
+  modifyAddressIdentity (address, metadata) {
+    const providerName = 'local' // TODO - get provider
     const provider = this.identityProviderRegistrar.get(providerName)
     if (provider && typeof provider.modify === 'function') {
       return provider.modify(address, metadata)
@@ -508,10 +509,10 @@ export default class Aragon {
    * Resolve the identity metadata for an address using the requested provider.
    *
    * @param  {string} address Address to resolve
-   * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {void}
    */
-  resolveAddressIdentity (address, providerName = 'local') {
+  resolveAddressIdentity (address) {
+    const providerName = 'local' // TODO - get provider
     const provider = this.identityProviderRegistrar.get(providerName)
     if (provider && typeof provider.resolve === 'function') {
       return provider.resolve(address)
@@ -523,15 +524,22 @@ export default class Aragon {
    * Request an identity modification using the requested provider.
    *
    * @param  {string} address Address to modify
-   * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {void}
    */
-  requestAddressIdentityModification (address, providerName = 'local') {
-    if (this.identityProviderRegistrar.has(providerName)) {
-      this.identityIntents.next({ address, providerName })
-      return
-    }
-    throw new Error(`Provider (${providerName}) not installed`)
+  requestAddressIdentityModification (address) {
+    const providerName = 'local' // TODO - get provider
+    return new Promise((resolve, reject) => {
+      if (this.identityProviderRegistrar.has(providerName)) {
+        this.identityIntents.next({
+          address,
+          providerName,
+          resolve,
+          reject
+        })
+      }
+
+      throw new Error(`Provider (${providerName}) not installed`)
+    })
   }
 
   /**
