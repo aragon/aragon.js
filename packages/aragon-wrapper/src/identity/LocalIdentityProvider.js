@@ -21,18 +21,6 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
 
   async init () {
     await this.identityCache.init()
-
-    this.identities$ = new BehaviorSubject(await this.identityCache.getAll())
-      .pipe(
-        scan((identities, { address, metadata, clear }) => {
-          if (clear) return {}
-
-          identities[address] = metadata
-          return identities
-        }),
-        publishReplay(1)
-      )
-    this.identities$.connect()
   }
 
   /**
@@ -45,23 +33,6 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     return this.identityCache.get(address)
   }
 
-  /**
-   * Returns the cache changes observable
-   * Emits a string of an address that has been either changed or deleted
-   * @return {Observable<string>} address changed cache changes
-   */
-  changes () {
-    const singleAddressChanges$ = this.identityCache.changes.pipe(
-      pluck('key')
-    )
-
-    // Emit `all` when identities is cleared
-    const clearChanges$ = this.identities$.pipe(
-      filter(identities => Object.keys(identities).length === 0),
-      map(_ => 'all')
-    )
-    return merge(singleAddressChanges$, clearChanges$)
-  }
   /**
    * Modify the locally-stored label of an address
    *
@@ -76,13 +47,18 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     const metadata = { name, createdAt }
     // First save it in the cache
     await this.identityCache.set(address, metadata)
-    // Then emit it on the observable
-    this.identities$.next({ address, metadata })
 
     // TODO: this should be spec'd out better
-    return {
-      requiredAction: null
-    }
+    return Promise.resolve({ address, metadata })
+  }
+
+  /**
+   * Clear the locally-stored label of an address
+   *
+   * @return {Promise} Resolved when completed
+   */
+  async getAll () {
+    return this.identityCache.getAll()
   }
 
   /**
@@ -92,8 +68,5 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    */
   async clear () {
     await this.identityCache.clear()
-
-    // clear the observable (feels clunky/ugly with clear)
-    this.identities$.next({ clear: true })
   }
 }

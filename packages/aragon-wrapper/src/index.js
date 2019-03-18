@@ -553,6 +553,16 @@ export default class Aragon {
   }
 
   /**
+   * Request an identity modification using the requested provider.
+   *
+   * @param  {string} [providerName='local'] Name of the identity provider to use
+   * @return {Promise<void>}
+   */
+  getLocalIdentities () {
+    return this.identityProviderRegistrar.get('local').getAll()
+  }
+
+  /**
    * Request local identity change events
    * Emits either:
    *  `address` string when an identity has been set/updated
