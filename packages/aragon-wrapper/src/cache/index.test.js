@@ -41,6 +41,16 @@ test('should set to the cache and emit the change', async (t) => {
   await instance.set('counter', 5)
 })
 
+
+test('should return null when getting a non existant item', async (t) => {
+  t.plan(1)
+  const instance = new Cache('counterapp')
+  await instance.init()
+
+  const item = await instance.get('nonexistant')
+  t.is(item, null)
+})
+
 test('should remove from the cache and emit the change', async (t) => {
   t.plan(2)
   // arrange
