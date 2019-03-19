@@ -30,6 +30,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * @return {Promise} Resolved metadata or rejected error
    */
   resolve (address) {
+    address = address.toLowerCase()
     return this.identityCache.get(address)
   }
 
@@ -44,6 +45,8 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     if (!name) {
       throw new Error('name is required when modifying a local identity')
     }
+    address = address.toLowerCase()
+
     const metadata = { name, createdAt }
     // First save it in the cache
     await this.identityCache.set(address, metadata)
