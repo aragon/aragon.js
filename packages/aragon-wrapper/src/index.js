@@ -377,6 +377,7 @@ export default class Aragon {
       )
     )
 
+    // Combine the loaded apps with any identifiers they may have declared
     this.identifiers = new Subject()
     this.apps = combineLatest(
       appsWithInfo$,
