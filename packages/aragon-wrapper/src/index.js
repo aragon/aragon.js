@@ -474,7 +474,7 @@ export default class Aragon {
 
     // Init all providers
     await Promise.all(identityProviders.map(({ provider }) => {
-      // Most providers should have this defined to a noop function by default, but juts in case
+      // Most providers should have this defined to a noop function by default, but just in case
       if (typeof provider.init === 'function') {
         return provider.init()
       }
@@ -489,15 +489,14 @@ export default class Aragon {
   }
 
   /**
-   * Modify the identity metadata for an address using the requested provider.
+   * Modify the identity metadata for an address using the highest priority provider.
    *
    * @param  {string} address Address to modify
    * @param  {Object} metadata Modification metadata object
-   * @param  {string} [providerName='local'] Name of the identity provider to use
-   * @return {Promise<void>}
+   * @return {Promise}
    */
   modifyAddressIdentity (address, metadata) {
-    const providerName = 'local' // TODO - get provider
+    const providerName = 'local'
     const provider = this.identityProviderRegistrar.get(providerName)
     if (provider && typeof provider.modify === 'function') {
       return provider.modify(address, metadata)
@@ -506,10 +505,10 @@ export default class Aragon {
   }
 
   /**
-   * Resolve the identity metadata for an address using the requested provider.
+   * Resolve the identity metadata for an address using the highest priority provider.
    *
    * @param  {string} address Address to resolve
-   * @return {void}
+   * @return {Promise}
    */
   resolveAddressIdentity (address) {
     const providerName = 'local' // TODO - get provider
@@ -521,10 +520,13 @@ export default class Aragon {
   }
 
   /**
-   * Request an identity modification using the requested provider.
+   * Request an identity modification using the highest priority provider.
+   *
+   * Returns a promise which delegates resolution to the handler
+   * which listens and handles `this.identityIntents`
    *
    * @param  {string} address Address to modify
-   * @return {void}
+   * @return {Promise}
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
@@ -543,9 +545,8 @@ export default class Aragon {
   }
 
   /**
-   * Request an identity modification using the requested provider.
+   * Clear all local identities
    *
-   * @param  {string} [providerName='local'] Name of the identity provider to use
    * @return {Promise<void>}
    */
   clearLocalIdentities () {
@@ -553,10 +554,9 @@ export default class Aragon {
   }
 
   /**
-   * Request an identity modification using the requested provider.
+   * Get all local identities for listing functionality
    *
-   * @param  {string} [providerName='local'] Name of the identity provider to use
-   * @return {Promise<void>}
+   * @return {Promise<Object>}
    */
   getLocalIdentities () {
     return this.identityProviderRegistrar.get('local').getAll()
@@ -1465,4 +1465,5 @@ export { resolve as ensResolve } from './ens'
 
 // Re-export the AddressIdentityProvider abstract base class
 export { AddressIdentityProvider } from './identity'
+// Re-export the Aragon RPC providers
 export { providers } from '@aragon/rpc-messenger'
