@@ -1,6 +1,4 @@
 import test from 'ava'
-import sinon from 'sinon'
-import { EventEmitter } from 'events'
 
 import { LocalIdentityProvider } from './index'
 

@@ -1,5 +1,3 @@
-import { BehaviorSubject, merge } from 'rxjs'
-import { scan, publishReplay, pluck, map, filter } from 'rxjs/operators'
 import Cache from '../cache'
 import AddressIdentityProvider from './AddressIdentityProvider'
 
