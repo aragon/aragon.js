@@ -2,18 +2,23 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { of, from } from 'rxjs'
+import { first } from 'rxjs/operators'
+import AsyncRequestCache from './utils/AsyncRequestCache'
 
 test.beforeEach(t => {
+  const apmStub = sinon.stub()
   const aragonOSCoreStub = {
     getAragonOsInternalAppInfo: sinon.stub()
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
+    AsyncRequestCache,
     makeAddressMapProxy: sinon.fake.returns({}),
     makeProxy: sinon.stub(),
     addressesEqual: Object.is
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
+    '@aragon/apm': sinon.stub().returns(apmStub),
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
     './utils': utilsStub
@@ -21,6 +26,7 @@ test.beforeEach(t => {
 
   t.context = {
     Aragon,
+    apmStub,
     aragonOSCoreStub,
     messengerConstructorStub,
     utilsStub
@@ -86,7 +92,7 @@ test('should get the accounts from web3', async (t) => {
   const instance = new Aragon()
   instance.web3 = {
     eth: {
-      getAccounts: sinon.stub().returns(['0x01', '0x02'])
+      getAccounts: sinon.stub().resolves(['0x01', '0x02'])
     }
   }
   // act
@@ -104,7 +110,7 @@ test('should not fetch the accounts if not asked', async (t) => {
   const instance = new Aragon()
   instance.web3 = {
     eth: {
-      getAccounts: sinon.stub().returns(['0x01', '0x02'])
+      getAccounts: sinon.stub().resolves(['0x01', '0x02'])
     }
   }
   // act
@@ -125,8 +131,8 @@ test('should get the network details from web3', async (t) => {
   instance.web3 = {
     eth: {
       net: {
-        getId: sinon.stub().returns(testNetworkId),
-        getNetworkType: sinon.stub().returns(testNetworkType)
+        getId: sinon.stub().resolves(testNetworkId),
+        getNetworkType: sinon.stub().resolves(testNetworkType)
       }
     }
   }
@@ -239,50 +245,55 @@ test('should init the ACL correctly', async (t) => {
 test('should init the acl with the default acl fetched from the kernel by default', async (t) => {
   const { Aragon, utilsStub } = t.context
 
-  t.plan(3)
+  t.plan(2)
   // arrange
-  const instance = new Aragon()
-  const fakeAclAddress = '0x321'
-  const kernelProxyCallStub = sinon.stub().returns(fakeAclAddress)
-  instance.kernelProxy = {
-    call: kernelProxyCallStub
-  }
+  const defaultAclAddress = '0x321'
   const aclProxyStub = {
     events: sinon.stub()
   }
-  utilsStub.makeProxy.reset()
-  utilsStub.makeProxy.returns(aclProxyStub)
+  const kernelProxyStub = {
+    call: sinon.stub()
+      .withArgs('acl').resolves(defaultAclAddress)
+  }
+  utilsStub.makeProxy
+    .returns(kernelProxyStub)
+    .withArgs(defaultAclAddress).returns(aclProxyStub)
+
+  const instance = new Aragon()
 
   // act
   await instance.initAcl()
   // assert
-  t.truthy(kernelProxyCallStub.calledOnce)
-  t.deepEqual(kernelProxyCallStub.firstCall.args, ['acl'])
-  t.is(utilsStub.makeProxy.firstCall.args[0], fakeAclAddress)
+  t.truthy(kernelProxyStub.call.calledOnceWith('acl'))
+  t.truthy(utilsStub.makeProxy.calledWith(defaultAclAddress))
 })
 
 test('should init the acl with the provided acl', async (t) => {
   const { Aragon, utilsStub } = t.context
 
-  t.plan(2)
+  t.plan(3)
   // arrange
-  const instance = new Aragon()
-  const fakeAclAddress = '0x321'
-  const kernelProxyCallStub = sinon.stub()
-  instance.kernelProxy = {
-    call: kernelProxyCallStub
-  }
+  const defaultAclAddress = '0x321'
+  const givenAclAddress = '0x123'
   const aclProxyStub = {
     events: sinon.stub()
   }
-  utilsStub.makeProxy.reset()
-  utilsStub.makeProxy.returns(aclProxyStub)
+  const kernelProxyStub = {
+    call: sinon.stub()
+      .withArgs('acl').resolves(defaultAclAddress)
+  }
+  utilsStub.makeProxy
+    .returns(kernelProxyStub)
+    .withArgs(givenAclAddress).returns(aclProxyStub)
+
+  const instance = new Aragon()
 
   // act
-  await instance.initAcl({ aclAddress: fakeAclAddress })
+  await instance.initAcl({ aclAddress: givenAclAddress })
   // assert
-  t.truthy(kernelProxyCallStub.notCalled)
-  t.is(utilsStub.makeProxy.firstCall.args[0], fakeAclAddress)
+  t.truthy(kernelProxyStub.call.notCalled)
+  t.truthy(utilsStub.makeProxy.neverCalledWith(defaultAclAddress))
+  t.truthy(utilsStub.makeProxy.calledWith(givenAclAddress))
 })
 
 const kernelAddress = '0x123'
@@ -305,53 +316,74 @@ const appInitTestCases = [
 ]
 appInitTestCases.forEach(([testName, permissionsObj]) => {
   test(`should init the apps correctly - ${testName}`, async (t) => {
-    const { Aragon, aragonOSCoreStub } = t.context
+    const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
 
     t.plan(2)
     // arrange
-    const instance = new Aragon()
-    instance.permissions = of(permissionsObj)
+    const kernelAddress = '0x123'
     const appIds = {
-      '0x123': 'kernel',
+      [kernelAddress]: 'kernel',
       '0x456': 'counterApp',
       '0x789': 'votingApp'
     }
+    const codeAddresses = {
+      [kernelAddress]: '0xkernel',
+      '0x456': '0xcounterApp',
+      '0x789': '0xvotingApp'
+    }
+    // Stub makeProxy for each app
+    Object.keys(appIds).forEach(address => {
+      const proxyStub = {
+        call: sinon.stub()
+      }
+      proxyStub.call
+        .withArgs('kernel').resolves(kernelAddress)
+        .withArgs('appId').resolves(appIds[address])
+        .withArgs('implementation').resolves(codeAddresses[address])
+        .withArgs('isForwarder').resolves(false)
+
+      utilsStub.makeProxy
+        .withArgs(address).returns(proxyStub)
+    })
+    apmStub.getLatestVersionForContract = (appId) => Promise.resolve({
+      abi: `abi for ${appId}`
+    })
     aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
       abi: 'abi for kernel',
       isAragonOsInternalApp: true
     })
-    instance.kernelProxy = { address: '0x123' }
-    instance.getProxyValues = async (appAddress) => ({
-      appId: appIds[appAddress],
-      codeAddress: '0x',
-      kernelAddress: '0x123',
-      proxyAddress: appAddress
-    })
-    instance.apm.getLatestVersionForContract = (appId) => Promise.resolve({
-      abi: `abi for ${appId}`
-    })
+
+    const instance = new Aragon()
+    instance.permissions = of(permissionsObj)
+    instance.kernelProxy = {
+      address: kernelAddress,
+      call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel')
+    }
     // act
     await instance.initApps()
     // assert
-    instance.appsWithoutIdentifiers.subscribe(value => {
+
+    // Check initial value of apps
+    instance.apps.pipe(first()).subscribe(value => {
       t.deepEqual(value, [
         {
           abi: 'abi for kernel',
           appId: 'kernel',
-          codeAddress: '0x',
+          codeAddress: '0xkernel',
           isAragonOsInternalApp: true,
-          kernelAddress: '0x123',
           proxyAddress: '0x123'
         }, {
           abi: 'abi for counterApp',
           appId: 'counterApp',
-          codeAddress: '0x',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
           kernelAddress: '0x123',
           proxyAddress: '0x456'
         }, {
           abi: 'abi for votingApp',
           appId: 'votingApp',
-          codeAddress: '0x',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
           kernelAddress: '0x123',
           proxyAddress: '0x789'
         }
@@ -370,21 +402,22 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
         {
           abi: 'abi for kernel',
           appId: 'kernel',
-          codeAddress: '0x',
+          codeAddress: '0xkernel',
           isAragonOsInternalApp: true,
-          kernelAddress: '0x123',
           proxyAddress: '0x123'
         }, {
           abi: 'abi for counterApp',
           appId: 'counterApp',
-          codeAddress: '0x',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
           kernelAddress: '0x123',
           proxyAddress: '0x456',
           identifier: 'CNT'
         }, {
           abi: 'abi for votingApp',
           appId: 'votingApp',
-          codeAddress: '0x',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
           kernelAddress: '0x123',
           proxyAddress: '0x789'
         }
