@@ -10,9 +10,7 @@ import AddressIdentityProvider from './AddressIdentityProvider'
  */
 export default class LocalIdentityProvider extends AddressIdentityProvider {
   /**
-   * Create a new local  identity provider attached to a globally-stored cache.
-   *
-   * @param {Object} [target=window.parent] An window implementing the postMessage API.
+   * Create a new identity provider attached to a locally-stored cache.
    */
   constructor () {
     super()
@@ -27,7 +25,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * Resolve the locally-stored label for an address
    *
    * @param  {string} address Address to resolve
-   * @return {Promise} Resolved metadata or rejected error
+   * @return {Promise} Resolved metadata, null when not found, rejected on error
    */
   resolve (address) {
     address = address.toLowerCase()
@@ -56,16 +54,16 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   }
 
   /**
-   * Clear the locally-stored label of an address
+   * Get all local identities
    *
-   * @return {Promise} Resolved when completed
+   * @return {Promise} Resolved with an object of all identities when completed
    */
   async getAll () {
     return this.identityCache.getAll()
   }
 
   /**
-   * Clear the locally-stored label of an address
+   * Clear the local cache
    *
    * @return {Promise} Resolved when completed
    */
