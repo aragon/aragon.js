@@ -563,18 +563,6 @@ export default class Aragon {
   }
 
   /**
-   * Request local identity change events
-   * Emits either:
-   *  `address` string when an identity has been set/updated
-   *  `all` when local identities are cleared
-   *
-   * @return {Observable<string>}
-   */
-  identityEvents () {
-    return this.identityProviderRegistrar.get('local').changes()
-  }
-
-  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
