@@ -12,9 +12,15 @@ const THIRD_ADDRESS = '0x7d77398078079B0D57ed872319F26D29B5405eb8'
 test.beforeEach(async t => {
   t.context.localIdentityProvider = new LocalIdentityProvider()
   await t.context.localIdentityProvider.init()
+})
+
+test.afterEach(async t => {
   t.context.localIdentityProvider.clear() // clear because its storage is global
 })
 
+// The tests run serially to prevent leaks between tests
+// because instances of LocalIdentityProvider rely on the
+// same underlying cache storage key.
 test.serial('should modify a local identity', async t => {
   t.plan(1)
   const provider = t.context.localIdentityProvider
@@ -31,12 +37,15 @@ test.serial('should throw an error when no name is given', async t => {
 
   const error = await t.throwsAsync(async () => {
     await provider.modify(ADDRESS_MIXED_CASE)
-  }, Error)
+  }, {
+    instanceOf: Error,
+    message: 'name is required when modifying a local identity'
+  })
 
   t.is(error.message, 'name is required when modifying a local identity')
 })
 
-test.serial('should return null when resolving non existant local identity', async t => {
+test.serial('should return null when resolving non existent local identity', async t => {
   t.plan(1)
   const provider = t.context.localIdentityProvider
 
@@ -59,17 +68,17 @@ test.serial('should be case insensitive when modifying', async t => {
   t.plan(2)
   const provider = t.context.localIdentityProvider
   const expectedName = 'vitalik'
-  const expectedUpdatedName = 'gavin'
+  const overwrittenName = 'gavin'
 
   await provider.clear()
   await provider.modify(ADDRESS_MIXED_CASE, { name: expectedName })
-  await provider.modify(ADDRESS_LOWER_CASE, { name: expectedUpdatedName })
+  await provider.modify(ADDRESS_LOWER_CASE, { name: overwrittenName })
 
   const firstIdentityMetadata = await provider.resolve(ADDRESS_MIXED_CASE)
   const secondidentityMetadata = await provider.resolve(ADDRESS_LOWER_CASE)
 
-  t.is(firstIdentityMetadata.name, expectedUpdatedName)
-  t.is(secondidentityMetadata.name, expectedUpdatedName)
+  t.is(firstIdentityMetadata.name, overwrittenName)
+  t.is(secondidentityMetadata.name, overwrittenName)
 })
 
 test.serial('should always have createAt in metadata', async t => {
