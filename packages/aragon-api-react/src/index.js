@@ -32,7 +32,7 @@ function useAragonApi(appStateReducer = defaultReducer, options = {}) {
   useEffect(() => {
     if (!api) return
 
-    let subscribers
+    let subscribers = []
 
     const handleMessage = ({ data }) => {
       if (data.from !== 'wrapper') {
