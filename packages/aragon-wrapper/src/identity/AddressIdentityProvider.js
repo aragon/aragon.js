@@ -1,6 +1,11 @@
 /**
  * An identity provider for addresses
  *
+ * This is the expected interface which all identity
+ * providers are expected to implement
+ * Additional functionality can be added in subclasses
+ *
+ *
  * @class AddressIdentityProvider
  */
 export default class AddressIdentityProvider {
