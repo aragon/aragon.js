@@ -160,6 +160,10 @@ Call this function to display the Aragon menu, when hidden automatically. This s
 
 This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
 
+## `useAppState()`
+
+This Hook returns the same data than the `appState` entry from the `useAppState()` hook.
+
 ## `useConnectedAccount()`
 
 This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
