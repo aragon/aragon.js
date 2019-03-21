@@ -1,8 +1,17 @@
 // Externals
 import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
 import {
-  map, startWith, scan, tap, publishReplay, switchMap, filter, first,
-  debounceTime, skipWhile
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  first,
+  map,
+  publishReplay,
+  scan,
+  skipWhile,
+  startWith,
+  switchMap,
+  tap
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -331,6 +340,15 @@ export default class Aragon {
     // Get all app proxy addresses
     const baseApps$ = this.permissions.pipe(
       map(Object.keys),
+      // Dedupe until apps change
+      distinctUntilChanged((oldProxies, newProxies) => {
+        if (oldProxies.length !== newProxies.length) {
+          return true
+        }
+        const oldSet = new Set(oldProxies)
+        const intersection = new Set(newProxies.filter(newProxy => oldSet.has(newProxy)))
+        return intersection.size !== oldSet.size
+      }),
       // Add Kernel as the first "app"
       map((proxyAddresses) => {
         const appsWithoutKernel = proxyAddresses.filter((address) => !this.isKernelAddress(address))
