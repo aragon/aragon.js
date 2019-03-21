@@ -7,7 +7,7 @@ This module lets you interact with aragonAPI using a [React Hook](https://reactj
 ## Usage
 
 ```jsx
-import { useAragonApi } from '@aragon/api-react'
+import { ConnectAragonApi, useAragonApi } from '@aragon/api-react'
 
 function App() {
   const { api, appState } = useAragonApi()
@@ -22,7 +22,60 @@ function App() {
     </div>
   )
 }
+
+ReactDOM.render(
+  <ConnectAragonApi>
+    <App />
+  </ConnectAragonApi>,
+  document.getElementById('root')
+)
+
 ```
+
+## Connect the app with `<ConnectAragonApi />`
+
+Before using any Hook provided, you need to declare the connector. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
+
+It has an optional `reducer` prop, which lets you process the state coming from the background script. If not provided, the state is passed as is from the background script.
+
+### Example
+
+```jsx
+import BN from 'bn.js'
+import { ConnectAragonApi, useAragonApi } from  '@aragon/api-react'
+
+function App() {
+  const { appState } = useAragonApi(reducer)
+  return (
+    <div>{appState.balance.toString(10)}</div>
+  )
+}
+
+ReactDOM.render(
+  <ConnectAragonApi
+    reducer={state => {
+
+      // Initial sync
+      if (state === null) {
+        return {
+          balance: new BN(0),
+          syncing: true,
+        }
+      }
+
+      return {
+        balance: new BN(state.balance),
+        syncing: false,
+      }
+    }}
+  >
+    <App />
+  </ConnectAragonApi>,
+  document.getElementById('root')
+)
+```
+
+
 
 ## Hook: `useAragonApi(reducer)`
 
@@ -50,34 +103,17 @@ function App() {
 
 ### appState
 
-The app state, after having passed the background script state through the optional `reducer` parameter. This is where you can process the state coming from the background script before passing it to your app. If not provided, the state is passed as is from the background script.
+The app state, after having passed the background script state through the `reducer` prop of `ConnectAragonApi`.
 
 Example:
 
 ```jsx
-import BN from 'bn.js'
 import { useAragonApi } from  '@aragon/api-react'
 
-function reducer(state) {
-
-  // Initial sync
-  if (state === null) {
-    return {
-      balance: new BN(0),
-      syncing: true,
-    }
-  }
-
-  return {
-    balance: new BN(state.balance),
-    syncing: false,
-  }
-}
-
 function App() {
-  const { appState } = useAragonApi(reducer)
+  const { appState } = useAragonApi()
   return (
-    <div>{appState.balance.toString(10)}</div>
+    <div>{appState.count}</div>
   )
 }
 ```
@@ -120,20 +156,18 @@ Whether or not to display the menu button (`Boolean`), depending on it being aut
 
 Call this function to display the Aragon menu, when hidden automatically. This should be called when the user clicks on the menu button.
 
-## Render prop: `<AragonApi reducer={reducer} />`
+## Hook: `useApi()`
 
-A render prop API is also provided. It is very similar to the Hook API, except that the reducer is passed as a component prop: `reducer`. As with the Hook, the reducer function is optional.
+This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
 
-```jsx
-import { AragonApi } from  '@aragon/api-react'
+## Hook: `useConnectedAccount()`
 
-function App() {
-  return (
-    <AragonApi reducer={state => state}>
-      {({api, appState, connectedAccount, network}) => (
-        <div>{appState.result}</div>
-      )}
-    </AragonApi>
-  )
-}
-```
+This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
+
+## Hook: `useMenuButton()`
+
+This Hook returns an array containing the `displayMenuButton` and the `requestMenu` entries from the `useAragonApi()` hook, in that order.
+
+## Hook: `useNetwork()`
+
+This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.

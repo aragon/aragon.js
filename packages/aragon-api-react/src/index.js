@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useState,
+} from 'react'
 import Aragon, { providers } from '@aragon/api'
 import { map } from 'rxjs/operators'
-
-const noop = () => {}
-
-const defaultReducer = state => (state === null ? {} : state)
 
 const postMessage = (name, value) => {
   window.parent.postMessage({ from: 'app', name, value }, '*')
@@ -14,21 +16,37 @@ const requestMenu = () => {
   postMessage('requestMenu', true)
 }
 
-function useAragonApi(appStateReducer = defaultReducer, options = {}) {
+const AragonApiContext = createContext()
+
+function ConnectAragonApi({
+  children,
+  reducer = state => (state === null ? {} : state),
+  onMessage = () => {},
+}) {
   const [api, setApi] = useState(null)
   const [connectedAccount, setConnectedAccount] = useState('')
   const [network, setNetwork] = useState('')
   const [appState, setAppState] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
 
-  const onMessage = options._onMessage || noop
-
-  // On mount: instantiate Aragon().
   useEffect(() => {
     setApi(new Aragon(new providers.WindowMessage(window.parent)))
   }, [])
 
-  // When `api` is set, listen to incoming messages.
+  useEffect(() => {
+    if (ConnectAragonApi._mounted) {
+      throw new Error(
+        'ConnectAragonApi has been declared more than once. Please ensure ' +
+          'that you only have one instance in your application.'
+      )
+    }
+
+    ConnectAragonApi._mounted = true
+    return () => {
+      ConnectAragonApi._mounted = false
+    }
+  }, [])
+
   useEffect(() => {
     if (!api) return
 
@@ -46,7 +64,7 @@ function useAragonApi(appStateReducer = defaultReducer, options = {}) {
           // app state
           api
             .state()
-            .pipe(map(state => appStateReducer(state)))
+            .pipe(map(state => reducer(state)))
             .subscribe(state => setAppState(state)),
 
           // account
@@ -70,24 +88,61 @@ function useAragonApi(appStateReducer = defaultReducer, options = {}) {
       window.removeEventListener('message', handleMessage)
       subscribers.forEach(subscriber => subscriber.unsubscribe())
     }
-  }, [api])
+  }, [api, reducer])
 
-  return {
-    api,
-    network,
-    connectedAccount,
+  return createElement(
+    AragonApiContext.Provider,
+    {
+      value: {
+        api,
+        connectedAccount,
+        network,
+        displayMenuButton,
 
-    displayMenuButton,
-    requestMenu,
-
-    // appStateReducer(null) is called to get the initial state
-    appState: appState === null ? appStateReducer(null) : appState,
-    _sendMessage: postMessage,
-  }
+        // reducer(null) is called to get the initial state
+        appState: appState === null ? reducer(null) : appState,
+      },
+    },
+    children
+  )
 }
 
-// render prop API
-const AragonApi = ({ reducer, options, children }) =>
-  children(useAragonApi(reducer, options))
+function getAragonApiData(hookName) {
+  const aragonApiData = useContext(AragonApiContext)
 
-export { useAragonApi, AragonApi }
+  if (aragonApiData === undefined) {
+    throw new Error(
+      `You used ${hookName} in a component that is not a descendant of ` +
+        '<ConnectAragonApi />. Please declare this component (in the top ' +
+        'level component of your app for example).'
+    )
+  }
+
+  return aragonApiData
+}
+
+const useAragonApi = () => ({
+  ...getAragonApiData('useAragonApi()'),
+  requestMenu,
+  _sendMessage: postMessage,
+})
+
+// direct access hooks
+const useConnectedAccount = () =>
+  getAragonApiData('useConnectedAccount()').connectedAccount
+const useNetwork = () => getAragonApiData('useNetwork()').network
+const useApi = () => getAragonApiData('useApi()').api
+const useMenuButton = () => {
+  const { displayMenuButton, requestMenu } = getAragonApiData('useMenuButton()')
+  return [displayMenuButton, requestMenu]
+}
+
+export {
+  AragonApiContext as _AragonApiContext,
+  ConnectAragonApi,
+  useApi,
+  useAragonApi,
+  useConnectedAccount,
+  useMenuButton,
+  useNetwork,
+}
