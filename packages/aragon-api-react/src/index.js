@@ -128,19 +128,21 @@ const useAragonApi = () => ({
 })
 
 // direct access hooks
+const useApi = () => getAragonApiData('useApi()').api
+const useAppState = () => getAragonApiData('useAppState()').appState
 const useConnectedAccount = () =>
   getAragonApiData('useConnectedAccount()').connectedAccount
-const useNetwork = () => getAragonApiData('useNetwork()').network
-const useApi = () => getAragonApiData('useApi()').api
 const useMenuButton = () => {
   const { displayMenuButton, requestMenu } = getAragonApiData('useMenuButton()')
   return [displayMenuButton, requestMenu]
 }
+const useNetwork = () => getAragonApiData('useNetwork()').network
 
 export {
   AragonApiContext as _AragonApiContext,
   ConnectAragonApi,
   useApi,
+  useAppState,
   useAragonApi,
   useConnectedAccount,
   useMenuButton,
