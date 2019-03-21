@@ -73,7 +73,7 @@ export class AppProxy {
   }
 
   /**
-   * Resolve an address' identity, using the requested provider.
+   * Resolve an address' identity, using the highest priority provider.
    *
    * @param  {string} address Address to resolve.
    * @return {Observable} Single-emission observable that emits the resolved identity
@@ -88,7 +88,7 @@ export class AppProxy {
   }
 
   /**
-   * Request an address' identity be modified with the requested provider.
+   * Request an address' identity be modified with the highest priority provider.
    *
    * @param  {string} address Address to modify.
    * @return {Observable} Single-emission observable that emits if the modification was successful
