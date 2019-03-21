@@ -32,9 +32,9 @@ ReactDOM.render(
 
 ```
 
-## Connect the app with `<ConnectAragonApi />`
+## `<ConnectAragonApi />`
 
-Before using any Hook provided, you need to declare the connector. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
+Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
 It has an optional `reducer` prop, which lets you process the state coming from the background script. If not provided, the state is passed as is from the background script.
 
@@ -77,7 +77,7 @@ ReactDOM.render(
 
 
 
-## Hook: `useAragonApi(reducer)`
+## `useAragonApi(reducer)`
 
 A React Hook that initiate the connection of the app with its environment, and returns the data needed to interact with its contract.
 
@@ -156,18 +156,18 @@ Whether or not to display the menu button (`Boolean`), depending on it being aut
 
 Call this function to display the Aragon menu, when hidden automatically. This should be called when the user clicks on the menu button.
 
-## Hook: `useApi()`
+## `useApi()`
 
 This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
 
-## Hook: `useConnectedAccount()`
+## `useConnectedAccount()`
 
 This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
 
-## Hook: `useMenuButton()`
+## `useMenuButton()`
 
 This Hook returns an array containing the `displayMenuButton` and the `requestMenu` entries from the `useAragonApi()` hook, in that order.
 
-## Hook: `useNetwork()`
+## `useNetwork()`
 
 This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
