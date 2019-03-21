@@ -18,7 +18,7 @@ const requestMenu = () => {
 
 const AragonApiContext = createContext()
 
-function ConnectAragonApi({
+function AragonApi({
   children,
   reducer = state => (state === null ? {} : state),
   onMessage = () => {},
@@ -34,16 +34,16 @@ function ConnectAragonApi({
   }, [])
 
   useEffect(() => {
-    if (ConnectAragonApi._mounted) {
+    if (AragonApi._mounted) {
       throw new Error(
-        'ConnectAragonApi has been declared more than once. Please ensure ' +
+        'AragonApi has been declared more than once. Please ensure ' +
           'that you only have one instance in your application.'
       )
     }
 
-    ConnectAragonApi._mounted = true
+    AragonApi._mounted = true
     return () => {
-      ConnectAragonApi._mounted = false
+      AragonApi._mounted = false
     }
   }, [])
 
@@ -113,7 +113,7 @@ function getAragonApiData(hookName) {
   if (aragonApiData === undefined) {
     throw new Error(
       `You used ${hookName} in a component that is not a descendant of ` +
-        '<ConnectAragonApi />. Please declare this component (in the top ' +
+        '<AragonApi />. Please declare this component (in the top ' +
         'level component of your app for example).'
     )
   }
@@ -140,7 +140,7 @@ const useNetwork = () => getAragonApiData('useNetwork()').network
 
 export {
   AragonApiContext as _AragonApiContext,
-  ConnectAragonApi,
+  AragonApi,
   useApi,
   useAppState,
   useAragonApi,

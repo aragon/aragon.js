@@ -7,7 +7,7 @@ This module lets you interact with aragonAPI using a [React Hook](https://reactj
 ## Usage
 
 ```jsx
-import { ConnectAragonApi, useAragonApi } from '@aragon/api-react'
+import { AragonApi, useAragonApi } from '@aragon/api-react'
 
 function App() {
   const { api, appState } = useAragonApi()
@@ -24,15 +24,15 @@ function App() {
 }
 
 ReactDOM.render(
-  <ConnectAragonApi>
+  <AragonApi>
     <App />
-  </ConnectAragonApi>,
+  </AragonApi>,
   document.getElementById('root')
 )
 
 ```
 
-## `<ConnectAragonApi />`
+## `<AragonApi />`
 
 Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
@@ -41,8 +41,8 @@ It has an optional `reducer` prop, which lets you process the state coming from 
 ### Example
 
 ```jsx
+import { AragonApi, useAppState } from  '@aragon/api-react'
 import BN from 'bn.js'
-import { ConnectAragonApi, useAppState } from  '@aragon/api-react'
 
 function App() {
   const { balance } = useAppState()
@@ -59,9 +59,9 @@ function reducer(state) {
 }
 
 ReactDOM.render(
-  <ConnectAragonApi reducer={reducer}>
+  <AragonApi reducer={reducer}>
     <App />
-  </ConnectAragonApi>,
+  </AragonApi>,
   document.getElementById('root')
 )
 ```
@@ -94,7 +94,7 @@ function App() {
 
 ### appState
 
-The app state, after having passed the background script state through the `reducer` prop of `ConnectAragonApi`.
+The app state, after having passed the background script state through the `reducer` prop of `AragonApi`.
 
 Example:
 
