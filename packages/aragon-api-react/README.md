@@ -45,7 +45,7 @@ import BN from 'bn.js'
 import { ConnectAragonApi, useAragonApi } from  '@aragon/api-react'
 
 function App() {
-  const { appState } = useAragonApi(reducer)
+  const { appState } = useAragonApi()
   return (
     <div>{appState.balance.toString(10)}</div>
   )
@@ -77,7 +77,7 @@ ReactDOM.render(
 
 
 
-## `useAragonApi(reducer)`
+## `useAragonApi()`
 
 A React Hook that initiate the connection of the app with its environment, and returns the data needed to interact with its contract.
 
