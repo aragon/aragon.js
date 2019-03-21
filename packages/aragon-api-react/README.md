@@ -42,33 +42,24 @@ It has an optional `reducer` prop, which lets you process the state coming from 
 
 ```jsx
 import BN from 'bn.js'
-import { ConnectAragonApi, useAragonApi } from  '@aragon/api-react'
+import { ConnectAragonApi, useAppState } from  '@aragon/api-react'
 
 function App() {
-  const { appState } = useAragonApi()
+  const { balance } = useAppState()
   return (
-    <div>{appState.balance.toString(10)}</div>
+    <div>{balance.toString(10)}</div>
   )
 }
 
+function reducer(state) {
+  if (state === null) { // initial sync
+    return { balance: new BN(0) }
+  }
+  return { balance: new BN(state.balance) }
+}
+
 ReactDOM.render(
-  <ConnectAragonApi
-    reducer={state => {
-
-      // Initial sync
-      if (state === null) {
-        return {
-          balance: new BN(0),
-          syncing: true,
-        }
-      }
-
-      return {
-        balance: new BN(state.balance),
-        syncing: false,
-      }
-    }}
-  >
+  <ConnectAragonApi reducer={reducer}>
     <App />
   </ConnectAragonApi>,
   document.getElementById('root')
