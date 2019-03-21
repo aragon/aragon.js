@@ -357,7 +357,8 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
     instance.permissions = of(permissionsObj)
     instance.kernelProxy = {
       address: kernelAddress,
-      call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel')
+      call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel'),
+      events: sinon.stub().returns(of([]))
     }
     // act
     await instance.initApps()

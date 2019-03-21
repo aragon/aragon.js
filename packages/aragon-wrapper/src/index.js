@@ -11,7 +11,8 @@ import {
   skipWhile,
   startWith,
   switchMap,
-  tap
+  tap,
+  withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -337,8 +338,8 @@ export default class Aragon {
       }))
     })
 
-    // Get all app proxy addresses
-    const baseApps$ = this.permissions.pipe(
+    // Get all installed app proxy addresses
+    const installedApps$ = this.permissions.pipe(
       map(Object.keys),
       // Dedupe until apps change
       distinctUntilChanged((oldProxies, newProxies) => {
@@ -376,8 +377,51 @@ export default class Aragon {
       ))
     )
 
+    // SetApp events are emitted when apps are installed and upgraded
+    // These may modify the implementation addresses of the proxies (modifying their behaviour), so
+    // we invalidate any caching we've done
+    const updatedApps$ = this.kernelProxy
+      // Override events subscription with empty options to subscribe from latest block
+      .events('SetApp', {})
+      .pipe(
+        // Merge with latest value of installedApps$ so we can return the full list of apps
+        withLatestFrom(
+          installedApps$,
+          function updateApps (setAppEvent, apps) {
+            const { appId: setAppId } = setAppEvent.returnValues
+            return apps.map(async (app) => {
+              if (app.appId !== setAppId) {
+                return app
+              }
+
+              let proxyValues
+              try {
+                proxyValues = await proxyContractValueCache.request(
+                  app.proxyAddress,
+                  true // force cache invalidation
+                )
+              } catch (_) {}
+
+              return {
+                ...app,
+                ...proxyValues,
+                updated: true
+              }
+            })
+          }
+        ),
+        // Switch to resolved array of promises
+        switchMap(Promise.all)
+      )
+
+    // We merge these two observables, which both return the full list of apps attached with their
+    // proxy values:
+    //   - installedApps$: emits any time the list of installed apps changes
+    //   - updatedApps$:   emits any time SetApp could modify an installed app
+    const apps$ = merge(installedApps$, updatedApps$)
+
     // Get artifact info for apps
-    const appsWithInfo$ = baseApps$.pipe(
+    const appsWithInfo$ = apps$.pipe(
       switchMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
