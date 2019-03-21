@@ -73,8 +73,6 @@ function useAragonApi(appStateReducer = defaultReducer, options = {}) {
   }, [api])
 
   return {
-    // appStateReducer(null) is called to get the initial state
-    appState: appState === null ? appStateReducer(null) : appState,
     api,
     network,
     connectedAccount,
@@ -82,6 +80,8 @@ function useAragonApi(appStateReducer = defaultReducer, options = {}) {
     displayMenuButton,
     requestMenu,
 
+    // appStateReducer(null) is called to get the initial state
+    appState: appState === null ? appStateReducer(null) : appState,
     _sendMessage: postMessage,
   }
 }
