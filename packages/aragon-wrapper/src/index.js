@@ -501,7 +501,7 @@ export default class Aragon {
     if (provider && typeof provider.modify === 'function') {
       return provider.modify(address, metadata)
     }
-    throw new Error(`Provider (${providerName}) not installed`)
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
   }
 
   /**
@@ -516,7 +516,7 @@ export default class Aragon {
     if (provider && typeof provider.resolve === 'function') {
       return provider.resolve(address)
     }
-    throw new Error(`Provider (${providerName}) not installed`)
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
   }
 
   /**
@@ -541,7 +541,7 @@ export default class Aragon {
       })
     }
 
-    throw new Error(`Provider (${providerName}) not installed`)
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
   }
 
   /**
