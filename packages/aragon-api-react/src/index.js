@@ -90,6 +90,8 @@ function AragonApi({
     }
   }, [api, reducer])
 
+  // We are only using createElement() once so let’s use it directly rather
+  // than the JSX syntax, so we avoid adding a babel transform for it.
   return createElement(
     AragonApiContext.Provider,
     {
