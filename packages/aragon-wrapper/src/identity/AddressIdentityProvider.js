@@ -17,6 +17,7 @@ export default class AddressIdentityProvider {
 
   /**
    * Resolve the identity metadata for an address
+   * Should resolve to null if an identity could not be found
    *
    * @param  {string} address Address to resolve
    * @return {Promise} Resolved metadata or rejected error

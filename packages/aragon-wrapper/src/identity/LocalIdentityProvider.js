@@ -47,7 +47,6 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     // First save it in the cache
     await this.identityCache.set(address, metadata)
 
-    // TODO: this should be spec'd out better
     return Promise.resolve({ address, metadata })
   }
 

@@ -168,3 +168,28 @@ that invokes `methodName` with `params`.
 -   `params` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;any>**
 
 Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** An array of Ethereum transactions that describe each step in the path
+
+### modifyAddressIdentity
+
+Modify the identity metadata for an address using the highest priority provider.
+
+`modifyAddressIdentity (address: string, metadata: Object) : Promise`
+
+Returns a promise that resolves if the modification was successful.
+
+### resolveAddressIdentity
+
+Resolve the identity metadata for an address using the highest priority provider.
+
+`resolveAddressIdentity (address: string) : Promise`
+
+Returns a promise that resolves with the identity or null if not found
+
+### requestAddressIdentityModification
+
+Request an identity modification using the highest priority provider.
+
+`requestAddressIdentityModification (address: string) : Promise`
+
+Request an identity modification using the highest priority provider.
+Returns a promise which delegates resolution to the handler which listens and handles `this.identityIntents`

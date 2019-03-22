@@ -493,7 +493,7 @@ export default class Aragon {
    *
    * @param  {string} address Address to modify
    * @param  {Object} metadata Modification metadata object
-   * @return {Promise}
+   * @return {Promise} Resolves if the modification was successful
    */
   modifyAddressIdentity (address, metadata) {
     const providerName = 'local'
@@ -508,7 +508,7 @@ export default class Aragon {
    * Resolve the identity metadata for an address using the highest priority provider.
    *
    * @param  {string} address Address to resolve
-   * @return {Promise}
+   * @return {Promise} Resolves with the identity or null if not found
    */
   resolveAddressIdentity (address) {
     const providerName = 'local' // TODO - get provider
@@ -526,7 +526,7 @@ export default class Aragon {
    * which listens and handles `this.identityIntents`
    *
    * @param  {string} address Address to modify
-   * @return {Promise}
+   * @return {Promise} Reolved by the handler of identityIntents
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
