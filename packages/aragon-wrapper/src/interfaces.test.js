@@ -7,7 +7,7 @@ test.afterEach.always(() => {
 })
 
 test('interfaces: getAbi', async (t) => {
-  t.plan(8)
+  t.plan(9)
   // arrange
   const availableABIs = [
     'aragon/ACL',
@@ -16,6 +16,7 @@ test('interfaces: getAbi', async (t) => {
     'aragon/Forwarder',
     'aragon/Kernel',
     'aragon/EVM Script Registry',
+    'aragon/Repo',
     'standard/ERC20'
   ]
   // act

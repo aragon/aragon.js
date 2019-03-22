@@ -10,6 +10,7 @@ import {
   publishReplay,
   scan,
   skipWhile,
+  startWith,
   switchMap,
   tap,
   withLatestFrom
@@ -30,6 +31,8 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
+import { makeRepoProxy, getAllVersionsOfRepo } from './core/apm'
+import { getAragonOsInternalAppInfo, getKernelNamespace } from './core/aragonOS'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   addressesEqual,
@@ -41,8 +44,6 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
-
-import { getAragonOsInternalAppInfo, getKernelNamespace } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
@@ -451,6 +452,109 @@ export default class Aragon {
           })
         )
       )
+    )
+
+    this.installedRepos = new ReplaySubject(1).pipe(
+      // Reduce single repo version emissions over time into one expanding array of installed repos
+      scan((repos, updatedRepo) => {
+        const repoIndex = repos.findIndex(repo => repo.repoAddress === updatedRepo.repoAddress)
+        if (repoIndex === -1) {
+          return repos.concat(updatedRepo)
+        } else {
+          const nextRepos = Array.from(repos)
+          nextRepos[repoIndex] = updatedRepo
+          return nextRepos
+        }
+      }, []),
+      debounceTime(30)
+    )
+
+    apps$.pipe(
+      // Map apps into a deduped list of apm repos, with these assumptions:
+      //   - No apps are lying about their appId (malicious apps _could_ masquerade as other
+      //     apps by setting this value themselves)
+      //   - `contractAddress`s will stay the same across all installed apps.
+      //      This is technically not true as apps could set this value themselves
+      //      (e.g. as pinned apps do), but these apps wouldn't be able to upgrade anyway
+      map((apps) => Object.values(
+        apps.reduce((apmRepos, app) => {
+          const { appId, contractAddress, isAragonOsInternalApp } = app
+          if (!isAragonOsInternalApp) {
+            apmRepos[appId] = {
+              appId,
+              contractAddress
+            }
+          }
+          return apmRepos
+        }, {})
+      )),
+
+      // Keep track of which repos we've subscribed to, so we don't duplicate repo subscriptions
+      scan((subscribedSet, repos) => {
+        const newRepos = repos
+          .filter(repo => !subscribedSet[repo.appId])
+          .map(repo => {
+            subscribedSet[repo.appId] = true
+            return repo
+          })
+
+        // Create new version subscriptions for newly detected repos
+        newRepos.map(async ({ appId, contractAddress }) => {
+          const repoProxy = await makeRepoProxy(appId, this.apm, this.web3)
+
+          // Subscribe to new version events, and emit updated repo information based on the update
+          // Override events subscription with empty options to subscribe from latest block
+          repoProxy.events('NewVersion', {}).pipe(
+            startWith(null), // Trick to immediately emit
+            tap(async () => {
+              const versions = await getAllVersionsOfRepo(repoProxy)
+
+              const latestVersion = versions[versions.length - 1]
+              const currentVersion = versions
+                // We want to find the last version that still uses the current contract address
+                .reverse()
+                .find(version => version.contractAddress === contractAddress)
+
+              // Fire parallel requests to get info for the current and latest versions of the repo
+              const versionRequests = []
+              const currentVersionRequest = applicationInfoCache
+                .request(`${appId}.${contractAddress}`)
+                .catch(() => ({}))
+                .then(content => ({
+                  content,
+                  version: currentVersion.version
+                }))
+
+              if (currentVersion.contractAddress === latestVersion.contractAddress) {
+                // Current version is also the latest
+                versionRequests.push(currentVersionRequest, currentVersionRequest)
+              } else {
+                const latestVersionRequest = applicationInfoCache
+                  .request(`${appId}.${latestVersion.contractAddress}`)
+                  .catch(() => ({}))
+                  .then(content => ({
+                    content,
+                    version: currentVersion.version
+                  }))
+                versionRequests.push(currentVersionRequest, latestVersionRequest)
+              }
+
+              const versionInfos = await Promise.all(versionRequests)
+
+              // Emit updated repo
+              this.installedRepos.next({
+                appId,
+                versions,
+                currentVersion: versionInfos[0],
+                latestVersion: versionInfos[1],
+                repoAddress: repoProxy.address
+              })
+            })
+          )
+        })
+
+        return subscribedSet
+      }, {})
     )
 
     this.apps = appsWithInfo$.pipe(

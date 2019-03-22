@@ -5,6 +5,7 @@ import abiAragonERCProxy from '@aragon/os/abi/ERCProxy'
 import abiAragonForwarder from '@aragon/os/abi/IForwarder'
 import abiAragonKernel from '@aragon/os/abi/Kernel'
 import abiAragonEVMScriptRegistry from '@aragon/os/abi/EVMScriptRegistry'
+import abiAragonRepo from '@aragon/os/abi/Repo'
 import abiERC20 from '@aragon/os/abi/ERC20'
 
 // Artifacts
@@ -19,6 +20,7 @@ const ABIS = {
   'aragon/Forwarder': abiAragonForwarder.abi,
   'aragon/Kernel': abiAragonKernel.abi,
   'aragon/EVM Script Registry': abiAragonEVMScriptRegistry.abi,
+  'aragon/Repo': abiAragonRepo.abi,
   'standard/ERC20': abiERC20.abi
 }
 
