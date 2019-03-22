@@ -17,7 +17,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "babel src --out-dir dist --source-maps && terser dist/index.js --mangle --mangle-props --source-map --output dist/index.js",
+    "build": "babel src --out-dir dist --source-maps && terser dist/index.js --mangle --source-map --output dist/index.js",
     "build:dev": "npm run build -- --watch"
   },
   "peerDependencies": {
