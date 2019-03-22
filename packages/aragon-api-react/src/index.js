@@ -25,7 +25,7 @@ function AragonApi({
 }) {
   const [api, setApi] = useState(null)
   const [connectedAccount, setConnectedAccount] = useState('')
-  const [network, setNetwork] = useState('')
+  const [network, setNetwork] = useState(null)
   const [appState, setAppState] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
 
@@ -73,7 +73,7 @@ function AragonApi({
             .subscribe(accounts => setConnectedAccount(accounts[0] || '')),
 
           // network
-          api.network().subscribe(network => setNetwork(network || '')),
+          api.network().subscribe(network => setNetwork(network || null)),
         ]
 
         postMessage('ready', true)

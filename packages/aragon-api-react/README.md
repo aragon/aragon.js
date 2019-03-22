@@ -126,7 +126,7 @@ function App() {
 
 #### `network`
 
-An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries.
+An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
 
 Example:
 
