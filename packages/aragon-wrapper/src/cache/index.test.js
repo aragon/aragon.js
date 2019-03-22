@@ -41,7 +41,7 @@ test('should set to the cache and emit the change', async (t) => {
   await instance.set('counter', 5)
 })
 
-test('should set to the cache return all', async t => {
+test('should set to the cache and return all', async t => {
   t.plan(3)
   // arrange
   const instance = new Cache(t.title)
