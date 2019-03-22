@@ -138,6 +138,8 @@ Resolve an address' identity, using the highest priority provider.
 
 -   `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to resolve.
 
+Returns a single-emission observable that emits the resolved identity or null if not found
+
 ### requestAddressIdentityModification
 
 Request an address' identity be modified with the highest priority provider.
@@ -147,7 +149,7 @@ The request is typically handled by the aragon client.
 
 -   `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to modify.
 
-Single-emission observable that emits if the modification succeeded or was cancelled by the user.
+Returns a single-emission observable that emits if the modification succeeded or was cancelled by the user.
 
 ### events
 
