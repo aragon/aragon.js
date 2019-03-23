@@ -1,0 +1,76 @@
+{
+  "name": "@aragon/api-evented",
+  "version": "1.0.0-beta.1",
+  "description": "Aragon app API using events",
+  "main": "dist/index.js",
+  "scripts": {
+    "flow": "flow src",
+    "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
+    "test": "nyc --silent ava 'src/**/*.test.js'",
+    "build": "babel src -d dist -s",
+    "build:docs": "documentation readme src/index.js --readme-file='../../docs/APP.md' --section='API Reference' --markdown-toc=false",
+    "prepublishOnly": "env NODE_ENV=production npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aragon/aragon.js.git"
+  },
+  "keywords": [
+    "ethereum",
+    "aragon",
+    "web3",
+    "client",
+    "blockchain"
+  ],
+  "author": "Aragon Association <legal@aragon.org>",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/aragon/aragon.js/issues"
+  },
+  "homepage": "https://github.com/aragon/aragon.js#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/plugin-proposal-class-properties": "^7.0.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
+    "@babel/plugin-transform-flow-strip-types": "^7.0.0",
+    "@babel/plugin-transform-runtime": "^7.1.0",
+    "@babel/preset-env": "^7.1.0",
+    "@babel/register": "^7.0.0",
+    "ava": "^1.0.0-rc.1",
+    "babel-eslint": "^10.0.1",
+    "babel-preset-minify": "^0.5.0",
+    "debug": "^3.1.0",
+    "documentation": "^9.0.0-alpha.0",
+    "eslint-plugin-flowtype": "^2.50.3",
+    "flow-bin": "^0.63.1",
+    "nyc": "^11.4.1",
+    "proxyquire": "^2.0.1",
+    "sinon": "^6.3.1",
+    "standard": "^12.0.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "plugins": [
+      "flowtype"
+    ]
+  },
+  "ava": {
+    "require": [
+      "@babel/register"
+    ]
+  },
+  "browserslist": {
+    "development": ">2%, last 1 edge versions, not ie > 0, not op_mini all",
+    "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
+  },
+  "dependencies": {
+    "@aragon/messenger": "^1.0.0",
+    "@babel/runtime": "^7.1.2",
+    "events": "^3.0.0",
+    "rxjs": "^5.5.6"
+  }
+}
