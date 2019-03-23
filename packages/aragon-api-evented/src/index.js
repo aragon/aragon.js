@@ -1,8 +1,13 @@
-import Messenger, { providers } from '@aragon/messenger'
-import { fromPromise } from 'rxjs/observable/fromPromise'
-import { merge } from 'rxjs/observable/merge'
+// import Messenger, { providers } from '@aragon/rpc-messenger'
+// import { from } from 'rxjs'
+// import { merge } from 'rxjs/observable/merge'
 import EventEmitter from 'events'
-import { ReplaySubject, Subject } from 'rxjs/Rx'
+// import { ReplaySubject, Subject } from 'rxjs'
+
+import { defer, empty, from, merge } from 'rxjs'
+import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
+import Messenger, { providers } from '@aragon/rpc-messenger'
+
 
 export class ContractAPI extends EventEmitter {
   constructor(rpc) {
@@ -20,7 +25,9 @@ export class ContractAPI extends EventEmitter {
 
   initializeEvents () {
     this.rpc.sendAndObserveResponses('events')
-      .pluck('result')
+      .pipe(
+        pluck('result')
+      )
       .subscribe(value => {
         this.emit('event', value)
       })
@@ -31,7 +38,9 @@ export class ContractAPI extends EventEmitter {
       'intent',
       [name, ...params]
     )
-      .pluck('result')
+      .pipe(
+        pluck('result')
+      )
       .toPromise()
   }
 
@@ -40,7 +49,7 @@ export class ContractAPI extends EventEmitter {
       'call',
       [method, ...params]
     )
-      .pluck('result')
+      .pipe(pluck('result'))
       .toPromise()
   }
 }
@@ -73,7 +82,7 @@ export class ExternalContractAPI extends EventEmitter {
         this.fromBlock
       ]
     )
-      .pluck('result')
+      .pipe(pluck('result'))
       .subscribe(value => {
         this.emit('event', value)
       })
@@ -88,7 +97,7 @@ export class ExternalContractAPI extends EventEmitter {
       'external_call',
       [address, methodJsonInterface, ...params]
     )
-      .pluck('result')
+      .pipe(pluck('result'))
       .toPromise()
   }
 }
@@ -99,7 +108,9 @@ export class StreamAPI extends EventEmitter {
     this.observable = new ReplaySubject(1)
     // eagerly send the request to the wrapper as soon as this is initialized
     source
-      .pluck('result')
+      .pipe(
+        pluck('result'),
+      )
       .do(value => { this.emit('update', value) })
       .subscribe(this.observable)
   }
@@ -210,8 +221,8 @@ export class AragonApp {
    *   [token.events()]
    * )
    */
-  async store (reducer) {
-    const latestCachedState = await this.state.get()
+  store (reducer) {
+    const $latestCachedState = from(this.state.get())
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
@@ -225,20 +236,22 @@ export class AragonApp {
         Promise.resolve(reducer(state, event))
       )
 
-    const store$ = latestCachedState
-      .switchMap((initialState) =>
+    const store$ = latestCachedState.pipe(
+      switchMap((initialState) =>
         merge(
           Observable.fromEvent(this.contract, 'event'),
           this.dispatcher
+        ).pipe(
+          mergeScan(wrappedReducer, initialState, 1),
+          map((state) => this.cache('state', state))
         )
-          .mergeScan(wrappedReducer, initialState, 1)
-          .map((state) => this.cache('state', state))
-      )
-      .publishReplay(1)
+      ),
+      publishReplay(1),
+    )
     store$.connect()
   }
 
-  dispatch(event) {
+  dispatch (event) {
     this.dispatcher.next(event)
   }
 
@@ -274,8 +287,9 @@ export class AragonApp {
     return this.rpc.sendAndObserveResponse(
       'describe_script',
       [script]
+    ).pipe(
+      pluck('result')
     )
-      .pluck('result')
       .toPromise()
   }
 
@@ -294,7 +308,7 @@ export class AragonApp {
       'web3_eth',
       [method, ...params]
     )
-      .pluck('result')
+      .pipe(pluck('result'))
       .toPromise()
   }
 }

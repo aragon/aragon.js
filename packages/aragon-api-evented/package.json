@@ -4,11 +4,10 @@
   "description": "Aragon app API using events",
   "main": "dist/index.js",
   "scripts": {
-    "flow": "flow src",
-    "lint": "standard \"src/**/*.js\" && documentation lint \"src/**/*.js\"",
-    "test": "nyc --silent ava 'src/**/*.test.js'",
-    "build": "babel src -d dist -s",
-    "build:docs": "documentation readme src/index.js --readme-file='../../docs/APP.md' --section='API Reference' --markdown-toc=false",
+    "lint": "standard \"src/*.js\"",
+    "test": "nyc --silent ava \"src/*.test.js\"",
+    "build": "babel src --out-dir dist --source-maps",
+    "build:dev": "npm run build -- --watch",
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "repository": {
@@ -41,7 +40,6 @@
     "babel-eslint": "^10.0.1",
     "babel-preset-minify": "^0.5.0",
     "debug": "^3.1.0",
-    "documentation": "^9.0.0-alpha.0",
     "eslint-plugin-flowtype": "^2.50.3",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
@@ -68,9 +66,9 @@
     "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
   },
   "dependencies": {
-    "@aragon/messenger": "^1.0.0",
+    "@aragon/rpc-messenger": "^1.0.0-beta.1",
+    "rxjs": "^6.2.1",
     "@babel/runtime": "^7.1.2",
-    "events": "^3.0.0",
-    "rxjs": "^5.5.6"
+    "events": "^3.0.0"
   }
 }

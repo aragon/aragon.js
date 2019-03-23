@@ -1,10 +1,10 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { Observable } from 'rxjs/Rx'
+import { of } from 'rxjs'
 
 const Index = proxyquire.noCallThru().load('./index', {
-  '@aragon/messenger': {}
+  '@aragon/rpc-messenger': {}
 })
 
 test.afterEach.always(() => {
@@ -14,7 +14,7 @@ test.afterEach.always(() => {
 test('should send an intent', async t => {
   t.plan(3)
   // arrange
-  const observable = Observable.of({
+  const observable = of({
     id: 'uuid1',
     result: 10
   })

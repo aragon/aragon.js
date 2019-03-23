@@ -1,3 +1,25 @@
 {
-  "presets": [["@babel/preset-env", { "useBuiltIns": false }]]
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "useBuiltIns": false
+      }
+    ]
+  ],
+  "plugins": [
+    "@babel/plugin-proposal-class-properties",
+    "@babel/plugin-proposal-object-rest-spread",
+    "@babel/transform-flow-strip-types",
+    "@babel/transform-runtime"
+  ],
+  "env": {
+    "production": {
+      "presets": [
+        ["minify", {
+          "mangle": false
+        }]
+      ]
+    }
+  }
 }
