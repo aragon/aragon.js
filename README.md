@@ -73,6 +73,25 @@ The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https
     </tr>
     <tr>
       <td>
+      @aragon/api-react
+      </td>
+      <td>
+        <!-- NPM version -->
+        <a href="https://npmjs.org/package/@aragon/api-react">
+          <img src="https://img.shields.io/npm/v/@aragon/api-react.svg?style=flat-square"
+            alt="NPM version" />
+        </a>
+      </td>
+      <td>
+        <!-- Downloads -->
+        <a href="https://npmjs.org/package/@aragon/api-react">
+          <img src="https://img.shields.io/npm/dm/@aragon/api-react.svg?style=flat-square"
+            alt="Downloads" />
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td>
       @aragon/rpc-messenger
       </td>
       <td>
