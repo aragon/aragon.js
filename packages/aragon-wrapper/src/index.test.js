@@ -393,6 +393,41 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
   })
 })
 
+test('should init the identity providers correctly', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(3)
+  // arrange
+  const instance = new Aragon()
+
+  // act
+  await instance.initIdentityProviders()
+  // assert
+  t.truthy(instance.identityProviderRegistrar)
+  t.true(instance.identityProviderRegistrar instanceof Map)
+  t.is(instance.identityProviderRegistrar.size, 1, 'Should have only one provider')
+})
+
+test('should emit an intent when requesting address identity modification', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+
+  // act
+  await instance.initIdentityProviders()
+
+  const expectedAddress = '0x123'
+
+  instance.identityIntents.subscribe(intent => {
+    t.is(intent.address, expectedAddress)
+    t.is(intent.providerName, 'local')
+  })
+
+  instance.requestAddressIdentityModification(expectedAddress)
+})
+
 test('should init the forwarders correctly', async (t) => {
   const { Aragon } = t.context
 
