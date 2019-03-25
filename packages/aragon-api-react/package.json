@@ -17,7 +17,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "babel src --out-dir dist --source-maps && terser dist/index.js --mangle --source-map --output dist/index.js",
+    "build": "babel src --out-dir dist --source-maps",
     "build:dev": "npm run build -- --watch"
   },
   "peerDependencies": {
@@ -27,7 +27,6 @@
   "devDependencies": {
     "@babel/cli": "^7.2.3",
     "@babel/core": "^7.3.4",
-    "@babel/preset-env": "^7.3.4",
-    "terser": "^3.17.0"
+    "@babel/preset-env": "^7.3.4"
   }
 }
