@@ -7,6 +7,7 @@
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
+    "test:watch": "ava --watch -v 'src/**/*.test.js'",
     "build": "babel src -d dist -s",
     "build:dev": "npm run build -- inline",
     "prepublishOnly": "env NODE_ENV=production npm run build"

@@ -73,6 +73,38 @@ export class AppProxy {
   }
 
   /**
+   * Resolve an address' identity, using the highest priority provider.
+   *
+   * @param  {string} address Address to resolve.
+   * @return {Observable} Single-emission observable that emits the resolved identity or null if not found
+   */
+  resolveAddressIdentity (address) {
+    return this.rpc.sendAndObserveResponse(
+      'address_identity',
+      ['resolve', address]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Request an address' identity be modified with the highest priority provider.
+   *
+   * The request is typically handled by the aragon client.
+   *
+   * @param  {string} address Address to modify.
+   * @return {Observable} Single-emission observable that emits if the modification succeeded or cancelled by the user
+   */
+  requestAddressIdentityModification (address) {
+    return this.rpc.sendAndObserveResponse(
+      'address_identity',
+      ['modify', address]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).

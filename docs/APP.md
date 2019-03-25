@@ -130,6 +130,27 @@ app.identify('Employee counter')
 
 Returns **void**
 
+### resolveAddressIdentity
+
+Resolve an address' identity, using the highest priority provider.
+
+#### Parameters
+
+-   `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to resolve.
+
+Returns a single-emission observable that emits the resolved identity or null if not found
+
+### requestAddressIdentityModification
+
+Request an address' identity be modified with the highest priority provider.
+The request is typically handled by the aragon client.
+
+#### Parameters
+
+-   `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to modify.
+
+Returns a single-emission observable that emits if the modification succeeded or was cancelled by the user.
+
 ### events
 
 Listens for events on your app's smart contract from the last unhandled block.
