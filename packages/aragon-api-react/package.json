@@ -1,6 +1,6 @@
 {
   "name": "@aragon/api-react",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "Aragon app API for React",
   "main": "dist/index.js",
   "repository": {
