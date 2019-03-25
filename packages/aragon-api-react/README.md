@@ -31,6 +31,14 @@ ReactDOM.render(
 
 This is a simple example demonstrating how we can use aragonAPI for React to connect the app to its contract, fetch some data from its state (using `appState`), and trigger an action on it (with `api.increment(1)`). The full API is detailed below.
 
+## Installation
+
+Install it alongside `@aragon/api`:
+
+```sh
+npm install --save @aragon/api @aragon/api-react
+```
+
 ## Documentation
 
 ### &lt;AragonApi />

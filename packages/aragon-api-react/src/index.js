@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react'
 import Aragon, { providers } from '@aragon/api'
-import { map } from 'rxjs/operators'
 
 const postMessage = (name, value) => {
   window.parent.postMessage({ from: 'app', name, value }, '*')
@@ -62,10 +61,7 @@ function AragonApi({
       if (data.name === 'ready') {
         subscribers = [
           // app state
-          api
-            .state()
-            .pipe(map(state => reducer(state)))
-            .subscribe(state => setAppState(state)),
+          api.state().subscribe(state => setAppState(reducer(state))),
 
           // account
           api

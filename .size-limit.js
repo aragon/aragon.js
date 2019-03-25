@@ -17,7 +17,7 @@ module.exports = [
   {
     name: '@aragon/api-react',
     path: "packages/aragon-api-react/dist/index.js",
-    limit: "80 KB",
-    ignore: "react"
+    limit: "5 KB",
+    webpack: false,
   }
 ]
