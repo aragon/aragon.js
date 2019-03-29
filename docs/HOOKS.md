@@ -1,4 +1,4 @@
-# aragonAPI for React
+# aragonJS for React
 
 This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md) is used under the hood, so being familiar with it can be useful.
 
@@ -27,7 +27,7 @@ ReactDOM.render(
 )
 ```
 
-This is a simple example demonstrating how we can use aragonAPI for React to connect the app to its contract, fetch some data from its state (using `appState`), and trigger an action on it (with `api.increment(1)`). The full API is detailed below.
+This is a simple example demonstrating how we can use aragonJS for React to connect the app to its contract, fetch some data from its state (using `appState`), and trigger an action on it (with `api.increment(1)`). The full API is detailed below.
 
 ## Installation
 
@@ -163,7 +163,3 @@ This Hook returns an array containing the `displayMenuButton` and the `requestMe
 ### useNetwork()
 
 This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
-
-## License
-
-AGPL-3.0
