@@ -6,8 +6,9 @@ A JavaScript implementation of aragonAPI, used to interact with aragonOS by hand
 
 - [App API](/docs/APP.md)
 - [Wrapper API](/docs/WRAPPER.md)
+- [React API](/packages/aragon-api-react/README.md)
 - [Providers](/docs/PROVIDERS.md)
-- [React Hooks](/docs/HOOKS.md)
+- [Architecture of Aragon apps and their communication channels](/docs/ARCHITECTURE.md)
 
 ### Guides
 

@@ -1,4 +1,4 @@
-# aragonJS - App API
+# aragonAPI for Javascript
 
 ## Install
 

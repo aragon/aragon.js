@@ -1,4 +1,4 @@
-# aragonJS - Background Scripts
+# Background Scripts
 
 This document outlines how to write background scripts for your app and why you might want to do so.
 

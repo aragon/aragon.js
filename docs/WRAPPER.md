@@ -1,4 +1,4 @@
-# aragonJS - Wrapper API
+# aragonAPI for wrappers
 
 ## Install
 

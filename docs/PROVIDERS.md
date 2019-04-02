@@ -1,4 +1,4 @@
-# aragonJS - Providers
+# aragonAPI for providers
 
 A provider is used to send and receive messages between the wrapper and the app.
 This is required as apps are sandboxed in an iframe while the wrapper is running in the native context.
