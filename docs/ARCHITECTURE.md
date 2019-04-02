@@ -1,4 +1,4 @@
-# Architecture of Aragon apps and their communication channels.
+# Architecture of Aragon apps and their communication channels
 
 ## Aragon Background Tasks
 
