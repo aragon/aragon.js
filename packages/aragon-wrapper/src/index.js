@@ -32,7 +32,7 @@ import {
   ANY_ENTITY
 } from './utils'
 
-import { getAragonOsInternalAppInfo, getKernelNamespace } from './core/aragonOS'
+import { getAragonOsInternalAppInfo, getAPMAppInfo, getKernelNamespace } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
@@ -295,6 +295,7 @@ export default class Aragon {
     const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
+        getAPMAppInfo(appId) ||
         this.apm.getLatestVersionForContract(appId, codeAddress)
     })
 

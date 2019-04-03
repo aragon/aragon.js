@@ -4,10 +4,16 @@ import { getAbi, getArtifact } from '../../interfaces'
 
 const aragonpmAppId = appName => namehash(`${appName}.aragonpm.eth`)
 
-const APP_MAPPINGS = new Map([
+const SYSTEM_APP_MAPPINGS = new Map([
   [aragonpmAppId('acl'), 'ACL'],
   [aragonpmAppId('evmreg'), 'EVM Script Registry'],
   [aragonpmAppId('kernel'), 'Kernel']
+])
+
+const APM_APP_MAPPINGS = new Map([
+  [aragonpmAppId('apm-registry'), 'APM Registry'],
+  [aragonpmAppId('apm-repo'), 'Repo'],
+  [aragonpmAppId('apm-enssub'), 'ENS Subdomain Registrar']
 ])
 
 const KERNEL_NAMESPACES = new Map([
@@ -16,21 +22,47 @@ const KERNEL_NAMESPACES = new Map([
   [soliditySha3('base'), 'App code']
 ])
 
-function getAragonOsInternalAppInfo (appId) {
-  const appName = APP_MAPPINGS.get(appId)
+function getAppInfo (appId, namespace, mappings) {
+  const appName = mappings.get(appId)
 
   if (!appName) {
     return
   }
 
-  const abi = getAbi(`aragon/${appName}`)
-  const artifact = getArtifact(`aragon/${appName}`)
+  const app = `${namespace}/${appName}`
+  const abi = getAbi(app)
+  const artifact = getArtifact(app)
 
   return {
     abi,
     name: appName,
-    isAragonOsInternalApp: true,
     ...artifact
+  }
+}
+
+function getAragonOsInternalAppInfo (appId) {
+  const appInfo = getAppInfo(appId, 'aragon', SYSTEM_APP_MAPPINGS)
+
+  if (!appInfo) {
+    return
+  }
+
+  return {
+    isAragonOsInternalApp: true,
+    ...appInfo
+  }
+}
+
+function getAPMAppInfo (appId) {
+  const appInfo = getAppInfo(appId, 'apm', APM_APP_MAPPINGS)
+
+  if (!appInfo) {
+    return
+  }
+
+  return {
+    isAragonOsInternalApp: false,
+    ...appInfo
   }
 }
 
@@ -40,4 +72,4 @@ function getKernelNamespace (hash) {
   }
 }
 
-export { getAragonOsInternalAppInfo, getKernelNamespace }
+export { getAragonOsInternalAppInfo, getAPMAppInfo, getKernelNamespace }
