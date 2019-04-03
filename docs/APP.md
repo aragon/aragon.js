@@ -1,4 +1,4 @@
-# aragonAPI for Javascript
+# aragonAPI for Apps
 
 ## Install
 
