@@ -14,9 +14,7 @@ function App() {
   return (
     <div>
       <div>{count}</div>
-      <button onClick={() => api.increment(1)}>
-        Increment
-      </button>
+      <button onClick={() => api.increment(1)}>Increment</button>
     </div>
   )
 }
@@ -50,18 +48,17 @@ It has an optional `reducer` prop, which lets you process the state coming from 
 #### Example
 
 ```jsx
-import { AragonApi, useAppState } from  '@aragon/api-react'
+import { AragonApi, useAppState } from '@aragon/api-react'
 import BN from 'bn.js'
 
 function App() {
   const { balance } = useAppState()
-  return (
-    <div>{balance.toString(10)}</div>
-  )
+  return <div>{balance.toString(10)}</div>
 }
 
 function reducer(state) {
-  if (state === null) { // initial sync
+  if (state === null) {
+    // initial sync
     return { balance: new BN(0) }
   }
   return { balance: new BN(state.balance) }
@@ -74,8 +71,6 @@ ReactDOM.render(
   document.getElementById('root')
 )
 ```
-
-
 
 ### useAragonApi()
 
@@ -94,9 +89,7 @@ Example:
 ```jsx
 function App() {
   const { api } = useAragonApi()
-  return (
-    <button onClick={() => api.vote(true)}>Vote</button>
-  )
+  return <button onClick={() => api.vote(true)}>Vote</button>
 }
 ```
 
@@ -107,13 +100,11 @@ The app state, after having passed the [background script](https://hack.aragon.o
 Example:
 
 ```jsx
-import { useAragonApi } from  '@aragon/api-react'
+import { useAragonApi } from '@aragon/api-react'
 
 function App() {
   const { appState } = useAragonApi()
-  return (
-    <div>{appState.count}</div>
-  )
+  return <div>{appState.count}</div>
 }
 ```
 
@@ -127,7 +118,7 @@ Example:
 function App() {
   const { connectedAccount } = useAragonApi()
   return (
-    <div>Account: {connectedAccount? connectedAccount : 'Not connected'}</div>
+    <div>Account: {connectedAccount ? connectedAccount : 'Not connected'}</div>
   )
 }
 ```
@@ -141,9 +132,7 @@ Example:
 ```jsx
 function App() {
   const { network } = useAragonApi()
-  return (
-    <div>Current network: {network.type}</div>
-  )
+  return <div>Current network: {network.type}</div>
 }
 ```
 
@@ -174,7 +163,3 @@ This Hook returns an array containing the `displayMenuButton` and the `requestMe
 ### useNetwork()
 
 This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
-
-## License
-
-AGPL-3.0
