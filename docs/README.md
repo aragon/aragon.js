@@ -4,9 +4,9 @@ A JavaScript implementation of aragonAPI, used to interact with aragonOS by hand
 
 ### Docs
 
-- [React API](/packages/aragon-api-react/README.md)
 - [App API](/docs/APP.md)
-- [Wrapper API](/docs/WRAPPER.md)
+  - [React API](/packages/aragon-api-react/README.md)
+- [Aragon client implementations (wrapper)](/docs/WRAPPER.md)
 - [Providers](/docs/PROVIDERS.md)
 - [Architecture of Aragon apps and their communication channels](/docs/ARCHITECTURE.md)
 

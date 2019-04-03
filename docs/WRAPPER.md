@@ -1,4 +1,4 @@
-# aragonAPI for Wrappers
+# aragonAPI for Aragon client implementations
 
 ## Install
 
