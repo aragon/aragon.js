@@ -332,6 +332,19 @@ export class AppProxy {
       pluck('result')
     )
   }
+
+  /**
+   * Allow apps to sign arbitrary data via a RPC call
+   *
+   * @param  {string} dataToSign
+   * @return {void}
+   */
+  signData (dataToSign) {
+    return this.rpc.sendAndObserveResponse(
+      'sign_data',
+      [dataToSign]
+    ).pluck('result')
+  }
 }
 
 /**
