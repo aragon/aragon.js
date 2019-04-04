@@ -8,7 +8,8 @@ import AsyncRequestCache from './utils/AsyncRequestCache'
 test.beforeEach(t => {
   const apmStub = sinon.stub()
   const aragonOSCoreStub = {
-    getAragonOsInternalAppInfo: sinon.stub()
+    getAragonOsInternalAppInfo: sinon.stub(),
+    getAPMAppInfo: sinon.stub()
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
