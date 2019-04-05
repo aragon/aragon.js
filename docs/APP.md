@@ -267,6 +267,26 @@ Perform a read-only call on the app's smart contract.
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
 
+### messageSign
+
+Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1.0/web3-eth-personal.html#sign) method.
+
+#### Parameters
+
+- `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The message to sign.
+
+Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the signature.
+
+#### Examples
+
+```javascript
+app.signMessage('messageToSign')
+  .subscribe((sig, err) =>
+    if (err) // handle it
+    else // use sig
+  );
+```
+
 ### notify
 
 **NOTE: This call is not currently handled by the wrapper**
