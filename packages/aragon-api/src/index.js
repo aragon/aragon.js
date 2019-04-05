@@ -336,14 +336,13 @@ export class AppProxy {
   /**
    * Allow apps to sign arbitrary data via a RPC call
    *
-   * @param  {string} dataToSign
+   * @param  {string} msgToSign
    * @return {void}
    */
-  signData (dataToSign) {
-    return this.rpc.sendAndObserveResponse(
-      'sign_data',
-      [dataToSign]
-    ).pluck('result')
+  signMessage (msgToSign) {
+    return this.rpc
+      .sendAndObserveResponse('sign_message', [msgToSign])
+      .pipe(map(({ result, error }) => ({ result, error })));
   }
 }
 
