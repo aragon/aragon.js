@@ -1,13 +1,8 @@
-// import Messenger, { providers } from '@aragon/rpc-messenger'
-// import { from } from 'rxjs'
-// import { merge } from 'rxjs/observable/merge'
-import EventEmitter from 'events'
-// import { ReplaySubject, Subject } from 'rxjs'
-
-import { defer, empty, from, merge } from 'rxjs'
-import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
-
+import EventEmitter from 'events'
+import { from, merge } from 'rxjs'
+import { map, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
+// import { ReplaySubject, Subject } from 'rxjs'
 
 export class ContractAPI extends EventEmitter {
   constructor(rpc) {
@@ -120,7 +115,7 @@ export class StreamAPI extends EventEmitter {
   }
 }
 
-export class AragonApp {
+export default class AragonApp {
   constructor(provider = new providers.MessagePortMessage()) {
     this.rpc = new Messenger(provider)
     this.contract = new ContractAPI(this.rpc)
@@ -236,7 +231,7 @@ export class AragonApp {
         Promise.resolve(reducer(state, event))
       )
 
-    const store$ = latestCachedState.pipe(
+    const store$ = $latestCachedState.pipe(
       switchMap((initialState) =>
         merge(
           Observable.fromEvent(this.contract, 'event'),
