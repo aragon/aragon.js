@@ -12,7 +12,7 @@ test.afterEach.always(() => {
 })
 
 test('should create a request handler', async (t) => {
-  t.plan(4)
+  t.plan(5)
   // arrange
   const requestStub = from([{
     request: {
@@ -32,6 +32,12 @@ test('should create a request handler', async (t) => {
       method: 'cache',
       params: ['set', 'settings'],
       value: { foo: 'bar' }
+    }
+  }, {
+    request: {
+      id: 'uuid5',
+      method: 'cache',
+      params: ['clear']
     }
   }, {
     request: {
@@ -56,6 +62,10 @@ test('should create a request handler', async (t) => {
       return Promise.reject(new Error(`no permissions to change ${request.params[1]}!!`))
     }
 
+    if (request.params[0] === 'clear') {
+      return Promise.reject(new Error())
+    }
+
     return Promise.resolve(`resolved ${request.params[1]}`)
   }
   // act
@@ -63,7 +73,10 @@ test('should create a request handler', async (t) => {
   // assert
   result.subscribe(value => {
     if (value.id === 'uuid1') return t.is(value.payload, 'resolved settings')
+    if (value.id === 'uuid4') return t.true(value.payload instanceof Error)
     if (value.id === 'uuid4') return t.is(value.payload.message, 'no permissions to change settings!!')
+    if (value.id === 'uuid5') return t.true(value.payload instanceof Error)
+    if (value.id === 'uuid5') return t.is(value.payload.message, '')
     if (value.id === 'uuid6') return t.is(value.payload, 'resolved profile')
     if (value.id === 'uuid8') return t.is(value.payload, null)
   })
