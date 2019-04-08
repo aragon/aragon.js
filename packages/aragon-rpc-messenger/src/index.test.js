@@ -148,7 +148,7 @@ test('should send and observe responses, even if errors are included', (t) => {
 
   // act
   instance.responses().next({ data: 'thanks', id: 41 })
-  instance.responses().next({ error: new Error('no thanks'), id: 41 })
+  instance.responses().next({ error: 'no thanks', id: 41 })
   instance.responses().next({ data: 'thanks', id: 41 })
 })
 

@@ -48,13 +48,7 @@ export default class Messenger {
    */
   responses () {
     return this.bus().pipe(
-      filter(jsonrpc.isValidResponse),
-      map((response) => {
-        if (response.error) {
-          response.error = new Error(response.error)
-        }
-        return response
-      })
+      filter(jsonrpc.isValidResponse)
     )
   }
 
@@ -97,7 +91,13 @@ export default class Messenger {
     const id = this.send(method, params)
 
     return this.responses().pipe(
-      filter((message) => message.id === id)
+      filter((message) => message.id === id),
+      map((response) => {
+        if (response.error) {
+          response.error = new Error(response.error)
+        }
+        return response
+      })
       // Let callers handle errors themselves
     )
   }
@@ -113,6 +113,7 @@ export default class Messenger {
     return this.sendAndObserveResponses(method, params).pipe(
       first(),
       map((response) => {
+        // Emit an error if the response is an error
         if (response.error) {
           throw response.error
         }
