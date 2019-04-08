@@ -126,7 +126,7 @@ test('should send and observe responses', (t) => {
 })
 
 test('should send and observe responses, even if errors are included', (t) => {
-  t.plan(5)
+  t.plan(6)
 
   // arrange
   const instance = new Messenger(null)
@@ -139,7 +139,8 @@ test('should send and observe responses, even if errors are included', (t) => {
     if (value.data) {
       t.is(value.data, 'thanks')
     } else if (value.error) {
-      t.is(value.error, 'no thanks')
+      t.true(value.error instanceof Error)
+      t.is(value.error.message, 'no thanks')
     }
   })
   t.is(instance.send.getCall(0).args[0], 'sendEth')
@@ -147,7 +148,7 @@ test('should send and observe responses, even if errors are included', (t) => {
 
   // act
   instance.responses().next({ data: 'thanks', id: 41 })
-  instance.responses().next({ error: 'no thanks', id: 41 })
+  instance.responses().next({ error: new Error('no thanks'), id: 41 })
   instance.responses().next({ data: 'thanks', id: 41 })
 })
 
@@ -189,6 +190,6 @@ test('should send and observe only the first error', (t) => {
   t.deepEqual(instance.sendAndObserveResponses.getCall(0).args[1], [])
 
   // act
-  instance.sendAndObserveResponses().next({ error: 'bad first' })
+  instance.sendAndObserveResponses().next({ error: new Error('bad first') })
   instance.sendAndObserveResponses().next('second')
 })
