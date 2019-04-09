@@ -267,7 +267,7 @@ Perform a read-only call on the app's smart contract.
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
 
-### messageSign
+### requestMessageSign
 
 Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1.0/web3-eth-personal.html#sign) method.
 
@@ -277,14 +277,17 @@ Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the signature.
 
+We recommend promisifying the returned observable to more easily handle signature rejections
+
 #### Examples
 
 ```javascript
-app.signMessage('messageToSign')
-  .subscribe((sig, err) =>
-    if (err) // handle it
-    else // use sig
-  );
+try {
+  const signature = await app.requestSignMessage('messageToSign')
+    .toPromise();
+} catch (error) {
+  // handle error
+}
 ```
 
 ### notify
