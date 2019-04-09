@@ -6,8 +6,8 @@ export function createResponse ({ request: { id } }, { error, value = null, kind
     return {}
   }
 
-  if (error) {
-    return { id, payload: error }
+  if (kind === 'E') {
+    return { id, payload: error || new Error() }
   }
 
   return { id, payload: value }
@@ -34,7 +34,7 @@ export function createRequestHandler (request$, requestType, handler) {
       createResponse
     ),
     // filter empty responses caused by Notifications of kind 'C'
-    filter((response) => response.payload !== undefined || response.error !== undefined)
+    filter((response) => response.payload !== undefined)
   )
 }
 
@@ -46,6 +46,7 @@ export function combineRequestHandlers (...handlers) {
 
 // Export request handlers
 export { default as accounts } from './accounts'
+export { default as addressIdentity } from './addressIdentity'
 export { default as cache } from './cache'
 export { default as call } from './call'
 export { default as describeScript } from './describe-script'

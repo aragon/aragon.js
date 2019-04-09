@@ -50,10 +50,18 @@ export default class Cache {
     this.changes.next({ key, value })
   }
 
-  async get (key, defaultValue) {
+  async get (key, defaultValue = null) {
     // If we access a key without data the promise resolve but value is null
     const value = await this.db.getItem(key)
     return value || defaultValue
+  }
+
+  async getAll () {
+    const all = {}
+    await this.db.iterate((value, key) => {
+      all[key] = value
+    })
+    return all
   }
 
   async remove (key) {

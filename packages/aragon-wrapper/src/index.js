@@ -50,6 +50,9 @@ import Templates from './templates'
 // Cache
 import Cache from './cache'
 
+// Local address labels
+import { LocalIdentityProvider } from './identity'
+
 // Interfaces
 import { getAbi } from './interfaces'
 
@@ -174,6 +177,7 @@ export default class Aragon {
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
+    await this.initIdentityProviders()
     this.initApps()
     this.initForwarders()
     this.initNetwork()
@@ -497,6 +501,110 @@ export default class Aragon {
   }
 
   /**
+   * Initialise identity providers.
+   *
+   * @return {Promise<void>}
+   */
+  async initIdentityProviders () {
+    const defaultIdentityProviders = [{
+      name: 'local',
+      provider: new LocalIdentityProvider()
+    }]
+    // TODO: detect other installed providers
+    const detectedIdentityProviders = []
+    const identityProviders = [...defaultIdentityProviders, ...detectedIdentityProviders]
+
+    // Init all providers
+    await Promise.all(identityProviders.map(({ provider }) => {
+      // Most providers should have this defined to a noop function by default, but just in case
+      if (typeof provider.init === 'function') {
+        return provider.init()
+      }
+      return Promise.resolve()
+    }))
+
+    this.identityProviderRegistrar = new Map(
+      identityProviders.map(({ name, provider }) => [name, provider])
+    )
+    // Set up identity modification intent observable
+    this.identityIntents = new Subject()
+  }
+
+  /**
+   * Modify the identity metadata for an address using the highest priority provider.
+   *
+   * @param  {string} address Address to modify
+   * @param  {Object} metadata Modification metadata object
+   * @return {Promise} Resolves if the modification was successful
+   */
+  modifyAddressIdentity (address, metadata) {
+    const providerName = 'local'
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.modify === 'function') {
+      return provider.modify(address, metadata)
+    }
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+  /**
+   * Resolve the identity metadata for an address using the highest priority provider.
+   *
+   * @param  {string} address Address to resolve
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  resolveAddressIdentity (address) {
+    const providerName = 'local' // TODO - get provider
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.resolve === 'function') {
+      return provider.resolve(address)
+    }
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+  /**
+   * Request an identity modification using the highest priority provider.
+   *
+   * Returns a promise which delegates resolution to the handler
+   * which listens and handles `this.identityIntents`
+   *
+   * @param  {string} address Address to modify
+   * @return {Promise} Reolved by the handler of identityIntents
+   */
+  requestAddressIdentityModification (address) {
+    const providerName = 'local' // TODO - get provider
+    if (this.identityProviderRegistrar.has(providerName)) {
+      return new Promise((resolve, reject) => {
+        this.identityIntents.next({
+          address,
+          providerName,
+          resolve,
+          reject
+        })
+      })
+    }
+
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+  /**
+   * Clear all local identities
+   *
+   * @return {Promise<void>}
+   */
+  clearLocalIdentities () {
+    return this.identityProviderRegistrar.get('local').clear()
+  }
+
+  /**
+   * Get all local identities for listing functionality
+   *
+   * @return {Promise<Object>}
+   */
+  getLocalIdentities () {
+    return this.identityProviderRegistrar.get('local').getAll()
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
@@ -687,6 +795,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
@@ -1396,5 +1505,7 @@ export default class Aragon {
 export { isNameUsed } from './templates'
 export { resolve as ensResolve } from './ens'
 
+// Re-export the AddressIdentityProvider abstract base class
+export { AddressIdentityProvider } from './identity'
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/rpc-messenger'

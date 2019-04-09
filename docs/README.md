@@ -2,15 +2,17 @@
 
 A JavaScript implementation of aragonAPI, used to interact with aragonOS by handling transaction pathing, upgradeability and state of the contracts.
 
-## Guides
-
-- [Background Scripts](/docs/BACKGROUND_SCRIPTS.md)
-
-## Docs
+### Docs
 
 - [App API](/docs/APP.md)
-- [Wrapper](/docs/WRAPPER.md)
+  - [React API](/packages/aragon-api-react/README.md)
+- [Aragon client implementations (wrapper)](/docs/WRAPPER.md)
 - [Providers](/docs/PROVIDERS.md)
+- [Architecture of Aragon apps and their communication channels](/docs/ARCHITECTURE.md)
+
+### Guides
+
+- [Background Scripts](/docs/BACKGROUND_SCRIPTS.md)
 
 ## Quick Start for apps
 
@@ -38,8 +40,8 @@ const state$ = app.store((state, event) => {
     // Calculate the next state
     state--
     // Send notification
-    app.notify('Counter decremented', `The counter was decremented to ${state}`)
-  }
+    app.notify('Counter decremented', `The counter was decremented to ${state}`)
+  }
   if (event.event === 'Increment') {
     state++
     app.notify('Counter incremented', `The counter was incremented to ${state}`)
@@ -52,8 +54,10 @@ const state$ = app.store((state, event) => {
 state$.subscribe(console.log)
 
 // Send an intent to the wrapper
-app.increment().subscribe(
-  (txHash) => console.log(`Success! Incremented in tx ${txHash}`),
-  (err) => console.log(`Could not increment: ${err}`)
-)
+app
+  .increment()
+  .subscribe(
+    txHash => console.log(`Success! Incremented in tx ${txHash}`),
+    err => console.log(`Could not increment: ${err}`)
+  )
 ```

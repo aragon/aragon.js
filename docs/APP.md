@@ -1,4 +1,4 @@
-# App
+# aragonAPI for Apps
 
 ## Install
 
@@ -46,10 +46,12 @@ For example, to execute the `increment` function in your app's smart contract:
 const app = new AragonApp()
 
 // Sends an intent to the wrapper that we wish to invoke `increment` on our app's smart contract
-app.increment(1).subscribe(
-  (txHash) => console.log(`Success! Incremented in tx ${txHash}`),
-  (err) => console.log(`Could not increment: ${err}`)
-)
+app
+  .increment(1)
+  .subscribe(
+    txHash => console.log(`Success! Incremented in tx ${txHash}`),
+    err => console.log(`Could not increment: ${err}`)
+  )
 ```
 
 The intent function returns an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the hash of the transaction that was sent.
@@ -73,12 +75,12 @@ app.deposit(tokenAddress, amount, reference, intentParams)
 
 Some caveats to customizing transaction parameters:
 
--   `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
--   `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
+- `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
+- `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
 
 ### Parameters
 
--   `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md). (optional, default `MessagePortMessage`)
+- `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md). (optional, default `MessagePortMessage`)
 
 ### Examples
 
@@ -89,9 +91,7 @@ import AragonApp, { providers } from '@aragon/api'
 const backgroundScriptOfApp = new AragonApp()
 
 // The WindowMessage provider should be used for front-ends
-const frontendOfApp = new AragonApp(
-  new providers.WindowMessage(window.parent)
-)
+const frontendOfApp = new AragonApp(new providers.WindowMessage(window.parent))
 ```
 
 ### accounts
@@ -118,7 +118,7 @@ the type of content that a TCR is curating, the name of a group etc.
 
 #### Parameters
 
--   `identifier` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The identifier of the app.
+- `identifier` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The identifier of the app.
 
 #### Examples
 
@@ -129,6 +129,27 @@ app.identify('Employee counter')
 ```
 
 Returns **void**
+
+### resolveAddressIdentity
+
+Resolve an address' identity, using the highest priority provider.
+
+#### Parameters
+
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to resolve.
+
+Returns a single-emission observable that emits the resolved identity or null if not found
+
+### requestAddressIdentityModification
+
+Request an address' identity be modified with the highest priority provider.
+The request is typically handled by the aragon client.
+
+#### Parameters
+
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to modify.
+
+Returns a single-emission observable that emits if the modification succeeded or was cancelled by the user.
 
 ### events
 
@@ -142,8 +163,8 @@ Creates a handle to interact with an external contract (i.e. a contract that is 
 
 #### Parameters
 
--   `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the external contract
--   `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the external contract
+- `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
 
 #### Examples
 
@@ -154,7 +175,9 @@ const token = app.external(tokenAddress, tokenJsonInterface)
 token.symbol().subscribe(symbol => console.log(`The token symbol is ${symbol}`))
 
 // Retrieve the token balance of an account
-token.balanceOf(someAccountAddress).subscribe(balance => console.log(`The balance of the account is ${balance}`))
+token
+  .balanceOf(someAccountAddress)
+  .subscribe(balance => console.log(`The balance of the account is ${balance}`))
 ```
 
 Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
@@ -165,8 +188,8 @@ Set a value in the application cache.
 
 #### Parameters
 
--   `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The cache key to set a value for
--   `value` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The value to persist in the cache
+- `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The cache key to set a value for
+- `value` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The value to persist in the cache
 
 Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** This method passes through `value`
 
@@ -192,8 +215,8 @@ Optionally takes an array of other `Observable`s to merge with this app's events
 
 #### Parameters
 
--   `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** A function that reduces events to a state. This can return a Promise that resolves to a new state.
--   `events` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;Observable>?** An optional array of `Observable`s to merge in with the internal events observable (optional, default `[empty()]`)
+- `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** A function that reduces events to a state. This can return a Promise that resolves to a new state.
+- `events` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;Observable>?** An optional array of `Observable`s to merge in with the internal events observable (optional, default `[empty()]`)
 
 #### Examples
 
@@ -239,8 +262,8 @@ Perform a read-only call on the app's smart contract.
 
 #### Parameters
 
--   `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the method to call.
--   `params` **...any** An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
+- `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the method to call.
+- `params` **...any** An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
 
@@ -252,10 +275,10 @@ Send a notification.
 
 #### Parameters
 
--   `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The title of the notification.
--   `body` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The body of the notification.
--   `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An optional context that will be sent back to the app if the notification is clicked. (optional, default `{}`)
--   `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** An optional date that specifies when the notification originally occured. (optional, default `newDate()`)
+- `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The title of the notification.
+- `body` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The body of the notification.
+- `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An optional context that will be sent back to the app if the notification is clicked. (optional, default `{}`)
+- `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** An optional date that specifies when the notification originally occured. (optional, default `newDate()`)
 
 Returns **void**
 
@@ -279,6 +302,6 @@ Decodes an EVM callscript and tries to describe the transaction path that the sc
 
 #### Parameters
 
--   `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The EVM callscript to describe
+- `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The EVM callscript to describe
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.

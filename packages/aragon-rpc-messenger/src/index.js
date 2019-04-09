@@ -2,7 +2,7 @@ import jsonrpc from './jsonrpc'
 import MessagePortMessage from './providers/MessagePortMessage'
 import WindowMessage from './providers/WindowMessage'
 import DevMessage from './providers/DevMessage'
-import { first, filter } from 'rxjs/operators'
+import { first, filter, map } from 'rxjs/operators'
 
 export const providers = {
   MessagePortMessage,
@@ -91,7 +91,14 @@ export default class Messenger {
     const id = this.send(method, params)
 
     return this.responses().pipe(
-      filter((message) => message.id === id)
+      filter((message) => message.id === id),
+      map((response) => {
+        if (response.error) {
+          response.error = new Error(response.error)
+        }
+        return response
+      })
+      // Let callers handle errors themselves
     )
   }
 
@@ -104,7 +111,14 @@ export default class Messenger {
    */
   sendAndObserveResponse (method, params = []) {
     return this.sendAndObserveResponses(method, params).pipe(
-      first()
+      first(),
+      map((response) => {
+        // Emit an error if the response is an error
+        if (response.error) {
+          throw response.error
+        }
+        return response
+      })
     )
   }
 }
