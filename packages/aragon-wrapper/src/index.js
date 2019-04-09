@@ -781,11 +781,11 @@ export default class Aragon {
    * @return {Promise<string>} signature hash
    */
   signMessage (params) {
-    const { fromAddress, message } = params
+    const { appAddress, message } = params
 
     return new Promise((resolve, reject) => {
       this.signatures.next({
-        from: fromAddress,
+        appAddress,
         message,
         accept (signatureHash) {
           resolve(signatureHash)

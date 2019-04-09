@@ -339,7 +339,7 @@ export class AppProxy {
    * @param  {string} msgToSign
    * @return {void}
    */
-  signMessage (msgToSign) {
+  requestSignMessage (msgToSign) {
     return this.rpc
       .sendAndObserveResponse('sign_message', [msgToSign])
       .pipe(map(({ result, error }) => ({ result, error })))
