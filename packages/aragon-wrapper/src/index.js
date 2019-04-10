@@ -777,7 +777,8 @@ export default class Aragon {
   /**
    * Allows apps to sign arbitrary data via a RPC call
    *
-   * @param {Array<Object>} params An object containing the address of the app and the message to be signed
+   * @param {string} message to be signed
+   * @param {string} requestingApp proxy address of requesting app
    * @return {Promise<string>} signature hash
    */
   signMessage (message, requestingApp) {
