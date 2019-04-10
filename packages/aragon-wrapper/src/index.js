@@ -415,7 +415,7 @@ export default class Aragon {
           }
         ),
         // Switch to resolved array of promises
-        switchMap(Promise.all)
+        switchMap(updatedApps => Promise.all(updatedApps))
       )
 
     // We merge these two observables, which both return the full list of apps attached with their
