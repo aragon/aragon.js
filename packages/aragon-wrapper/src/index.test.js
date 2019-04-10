@@ -394,7 +394,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
         resolve()
       })
     })
-    })
+  })
 })
 
 test('should init the app identifiers correctly', async (t) => {
