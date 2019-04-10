@@ -785,7 +785,7 @@ export default class Aragon {
       request$.connect()
 
       // Register request handlers
-      const shutdown = handlers.combineRequestHandlers(
+      const handlerSubscription = handlers.combineRequestHandlers(
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
         handlers.createRequestHandler(request$, 'events', handlers.events),
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
@@ -808,9 +808,27 @@ export default class Aragon {
         return messenger.send('context', [context])
       }
 
+      // The attached unsubscribe isn't automatically bound to the subscription
+      const shutdown = () => handlerSubscription.unsubscribe()
+
+      const shutdownAndClearCache = async () => {
+        shutdown()
+
+        return Promise.all(
+          Object
+            .keys(await this.cache.getAll())
+            .map(cacheKey =>
+              cacheKey.startsWith(proxyAddress)
+                ? this.cache.remove(cacheKey)
+                : Promise.resolve()
+            )
+        )
+      }
+
       return {
+        setContext,
         shutdown,
-        setContext
+        shutdownAndClearCache
       }
     }
   }

@@ -1,7 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { of, from } from 'rxjs'
+import { Subject, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -559,7 +559,7 @@ test('should run the app and reply to a request', async (t) => {
   const { Aragon, messengerConstructorStub, utilsStub } = t.context
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
-  t.plan(4)
+  t.plan(5)
   // arrange
   const requestsStub = of({
     id: 'uuid1',
@@ -595,14 +595,134 @@ test('should run the app and reply to a request', async (t) => {
   const connect = await instance.runApp('0x789')
   const result = connect('someMessageProvider')
   // assert
-  t.true(result.shutdown !== undefined)
   t.true(result.setContext !== undefined)
+  t.true(result.shutdown !== undefined)
+  t.true(result.shutdownAndClearCache !== undefined)
   /**
    * What we're testing here is that the request for getting the cache (messenger.requests())
    * is handled by the appropriate requestHandler.
    */
   t.is(messengerStub.sendResponse.getCall(0).args[0], 'uuid1')
   t.is(messengerStub.sendResponse.getCall(0).args[1], 'user settings for the voting app')
+})
+
+test('should run the app and be able to shutdown', async (t) => {
+  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+
+  // Note: This is not a "real" unit test because the rpc handlers are not mocked
+  t.plan(1)
+  // arrange
+  const requestsStub = new Subject()
+  const messengerStub = {
+    sendResponse: sinon.stub(),
+    requests: () => requestsStub
+  }
+  messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
+  const instance = new Aragon()
+  instance.accounts = of('account 1')
+  instance.apps = of([
+    {
+      appId: 'some other app with a different proxy',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+    address: proxyAddress,
+    updateInitializationBlock: () => {}
+  })
+  instance.kernelProxy = { initializationBlock: 0 }
+  // act
+  const connect = await instance.runApp('0x789')
+  const result = connect('someMessageProvider')
+
+  // send one message
+  requestsStub.next({
+    id: 'uuid1',
+    method: 'accounts'
+  })
+
+  // shutdown
+  result.shutdown()
+
+  // should not handle message after shutdown
+  requestsStub.next({
+    id: 'uuid2',
+    method: 'accounts'
+  })
+
+  // assert
+  // test that we've only handled messages before the handlers were shutdown
+  t.is(messengerStub.sendResponse.callCount, 1)
+})
+
+test('should run the app and be able to shutdown and clear cache', async (t) => {
+  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+  const runningProxyAddress = '0x789'
+
+  // Note: This is not a "real" unit test because the rpc handlers are not mocked
+  t.plan(2)
+  // arrange
+  const requestsStub = new Subject()
+  const messengerStub = {
+    sendResponse: sinon.stub(),
+    requests: () => requestsStub
+  }
+  messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
+  const instance = new Aragon()
+  instance.accounts = of('account 1')
+  instance.apps = of([
+    {
+      appId: 'some other app with a different proxy',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: runningProxyAddress
+    }
+  ])
+
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+    address: proxyAddress,
+    updateInitializationBlock: () => {}
+  })
+  instance.kernelProxy = { initializationBlock: 0 }
+
+  // set up cache
+  await instance.cache.init()
+  await instance.cache.set(`${runningProxyAddress}.key1`, 'value1')
+  await instance.cache.set(`${runningProxyAddress}.key2`, 'value2')
+  await instance.cache.set('alternative.key', 'alternative value')
+
+  // act
+  const connect = await instance.runApp(runningProxyAddress)
+  const result = connect('someMessageProvider')
+
+  // send one message
+  requestsStub.next({
+    id: 'uuid1',
+    method: 'accounts'
+  })
+
+  // shutdown and clear cache
+  await result.shutdownAndClearCache()
+
+  // should not handle message after shutdown
+  requestsStub.next({
+    id: 'uuid2',
+    method: 'accounts'
+  })
+
+  // assert
+  // test that we've only handled messages before the handlers were shutdown
+  t.is(messengerStub.sendResponse.callCount, 1)
+  // test that we've cleared the cache for the running app
+  t.true(Object.keys(await instance.cache.getAll()).every(key => !key.startsWith(runningProxyAddress)))
 })
 
 test('should get the app from a proxy address', async (t) => {
