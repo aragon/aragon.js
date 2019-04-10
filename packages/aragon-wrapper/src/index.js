@@ -1,5 +1,5 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import { ReplaySubject, Subject, BehaviorSubject, merge } from 'rxjs'
 import {
   debounceTime,
   distinctUntilChanged,
@@ -9,7 +9,6 @@ import {
   publishReplay,
   scan,
   skipWhile,
-  startWith,
   switchMap,
   tap,
   withLatestFrom
@@ -180,6 +179,7 @@ export default class Aragon {
     await this.initIdentityProviders()
     this.initApps()
     this.initForwarders()
+    this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
@@ -443,46 +443,10 @@ export default class Aragon {
       )
     )
 
-    // Combine the loaded apps with any identifiers they may have declared
-    this.identifiers = new Subject()
-    this.apps = combineLatest(
-      appsWithInfo$,
-      this.identifiers.pipe(
-        scan(
-          (identifiers, { address, identifier }) =>
-            Object.assign(identifiers, { [address]: identifier }),
-          {}),
-        startWith({})
-      ),
-      function attachIdentifiers (apps, identifiers) {
-        return apps.map(
-          (app) => {
-            if (identifiers[app.proxyAddress]) {
-              return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
-            }
-
-            return app
-          }
-        )
-      }
-    ).pipe(
+    this.apps = appsWithInfo$.pipe(
       publishReplay(1)
     )
     this.apps.connect()
-  }
-
-  /**
-   * Set the identifier of an app.
-   *
-   * @param {string} address The proxy address of the app
-   * @param {string} identifier The identifier of the app
-   * @return {void}
-   */
-  setAppIdentifier (address, identifier) {
-    this.identifiers.next({
-      address,
-      identifier
-    })
   }
 
   /**
@@ -498,6 +462,36 @@ export default class Aragon {
       publishReplay(1)
     )
     this.forwarders.connect()
+  }
+
+  /**
+   * Initialise app identifier observable.
+   *
+   * @return {void}
+   */
+  initAppIdentifiers () {
+    this.identifiers = new BehaviorSubject({}).pipe(
+      scan(
+        (identifiers, { address, identifier }) =>
+          Object.assign(identifiers, { [address]: identifier })
+      ),
+      publishReplay(1)
+    )
+    this.identifiers.connect()
+  }
+
+  /**
+   * Set the identifier of an app.
+   *
+   * @param {string} address The proxy address of the app
+   * @param {string} identifier The identifier of the app
+   * @return {void}
+   */
+  setAppIdentifier (address, identifier) {
+    this.identifiers.next({
+      address,
+      identifier
+    })
   }
 
   /**

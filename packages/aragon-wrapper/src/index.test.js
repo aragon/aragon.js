@@ -237,7 +237,7 @@ test('should init the ACL correctly', async (t) => {
         }
       })
       // The permissions observable debounces, so we should only get one value back
-      setTimeout(resolve, 2000)
+      resolve()
     })
   })
 })
@@ -318,7 +318,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
   test(`should init the apps correctly - ${testName}`, async (t) => {
     const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
 
-    t.plan(2)
+    t.plan(1)
     // arrange
     const kernelAddress = '0x123'
     const appIds = {
@@ -360,69 +360,89 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
       call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel'),
       events: sinon.stub().returns(of([]))
     }
+
     // act
     await instance.initApps()
-    // assert
 
-    // Check initial value of apps
-    instance.apps.pipe(first()).subscribe(value => {
-      t.deepEqual(value, [
-        {
-          abi: 'abi for kernel',
-          appId: 'kernel',
-          codeAddress: '0xkernel',
-          isAragonOsInternalApp: true,
-          proxyAddress: '0x123'
-        }, {
-          abi: 'abi for counterApp',
-          appId: 'counterApp',
-          codeAddress: '0xcounterApp',
-          isForwarder: false,
-          kernelAddress: '0x123',
-          proxyAddress: '0x456'
-        }, {
-          abi: 'abi for votingApp',
-          appId: 'votingApp',
-          codeAddress: '0xvotingApp',
-          isForwarder: false,
-          kernelAddress: '0x123',
-          proxyAddress: '0x789'
-        }
-      ])
+    // assert
+    // Check value of apps
+    return new Promise(resolve => {
+      instance.apps.pipe(first()).subscribe(value => {
+        t.deepEqual(value, [
+          {
+            abi: 'abi for kernel',
+            appId: 'kernel',
+            codeAddress: '0xkernel',
+            isAragonOsInternalApp: true,
+            proxyAddress: '0x123'
+          }, {
+            abi: 'abi for counterApp',
+            appId: 'counterApp',
+            codeAddress: '0xcounterApp',
+            isForwarder: false,
+            kernelAddress: '0x123',
+            proxyAddress: '0x456'
+          }, {
+            abi: 'abi for votingApp',
+            appId: 'votingApp',
+            codeAddress: '0xvotingApp',
+            isForwarder: false,
+            kernelAddress: '0x123',
+            proxyAddress: '0x789'
+          }
+        ])
+        resolve()
+      })
     })
+    })
+})
 
-    // hack: wait 200ms for the subscribe callback above to be called,
-    // otherwise it will emit with the identifier set below
-    await new Promise(resolve => setTimeout(resolve, 200))
+test('should init the app identifiers correctly', async (t) => {
+  t.plan(1)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  // act
+  await instance.initAppIdentifiers()
+  // assert
+  instance.identifiers.subscribe(value => {
+    t.deepEqual(value, {})
+  })
+})
 
-    // act
-    await instance.setAppIdentifier('0x456', 'CNT')
-    // assert
-    instance.apps.subscribe(value => {
-      t.deepEqual(value, [
-        {
-          abi: 'abi for kernel',
-          appId: 'kernel',
-          codeAddress: '0xkernel',
-          isAragonOsInternalApp: true,
-          proxyAddress: '0x123'
-        }, {
-          abi: 'abi for counterApp',
-          appId: 'counterApp',
-          codeAddress: '0xcounterApp',
-          isForwarder: false,
-          kernelAddress: '0x123',
-          proxyAddress: '0x456',
-          identifier: 'CNT'
-        }, {
-          abi: 'abi for votingApp',
-          appId: 'votingApp',
-          codeAddress: '0xvotingApp',
-          isForwarder: false,
-          kernelAddress: '0x123',
-          proxyAddress: '0x789'
-        }
-      ])
+test('should emit reduced app identifiers correctly', async (t) => {
+  t.plan(3)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  await instance.initAppIdentifiers()
+
+  // act
+  instance.setAppIdentifier('0x123', 'ANT')
+  // assert
+  instance.identifiers.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': 'ANT'
+    })
+  })
+
+  // act
+  instance.setAppIdentifier('0x456', 'BNT')
+  // assert
+  instance.identifiers.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': 'ANT',
+      '0x456': 'BNT'
+    })
+  })
+
+  // act
+  instance.setAppIdentifier('0x123', 'CNT')
+  // assert
+  instance.identifiers.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': 'CNT',
+      '0x456': 'BNT'
     })
   })
 })
