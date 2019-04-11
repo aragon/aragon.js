@@ -6,6 +6,7 @@ import {
   filter,
   first,
   map,
+  mergeMap,
   publishReplay,
   scan,
   skipWhile,
@@ -360,6 +361,8 @@ export default class Aragon {
         return [this.kernelProxy.address].concat(appsWithoutKernel)
       }),
       // Get proxy values
+      // Note that we can safely discard throttled values,
+      // so we use a `switchMap()` instead of a `mergeMap()`
       switchMap(
         (proxyAddresses) => Promise.all(
           proxyAddresses.map(async (proxyAddress) => {
@@ -414,8 +417,8 @@ export default class Aragon {
             })
           }
         ),
-        // Switch to resolved array of promises
-        switchMap(updatedApps => Promise.all(updatedApps))
+        // Emit resolved array of promises
+        mergeMap(updatedApps => Promise.all(updatedApps))
       )
 
     // We merge these two observables, which both return the full list of apps attached with their
@@ -426,7 +429,7 @@ export default class Aragon {
 
     // Get artifact info for apps
     const appsWithInfo$ = apps$.pipe(
-      switchMap(
+      mergeMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
             let appInfo
