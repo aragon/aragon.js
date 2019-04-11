@@ -405,7 +405,7 @@ test('should init the app identifiers correctly', async (t) => {
   // act
   await instance.initAppIdentifiers()
   // assert
-  instance.identifiers.subscribe(value => {
+  instance.appIdentifiers.subscribe(value => {
     t.deepEqual(value, {})
   })
 })
@@ -420,7 +420,7 @@ test('should emit reduced app identifiers correctly', async (t) => {
   // act
   instance.setAppIdentifier('0x123', 'ANT')
   // assert
-  instance.identifiers.pipe(first()).subscribe(value => {
+  instance.appIdentifiers.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
       '0x123': 'ANT'
     })
@@ -429,7 +429,7 @@ test('should emit reduced app identifiers correctly', async (t) => {
   // act
   instance.setAppIdentifier('0x456', 'BNT')
   // assert
-  instance.identifiers.pipe(first()).subscribe(value => {
+  instance.appIdentifiers.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
       '0x123': 'ANT',
       '0x456': 'BNT'
@@ -439,7 +439,7 @@ test('should emit reduced app identifiers correctly', async (t) => {
   // act
   instance.setAppIdentifier('0x123', 'CNT')
   // assert
-  instance.identifiers.pipe(first()).subscribe(value => {
+  instance.appIdentifiers.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
       '0x123': 'CNT',
       '0x456': 'BNT'

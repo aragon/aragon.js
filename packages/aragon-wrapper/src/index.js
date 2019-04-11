@@ -470,14 +470,14 @@ export default class Aragon {
    * @return {void}
    */
   initAppIdentifiers () {
-    this.identifiers = new BehaviorSubject({}).pipe(
+    this.appIdentifiers = new BehaviorSubject({}).pipe(
       scan(
         (identifiers, { address, identifier }) =>
           Object.assign(identifiers, { [address]: identifier })
       ),
       publishReplay(1)
     )
-    this.identifiers.connect()
+    this.appIdentifiers.connect()
   }
 
   /**
@@ -488,7 +488,7 @@ export default class Aragon {
    * @return {void}
    */
   setAppIdentifier (address, identifier) {
-    this.identifiers.next({
+    this.appIdentifiers.next({
       address,
       identifier
     })
@@ -788,7 +788,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-        handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
