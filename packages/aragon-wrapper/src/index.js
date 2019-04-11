@@ -516,7 +516,9 @@ export default class Aragon {
           address,
           providerName,
           resolve,
-          reject
+          reject (err) {
+            reject(err || new Error('The identity modification was not completed'))
+          }
         })
       })
     }
@@ -781,9 +783,7 @@ export default class Aragon {
       this.transactions.next({
         transaction: transactionPath[0],
         path: transactionPath,
-        accept (transactionHash) {
-          resolve(transactionHash)
-        },
+        resolve,
         reject (err) {
           reject(err || new Error('The transaction was not signed'))
         }

@@ -1,7 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { of, from } from 'rxjs'
+import { Subject, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -443,6 +443,7 @@ test('should init the identity providers correctly', async (t) => {
 
 test('should emit an intent when requesting address identity modification', async (t) => {
   const { Aragon } = t.context
+  const expectedAddress = '0x123'
 
   t.plan(2)
   // arrange
@@ -451,14 +452,73 @@ test('should emit an intent when requesting address identity modification', asyn
   // act
   await instance.initIdentityProviders()
 
-  const expectedAddress = '0x123'
-
   instance.identityIntents.subscribe(intent => {
     t.is(intent.address, expectedAddress)
     t.is(intent.providerName, 'local')
   })
 
   instance.requestAddressIdentityModification(expectedAddress)
+})
+
+test('should be able to resolve intent when requesting address identity modification', async (t) => {
+  const { Aragon } = t.context
+  const expectedAddress = '0x123'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+
+  // act
+  await instance.initIdentityProviders()
+
+  let counter = 0
+  instance.identityIntents.subscribe(intent => {
+    intent.resolve(counter++)
+  })
+
+  return Promise.all([
+    instance.requestAddressIdentityModification(expectedAddress).then(val => t.is(val, 0)),
+    instance.requestAddressIdentityModification(expectedAddress).then(val => t.is(val, 1))
+  ])
+})
+
+test('should be able to reject intent when requesting address identity modification', async (t) => {
+  const { Aragon } = t.context
+  const expectedAddress = '0x123'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+
+  // act
+  await instance.initIdentityProviders()
+
+  let counter = 0
+  instance.identityIntents.subscribe(intent => {
+    if (counter === 0) {
+      intent.reject()
+    } else {
+      intent.reject(new Error('custom error'))
+    }
+    counter++
+  })
+
+  return Promise.all([
+    t.throwsAsync(
+      instance.requestAddressIdentityModification(expectedAddress),
+      {
+        instanceOf: Error,
+        message: 'The identity modification was not completed'
+      }
+    ),
+    t.throwsAsync(
+      instance.requestAddressIdentityModification(expectedAddress),
+      {
+        instanceOf: Error,
+        message: 'custom error'
+      }
+    )
+  ])
 })
 
 test('should init the forwarders correctly', async (t) => {
@@ -552,6 +612,87 @@ test('should send notifications correctly', async (t) => {
     t.deepEqual(value[1].context, {})
     t.is(value[1].id.length, 36)
   })
+})
+
+test('should emit an intent when performing transaction path', async (t) => {
+  const { Aragon } = t.context
+  const initialAddress = '0x123'
+  const targetAddress = '0x456'
+
+  t.plan(3)
+  // arrange
+  const instance = new Aragon()
+  instance.transactions = new Subject()
+
+  // act
+  instance.transactions.subscribe(intent => {
+    t.deepEqual(intent.transaction, { to: initialAddress })
+    t.true(Array.isArray(intent.path))
+    t.is(intent.path.length, 2)
+  })
+
+  instance.performTransactionPath([{ to: initialAddress }, { to: targetAddress }])
+})
+
+test('should be able to resolve intent when performing transaction path', async (t) => {
+  const { Aragon } = t.context
+  const initialAddress = '0x123'
+  const targetAddress = '0x456'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  instance.transactions = new Subject()
+
+  // act
+  let counter = 0
+  instance.transactions.subscribe(intent => {
+    intent.resolve(counter++)
+  })
+
+  return Promise.all([
+    instance.performTransactionPath([{ to: initialAddress }, { to: targetAddress }]).then(val => t.is(val, 0)),
+    instance.performTransactionPath([{ to: initialAddress }, { to: targetAddress }]).then(val => t.is(val, 1))
+  ])
+})
+
+test('should be able to reject intent when perform transaction path', async (t) => {
+  const { Aragon } = t.context
+  const initialAddress = '0x123'
+  const targetAddress = '0x456'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  instance.transactions = new Subject()
+
+  // act
+  let counter = 0
+  instance.transactions.subscribe(intent => {
+    if (counter === 0) {
+      intent.reject()
+    } else {
+      intent.reject(new Error('custom error'))
+    }
+    counter++
+  })
+
+  return Promise.all([
+    t.throwsAsync(
+      instance.performTransactionPath([{ to: initialAddress }, { to: targetAddress }]),
+      {
+        instanceOf: Error,
+        message: 'The transaction was not signed'
+      }
+    ),
+    t.throwsAsync(
+      instance.performTransactionPath([{ to: initialAddress }, { to: targetAddress }]),
+      {
+        instanceOf: Error,
+        message: 'custom error'
+      }
+    )
+  ])
 })
 
 test('should run the app and reply to a request', async (t) => {
