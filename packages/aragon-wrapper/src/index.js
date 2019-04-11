@@ -349,11 +349,11 @@ export default class Aragon {
       // Dedupe until apps change
       distinctUntilChanged((oldProxies, newProxies) => {
         if (oldProxies.length !== newProxies.length) {
-          return true
+          return false
         }
         const oldSet = new Set(oldProxies)
         const intersection = new Set(newProxies.filter(newProxy => oldSet.has(newProxy)))
-        return intersection.size !== oldSet.size
+        return intersection.size === oldSet.size
       }),
       // Add Kernel as the first "app"
       map((proxyAddresses) => {
