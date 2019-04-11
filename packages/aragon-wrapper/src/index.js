@@ -784,11 +784,9 @@ export default class Aragon {
   signMessage (message, requestingApp) {
     return new Promise((resolve, reject) => {
       this.signatures.next({
-        requestingApp,
         message,
-        accept (signatureHash) {
-          resolve(signatureHash)
-        },
+        requestingApp,
+        resolve,
         reject (err) {
           reject(err || new Error('The message was not signed'))
         }
