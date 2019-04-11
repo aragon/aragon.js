@@ -397,6 +397,134 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
   })
 })
 
+test('should update the apps correctly on SetApp', async (t) => {
+  const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
+  const setAppEventStub = new Subject()
+
+  t.plan(2)
+  // arrange
+  const kernelAddress = '0x123'
+  const permissionsObj = {
+    '0x456': 'some permissions',
+    '0x789': 'some permissions'
+  }
+  const appIds = {
+    [kernelAddress]: 'kernel',
+    '0x456': 'counterApp',
+    '0x789': 'votingApp'
+  }
+  const codeAddresses = {
+    [kernelAddress]: '0xkernel',
+    '0x456': '0xcounterApp',
+    '0x789': '0xvotingApp'
+  }
+  // Stub makeProxy for each app
+  Object.keys(appIds).forEach(address => {
+    const proxyStub = {
+      call: sinon.stub()
+    }
+    proxyStub.call
+      .withArgs('kernel').resolves(kernelAddress)
+      .withArgs('appId').resolves(appIds[address])
+      .withArgs('implementation').resolves(codeAddresses[address])
+      .withArgs('isForwarder').resolves(false)
+
+    utilsStub.makeProxy
+      .withArgs(address).returns(proxyStub)
+  })
+  apmStub.getLatestVersionForContract = (appId) => Promise.resolve({
+    abi: `abi for ${appId}`
+  })
+  aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
+    abi: 'abi for kernel',
+    isAragonOsInternalApp: true
+  })
+
+  const instance = new Aragon()
+  instance.permissions = of(permissionsObj)
+  instance.kernelProxy = {
+    address: kernelAddress,
+    call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel'),
+    events: sinon.stub()
+      .withArgs('SetApp', {})
+      .returns(setAppEventStub)
+  }
+
+  // act
+  await instance.initApps()
+
+  // assert
+  // Check initial value of apps
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0xkernel',
+          isAragonOsInternalApp: true,
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x456'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x789'
+        }
+      ])
+      resolve()
+    })
+  })
+
+  // act
+  setAppEventStub.next({
+    returnValues: {
+      appId: 'counterApp'
+    }
+  })
+  await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
+
+  // assert
+  // Check check app has been updated
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0xkernel',
+          isAragonOsInternalApp: true,
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x456',
+          updated: true
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x789'
+        }
+      ])
+      resolve()
+    })
+  })
+})
+
 test('should init the app identifiers correctly', async (t) => {
   t.plan(1)
   // arrange
