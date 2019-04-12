@@ -23,7 +23,8 @@ export function getRepoVersionById (repoProxy, versionId) {
     .then(({ contentURI, contractAddress, semanticVersion }) => ({
       contentURI,
       contractAddress,
-      versionId,
-      version: semanticVersion.join('.')
+      version: semanticVersion.join('.'),
+      // Keeping this as a string makes comparisons a bit easier down the line
+      versionId: versionId.toString()
     }))
 }

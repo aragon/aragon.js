@@ -1,11 +1,13 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, merge } from 'rxjs'
+import { ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
 import {
+  concatMap,
   debounceTime,
   distinctUntilChanged,
   filter,
   first,
   map,
+  mergeAll,
   mergeMap,
   publishReplay,
   scan,
@@ -32,7 +34,11 @@ import * as handlers from './rpc/handlers'
 
 // Utilities
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm'
-import { getAragonOsInternalAppInfo, getKernelNamespace } from './core/aragonOS'
+import {
+  getAragonOsInternalAppInfo,
+  getKernelNamespace,
+  isAragonOsInternalApp
+} from './core/aragonOS'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   addressesEqual,
@@ -304,7 +310,12 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // Cache requests so we don't make unnecessary calls when a call is already in-flight
+    /******************************
+     *                            *
+     *          CACHING           *
+     *                            *
+     ******************************/
+
     const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
@@ -344,6 +355,12 @@ export default class Aragon {
         isForwarder: values[3]
       }))
     })
+
+    /******************************
+     *                            *
+     *            APPS            *
+     *                            *
+     ******************************/
 
     // Get all installed app proxy addresses
     const installedApps$ = this.permissions.pipe(
@@ -425,8 +442,8 @@ export default class Aragon {
             })
           }
         ),
-        // Emit resolved array of promises
-        mergeMap(updatedApps => Promise.all(updatedApps))
+        // Emit resolved array of promises, one at a time
+        concatMap(updatedApps => Promise.all(updatedApps))
       )
 
     // We merge these two observables, which both return the full list of apps attached with their
@@ -437,7 +454,7 @@ export default class Aragon {
 
     // Get artifact info for apps
     const appsWithInfo$ = apps$.pipe(
-      mergeMap(
+      concatMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
             let appInfo
@@ -459,24 +476,16 @@ export default class Aragon {
     )
     this.apps.connect()
 
-    // Initialize installed repos from the list of apps
-    this.installedRepos = new ReplaySubject(1).pipe(
-      // Reduce single repo version emissions over time into one expanding array of installed repos
-      scan((repos, updatedRepo) => {
-        const repoIndex = repos.findIndex(repo => repo.repoAddress === updatedRepo.repoAddress)
-        if (repoIndex === -1) {
-          return repos.concat(updatedRepo)
-        } else {
-          const nextRepos = Array.from(repos)
-          nextRepos[repoIndex] = updatedRepo
-          return nextRepos
-        }
-      }, []),
-      debounceTime(30)
-    )
+    /*******************************
+     *                             *
+     *            REPOS            *
+     *                             *
+     ******************************/
 
-    apps$.pipe(
-      // Map installed apps into a deduped list of their apm repos, with these assumptions:
+    // Initialize installed repos from the list of apps
+    const installedRepoCache = new Map()
+    const repo$ = apps$.pipe(
+      // Map installed apps into a deduped list of their aragonPM repos, with these assumptions:
       //   - No apps are lying about their appId (malicious apps _could_ masquerade as other
       //     apps by setting this value themselves)
       //   - `contractAddress`s will stay the same across all installed apps.
@@ -487,101 +496,255 @@ export default class Aragon {
       //    - appId
       //    - base contractAddress
       map((apps) => Object.values(
-        apps.reduce((apmRepos, app) => {
-          const { appId, contractAddress, isAragonOsInternalApp } = app
-          if (!isAragonOsInternalApp) {
-            apmRepos[appId] = {
+        apps
+          .filter(({ appId }) => !isAragonOsInternalApp(appId))
+          .reduce((installedRepos, { appId, codeAddress, updated }) => {
+            installedRepos[appId] = {
               appId,
-              contractAddress
+              updated,
+              contractAddress: codeAddress
             }
-          }
-          return apmRepos
-        }, {})
+            return installedRepos
+          }, {})
       )),
 
-      // Keep track of which repos we've subscribed to, so we don't duplicate repo subscriptions
-      scan((subscribedSet, repos) => {
-        const newRepos = repos
-          .filter(repo => !subscribedSet[repo.appId])
-          .map(repo => {
-            subscribedSet[repo.appId] = true
-            return repo
-          })
+      // Filter list of installed repos into:
+      //   - New repos we haven't seen before (so we only subscribe once to their events)
+      //   - Repos with apps that were updated in the kernel, to recalculate their current version
+      map((repos) => {
+        const newRepoAppIds = []
+        const updatedRepoAppIds = []
 
-        // Start getting information only for newly detected repos
-        newRepos.map(async ({ appId, contractAddress }) => {
-          const repoProxy = await makeRepoProxy(appId, this.apm, this.web3)
-          await repoProxy.updateInitializationBlock()
+        repos.forEach((repo) => {
+          const { appId, updated } = repo
+          if (!installedRepoCache.has(appId)) {
+            newRepoAppIds.push(appId)
+          } else if (updated) {
+            updatedRepoAppIds.push(appId)
+          }
 
-          // Immediately query repo version state from the contract,
-          // to avoid waiting until we've synced all events (may be long)
-          const versions = await getAllRepoVersions(repoProxy)
-
-          // Subscribe to NewVersion events, which give us:
-          //   - Timestamps for versions that were published prior to this process running
-          //   - Notifications for newly published versions
-          repoProxy.events('NewVersion').pipe(
-            startWith(null), // Trick to immediately emit
-            tap(async (event) => {
-              if (event) {
-                const { timestamp } = await this.web3.eth.getBlock(event.blockNumber) || {}
-
-                const { versionId: eventVersionId } = event.returnValues
-                const versionIndex = versions.findIndex(({ versionId }) => versionId === eventVersionId)
-                if (versionIndex === -1) {
-                  const newVersion = await getRepoVersionById(eventVersionId)
-                  versions.push({
-                    ...newVersion,
-                    timestamp
-                  })
-                } else {
-                  versions[versionIndex].timestamp = timestamp
-                }
-              }
-
-              const latestVersion = versions[versions.length - 1]
-              const currentVersion = Array.from(versions)
-                // We want to find the last version that still uses the current contract address
-                .reverse()
-                .find(version => version.contractAddress === contractAddress)
-
-              // Get info for the current and latest versions of the repo
-              const currentVersionRequest = applicationInfoCache
-                .request(`${appId}.${currentVersion.contractAddress}`)
-                .catch(() => ({}))
-                .then(content => ({
-                  content,
-                  version: currentVersion.version
-                }))
-
-              const versionInfos = await Promise.all([
-                currentVersionRequest,
-                currentVersion.contractAddress === latestVersion.contractAddress
-                  ? currentVersionRequest // current version is also the latest, no need to refetch
-                  : applicationInfoCache
-                    .request(`${appId}.${latestVersion.contractAddress}`)
-                    .catch(() => ({}))
-                    .then(content => ({
-                      content,
-                      version: latestVersion.version
-                    }))
-              ])
-
-              // Emit updated repo
-              this.installedRepos.next({
-                appId,
-                versions,
-                currentVersion: versionInfos[0],
-                latestVersion: versionInfos[1],
-                repoAddress: repoProxy.address
-              })
-            })
-          )
+          // Mark repo as seen and cache installed information
+          installedRepoCache.set(appId, repo)
         })
 
-        return subscribedSet
-      }, {})
+        return [newRepoAppIds, updatedRepoAppIds]
+      }),
+
+      // Stop if there's no new repos or updated apps
+      filter(([newRepoAppIds, updatedRepoAppIds]) =>
+        newRepoAppIds.length || updatedRepoAppIds.length
+      ),
+
+      // Project new repos into their ids and web3 proxy objects
+      concatMap(async ([newRepoAppIds, updatedRepoAppIds]) => {
+        const newRepos = await Promise.all(
+          newRepoAppIds.map(async (appId) => {
+            const repoProxy = await makeRepoProxy(appId, this.apm, this.web3)
+            await repoProxy.updateInitializationBlock()
+
+            return {
+              appId,
+              repoProxy
+            }
+          })
+        )
+        return [newRepos, updatedRepoAppIds]
+      }),
+
+      // Here's where the fun begins!
+      // It'll be easy to get lost, so remember to take it slowly.
+      // Just remember, with this `mergeMap()`, we'll be subscribing to all the projected (returned)
+      // observables and merging their respective emissions into a single observable.
+      //
+      // The output of this merged observable are update events containing the following:
+      //   - `appId`: mandatory, signifies which repo was updated
+      //   - `repoAddress`: optional, address of the repo contract itself
+      //   - `versions`: optional, new version information
+      mergeMap(([newRepos, updatedRepoAppIds]) => {
+        // Create a new observable to project each new update as its own update emission.
+        const update$ = of(...updatedRepoAppIds).pipe(
+          map((appId) => ({ appId }))
+        )
+
+        // Create a new observable to project each new repo as its own emission.
+        const newRepo$ = of(...newRepos)
+
+        // Create a new observable to project each new repo's address as its own update emission.
+        const repoAddress$ = newRepo$.pipe(
+          map(({ appId, repoProxy }) => ({
+            appId,
+            repoAddress: repoProxy.address
+          }))
+        )
+
+        // Create a new observable that projects each NewVersion event as its own update event
+        // emission.
+        // This one is a bit trickier, due to the higher order observable. Keep reading.
+        const version$ = newRepo$.pipe(
+          // `mergeMap()` to "flatten" the async transformation. This async function returns an
+          // observable, which is ultimately the NewVersion stream. More on this, after the break.
+          // Note: we don't care about the ordering, so we use `mergeMap()` instead of `concatMap()`
+          mergeMap(async ({ appId, repoProxy }) => {
+            const initialVersions = [
+              // Immediately query state from the repo contract, to avoid having to wait until all
+              // past events sync (may be long)
+              ...await getAllRepoVersions(repoProxy)
+            ]
+
+            // Return an observable subscribed to NewVersion events, giving us:
+            //   - Timestamps for versions that were published prior to this process running
+            //   - Notifications for newly published versions
+            //
+            // Reduce this with the cached version information to emit version updates for the repo.
+            return repoProxy.events('NewVersion').pipe(
+              // Project each event to a new version info object, one at a time
+              concatMap(async (event) => {
+                const { versionId: eventVersionId } = event.returnValues
+
+                // Adjust from Ethereum time
+                const timestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp * 1000
+
+                const versionIndex = initialVersions.findIndex(({ versionId }) => versionId === eventVersionId)
+                const versionInfo =
+                  versionIndex === -1
+                    ? await getRepoVersionById(repoProxy, eventVersionId)
+                    : initialVersions[versionIndex]
+
+                return {
+                  ...versionInfo,
+                  timestamp
+                }
+              }),
+
+              // Trick to immediately emit (e.g. similar to a do/while loop)
+              startWith(null),
+
+              // Reduce newly emitted versions into the full list of versions
+              scan(({ appId, versions }, newVersionInfo) => {
+                let newVersions = versions
+                if (newVersionInfo) {
+                  const versionIndex = versions.findIndex(({ versionId }) => versionId === newVersionInfo.versionId)
+
+                  if (versionIndex === -1) {
+                    newVersions = versions.concat(newVersionInfo)
+                  } else {
+                    newVersions = Array.from(versions)
+                    newVersions[versionIndex] = newVersionInfo
+                  }
+                }
+
+                return {
+                  appId,
+                  versions: newVersions
+                }
+              }, {
+                appId,
+                versions: initialVersions
+              })
+            )
+          }),
+
+          // This bit is interesting.
+          // We've "flattened" our async transformation with the `mergeMap()` above, but it still
+          // returns an observable. We need to flatten this observable's emissions into the upper
+          // stream, which is what `mergeAll()` achieves.
+          mergeAll()
+        )
+
+        // Merge all of the repo update events resulting from the apps being updated, and return it
+        // to the upper `mergeMap()` so it can be re-flattened into a single event stream.
+        return merge(repoAddress$, version$, update$)
+      }),
+
+      // Reduce the event stream into a current representation of the installed repos, and which
+      // repo to update next.
+      scan(({ repos }, repoUpdate) => {
+        const { appId: updatedAppId, ...update } = repoUpdate
+        const updatedRepoInfo = {
+          ...repos[updatedAppId],
+          ...update
+        }
+
+        return {
+          repos: {
+            ...repos,
+            [updatedAppId]: updatedRepoInfo
+          },
+          updatedRepoAppId: updatedAppId
+        }
+      }, {
+        repos: {},
+        updatedRepoAppId: null
+      }),
+
+      // Stop if we don't have enough information yet to continue
+      filter(({ repos, updatedRepoAppId }) =>
+        !!updatedRepoAppId && Array.isArray(repos[updatedRepoAppId].versions)
+      ),
+
+      // Grab the full information of the updated repo using its latest values.
+      // With this, we've taken the basic stream of updates for events and mapped them onto their
+      // full repo objects.
+      concatMap(async ({ repos, updatedRepoAppId: appId }) => {
+        const { repoAddress, versions } = repos[appId]
+        const installedRepoInfo = installedRepoCache.get(appId)
+
+        const latestVersion = versions[versions.length - 1]
+        const currentVersion = Array.from(versions)
+          // Apply reverse to find the latest version with the currently installed contract address
+          .reverse()
+          .find(version => version.contractAddress === installedRepoInfo.contractAddress)
+
+        // Get info for the current and latest versions of the repo
+        const currentVersionRequest = applicationInfoCache
+          .request(`${appId}.${currentVersion.contractAddress}`)
+          .catch(() => ({}))
+          .then(content => ({
+            content,
+            version: currentVersion.version
+          }))
+
+        const versionInfos = await Promise.all([
+          currentVersionRequest,
+          currentVersion.contractAddress === latestVersion.contractAddress
+            ? currentVersionRequest // current version is also the latest, no need to refetch
+            : applicationInfoCache
+              .request(`${appId}.${latestVersion.contractAddress}`)
+              .catch(() => ({}))
+              .then(content => ({
+                content,
+                version: latestVersion.version
+              }))
+        ])
+
+        // Emit updated repo information
+        return {
+          appId,
+          repoAddress,
+          versions,
+          currentVersion: versionInfos[0],
+          latestVersion: versionInfos[1]
+        }
+      })
     )
+
+    this.installedRepos = repo$.pipe(
+      // Finally, we reduce the merged updates from individual repos into one final, expanding array
+      // of the installed repos
+      scan((repos, updatedRepo) => {
+        const repoIndex = repos.findIndex(repo => repo.repoAddress === updatedRepo.repoAddress)
+        if (repoIndex === -1) {
+          return repos.concat(updatedRepo)
+        } else {
+          const nextRepos = Array.from(repos)
+          nextRepos[repoIndex] = updatedRepo
+          return nextRepos
+        }
+      }, []),
+      debounceTime(200),
+      publishReplay(1)
+    )
+    this.installedRepos.connect()
   }
 
   /**
