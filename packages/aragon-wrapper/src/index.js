@@ -391,6 +391,12 @@ export default class Aragon {
       // Override events subscription with empty options to subscribe from latest block
       .events('SetApp', {})
       .pipe(
+        // Only care about changes if they're in the APP_BASE namespace
+        filter(({ returnValues }) => {
+          const namespace = getKernelNamespace(returnValues.namespace)
+          return namespace && namespace.name === 'App code'
+        }),
+
         // Merge with latest value of installedApps$ so we can return the full list of apps
         withLatestFrom(
           installedApps$,

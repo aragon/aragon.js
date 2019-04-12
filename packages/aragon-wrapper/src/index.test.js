@@ -1,14 +1,21 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { Subject, of, from } from 'rxjs'
+import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
+import { getKernelNamespace } from './core/aragonOS'
 import AsyncRequestCache from './utils/AsyncRequestCache'
+
+// soliditySha3('app')
+const APP_NAMESPACE_HASH = '0xf1f3eb40f5bc1ad1344716ced8b8a0431d840b5783aea1fd01786bc26f35ac0f'
+// soliditySha3('core')
+const CORE_NAMESPACE_HASH = '0xc681a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8'
 
 test.beforeEach(t => {
   const apmStub = sinon.stub()
   const aragonOSCoreStub = {
-    getAragonOsInternalAppInfo: sinon.stub()
+    getAragonOsInternalAppInfo: sinon.stub(),
+    getKernelNamespace
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
@@ -358,7 +365,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
     instance.kernelProxy = {
       address: kernelAddress,
       call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel'),
-      events: sinon.stub().returns(of([]))
+      events: sinon.stub().returns(empty())
     }
 
     // act
@@ -401,7 +408,7 @@ test('should update the apps correctly on SetApp', async (t) => {
   const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
   const setAppEventStub = new Subject()
 
-  t.plan(2)
+  t.plan(4)
   // arrange
   const kernelAddress = '0x123'
   const permissionsObj = {
@@ -487,13 +494,14 @@ test('should update the apps correctly on SetApp', async (t) => {
   // act
   setAppEventStub.next({
     returnValues: {
-      appId: 'counterApp'
+      appId: 'counterApp',
+      namespace: APP_NAMESPACE_HASH
     }
   })
   await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
 
   // assert
-  // Check check app has been updated
+  // Check app has been updated
   await new Promise(resolve => {
     instance.apps.pipe(first()).subscribe(value => {
       t.deepEqual(value, [
@@ -518,6 +526,88 @@ test('should update the apps correctly on SetApp', async (t) => {
           isForwarder: false,
           kernelAddress: '0x123',
           proxyAddress: '0x789'
+        }
+      ])
+      resolve()
+    })
+  })
+
+  // act
+  setAppEventStub.next({
+    returnValues: {
+      appId: 'votingApp',
+      namespace: APP_NAMESPACE_HASH
+    }
+  })
+  await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
+
+  // assert
+  // Check correct app has been updated
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0xkernel',
+          isAragonOsInternalApp: true,
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x456'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x789',
+          updated: true
+        }
+      ])
+      resolve()
+    })
+  })
+
+  // act
+  setAppEventStub.next({
+    returnValues: {
+      appId: 'counterApp',
+      namespace: CORE_NAMESPACE_HASH
+    }
+  })
+  await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
+
+  // assert
+  // Check that we filtered the last emission as it wasn't the correct namespace
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0xkernel',
+          isAragonOsInternalApp: true,
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x456'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x789',
+          updated: true
         }
       ])
       resolve()
