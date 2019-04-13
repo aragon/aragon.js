@@ -300,7 +300,7 @@ export default class Aragon {
 
     const proxyContractValueCache = new AsyncRequestCache((proxyAddress) => {
       if (this.isKernelAddress(proxyAddress)) {
-        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3, this.kernelProxy.initializationBlock)
+        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3)
 
         return Promise.all([
           // Use Kernel ABI
@@ -315,8 +315,8 @@ export default class Aragon {
         }))
       }
 
-      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
-      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3, this.kernelProxy.initializationBlock)
+      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
+      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3)
 
       return Promise.all([
         appProxy.call('kernel'),
