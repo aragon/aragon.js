@@ -58,6 +58,28 @@ test('AsyncRequestCache can cache more than one key', async (t) => {
   t.is(requestFn.callCount, 2)
 })
 
+test('AsyncRequestCache should be able to force invalidate requests', async (t) => {
+  // arrange
+  const requestKey = 'key'
+  const requestFn = sinon.spy(async key => {
+    await wait(100)
+    return key
+  })
+  const cache = new AsyncRequestCache(requestFn)
+
+  // act
+  const request = cache.request(requestKey)
+  await request
+
+  const requestInvalidate = cache.request(requestKey, true)
+  await requestInvalidate
+
+  // assert
+  t.not(request, requestInvalidate)
+  t.true(cache.has(requestKey))
+  t.is(requestFn.callCount, 2)
+})
+
 test('AsyncRequestCache does not cache result if unsuccessful', async (t) => {
   // arrange
   const requestKey = 'key'
@@ -101,6 +123,7 @@ test('AsyncRequestCache deduplicates in-flight requests', async (t) => {
   // assert
   t.is(requestFail, requestFailAgain)
   t.is(resultFail, resultFailAgain)
+  t.not(requestFail, requestSuccess)
   t.is(requestSuccess, requestSuccessAgain)
   t.is(resultSuccess, resultSuccessAgain)
   t.true(cache.has(requestKey))

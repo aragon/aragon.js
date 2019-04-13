@@ -1,8 +1,18 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import { ReplaySubject, Subject, BehaviorSubject, merge } from 'rxjs'
 import {
-  map, startWith, scan, tap, publishReplay, switchMap, filter, first,
-  debounceTime, skipWhile
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  first,
+  map,
+  mergeMap,
+  publishReplay,
+  scan,
+  skipWhile,
+  switchMap,
+  tap,
+  withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
@@ -170,9 +180,11 @@ export default class Aragon {
     await this.initIdentityProviders()
     this.initApps()
     this.initForwarders()
+    this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
+    this.signatures = new Subject()
   }
 
   /**
@@ -300,7 +312,7 @@ export default class Aragon {
 
     const proxyContractValueCache = new AsyncRequestCache((proxyAddress) => {
       if (this.isKernelAddress(proxyAddress)) {
-        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3, this.kernelProxy.initializationBlock)
+        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3)
 
         return Promise.all([
           // Use Kernel ABI
@@ -315,8 +327,8 @@ export default class Aragon {
         }))
       }
 
-      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
-      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3, this.kernelProxy.initializationBlock)
+      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
+      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3)
 
       return Promise.all([
         appProxy.call('kernel'),
@@ -332,15 +344,26 @@ export default class Aragon {
       }))
     })
 
-    // Get all app proxy addresses
-    const baseApps$ = this.permissions.pipe(
+    // Get all installed app proxy addresses
+    const installedApps$ = this.permissions.pipe(
       map(Object.keys),
+      // Dedupe until apps change
+      distinctUntilChanged((oldProxies, newProxies) => {
+        if (oldProxies.length !== newProxies.length) {
+          return false
+        }
+        const oldSet = new Set(oldProxies)
+        const intersection = new Set(newProxies.filter(newProxy => oldSet.has(newProxy)))
+        return intersection.size === oldSet.size
+      }),
       // Add Kernel as the first "app"
       map((proxyAddresses) => {
         const appsWithoutKernel = proxyAddresses.filter((address) => !this.isKernelAddress(address))
         return [this.kernelProxy.address].concat(appsWithoutKernel)
       }),
       // Get proxy values
+      // Note that we can safely discard throttled values,
+      // so we use a `switchMap()` instead of a `mergeMap()`
       switchMap(
         (proxyAddresses) => Promise.all(
           proxyAddresses.map(async (proxyAddress) => {
@@ -362,9 +385,58 @@ export default class Aragon {
       ))
     )
 
+    // SetApp events are emitted when apps are installed and upgraded
+    // These may modify the implementation addresses of the proxies (modifying their behaviour), so
+    // we invalidate any caching we've done
+    const updatedApps$ = this.kernelProxy
+      // Override events subscription with empty options to subscribe from latest block
+      .events('SetApp', {})
+      .pipe(
+        // Only care about changes if they're in the APP_BASE namespace
+        filter(({ returnValues }) => {
+          const namespace = getKernelNamespace(returnValues.namespace)
+          return namespace && namespace.name === 'App code'
+        }),
+
+        // Merge with latest value of installedApps$ so we can return the full list of apps
+        withLatestFrom(
+          installedApps$,
+          function updateApps (setAppEvent, apps) {
+            const { appId: setAppId } = setAppEvent.returnValues
+            return apps.map(async (app) => {
+              if (app.appId !== setAppId) {
+                return app
+              }
+
+              let proxyValues
+              try {
+                proxyValues = await proxyContractValueCache.request(
+                  app.proxyAddress,
+                  true // force cache invalidation
+                )
+              } catch (_) {}
+
+              return {
+                ...app,
+                ...proxyValues,
+                updated: true
+              }
+            })
+          }
+        ),
+        // Emit resolved array of promises
+        mergeMap(updatedApps => Promise.all(updatedApps))
+      )
+
+    // We merge these two observables, which both return the full list of apps attached with their
+    // proxy values:
+    //   - installedApps$: emits any time the list of installed apps changes
+    //   - updatedApps$:   emits any time SetApp could modify an installed app
+    const apps$ = merge(installedApps$, updatedApps$)
+
     // Get artifact info for apps
-    const appsWithInfo$ = baseApps$.pipe(
-      switchMap(
+    const appsWithInfo$ = apps$.pipe(
+      mergeMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
             let appInfo
@@ -381,46 +453,10 @@ export default class Aragon {
       )
     )
 
-    // Combine the loaded apps with any identifiers they may have declared
-    this.identifiers = new Subject()
-    this.apps = combineLatest(
-      appsWithInfo$,
-      this.identifiers.pipe(
-        scan(
-          (identifiers, { address, identifier }) =>
-            Object.assign(identifiers, { [address]: identifier }),
-          {}),
-        startWith({})
-      ),
-      function attachIdentifiers (apps, identifiers) {
-        return apps.map(
-          (app) => {
-            if (identifiers[app.proxyAddress]) {
-              return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
-            }
-
-            return app
-          }
-        )
-      }
-    ).pipe(
+    this.apps = appsWithInfo$.pipe(
       publishReplay(1)
     )
     this.apps.connect()
-  }
-
-  /**
-   * Set the identifier of an app.
-   *
-   * @param {string} address The proxy address of the app
-   * @param {string} identifier The identifier of the app
-   * @return {void}
-   */
-  setAppIdentifier (address, identifier) {
-    this.identifiers.next({
-      address,
-      identifier
-    })
   }
 
   /**
@@ -436,6 +472,36 @@ export default class Aragon {
       publishReplay(1)
     )
     this.forwarders.connect()
+  }
+
+  /**
+   * Initialise app identifier observable.
+   *
+   * @return {void}
+   */
+  initAppIdentifiers () {
+    this.appIdentifiers = new BehaviorSubject({}).pipe(
+      scan(
+        (identifiers, { address, identifier }) =>
+          Object.assign(identifiers, { [address]: identifier })
+      ),
+      publishReplay(1)
+    )
+    this.appIdentifiers.connect()
+  }
+
+  /**
+   * Set the identifier of an app.
+   *
+   * @param {string} address The proxy address of the app
+   * @param {string} identifier The identifier of the app
+   * @return {void}
+   */
+  setAppIdentifier (address, identifier) {
+    this.appIdentifiers.next({
+      address,
+      identifier
+    })
   }
 
   /**
@@ -725,7 +791,7 @@ export default class Aragon {
       request$.connect()
 
       // Register request handlers
-      const shutdown = handlers.combineRequestHandlers(
+      const handlerSubscription = handlers.combineRequestHandlers(
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
         handlers.createRequestHandler(request$, 'events', handlers.events),
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
@@ -734,11 +800,12 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-        handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -748,9 +815,27 @@ export default class Aragon {
         return messenger.send('context', [context])
       }
 
+      // The attached unsubscribe isn't automatically bound to the subscription
+      const shutdown = () => handlerSubscription.unsubscribe()
+
+      const shutdownAndClearCache = async () => {
+        shutdown()
+
+        return Promise.all(
+          Object
+            .keys(await this.cache.getAll())
+            .map(cacheKey =>
+              cacheKey.startsWith(proxyAddress)
+                ? this.cache.remove(cacheKey)
+                : Promise.resolve()
+            )
+        )
+      }
+
       return {
+        setContext,
         shutdown,
-        setContext
+        shutdownAndClearCache
       }
     }
   }
@@ -772,6 +857,26 @@ export default class Aragon {
    */
   getAccounts () {
     return this.accounts.pipe(first()).toPromise()
+  }
+
+  /**
+   * Allows apps to sign arbitrary data via a RPC call
+   *
+   * @param {string} message to be signed
+   * @param {string} requestingApp proxy address of requesting app
+   * @return {Promise<string>} signature hash
+   */
+  signMessage (message, requestingApp) {
+    return new Promise((resolve, reject) => {
+      this.signatures.next({
+        message,
+        requestingApp,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The message was not signed'))
+        }
+      })
+    })
   }
 
   /**
