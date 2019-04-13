@@ -1,14 +1,21 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { of, from } from 'rxjs'
+import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
+import { getKernelNamespace } from './core/aragonOS'
 import AsyncRequestCache from './utils/AsyncRequestCache'
+
+// soliditySha3('app')
+const APP_NAMESPACE_HASH = '0xf1f3eb40f5bc1ad1344716ced8b8a0431d840b5783aea1fd01786bc26f35ac0f'
+// soliditySha3('core')
+const CORE_NAMESPACE_HASH = '0xc681a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8'
 
 test.beforeEach(t => {
   const apmStub = sinon.stub()
   const aragonOSCoreStub = {
-    getAragonOsInternalAppInfo: sinon.stub()
+    getAragonOsInternalAppInfo: sinon.stub(),
+    getKernelNamespace
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
@@ -237,7 +244,7 @@ test('should init the ACL correctly', async (t) => {
         }
       })
       // The permissions observable debounces, so we should only get one value back
-      setTimeout(resolve, 2000)
+      resolve()
     })
   })
 })
@@ -318,7 +325,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
   test(`should init the apps correctly - ${testName}`, async (t) => {
     const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
 
-    t.plan(2)
+    t.plan(1)
     // arrange
     const kernelAddress = '0x123'
     const appIds = {
@@ -357,13 +364,105 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
     instance.permissions = of(permissionsObj)
     instance.kernelProxy = {
       address: kernelAddress,
-      call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel')
+      call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel'),
+      events: sinon.stub().returns(empty())
     }
+
     // act
     await instance.initApps()
-    // assert
 
-    // Check initial value of apps
+    // assert
+    // Check value of apps
+    return new Promise(resolve => {
+      instance.apps.pipe(first()).subscribe(value => {
+        t.deepEqual(value, [
+          {
+            abi: 'abi for kernel',
+            appId: 'kernel',
+            codeAddress: '0xkernel',
+            isAragonOsInternalApp: true,
+            proxyAddress: '0x123'
+          }, {
+            abi: 'abi for counterApp',
+            appId: 'counterApp',
+            codeAddress: '0xcounterApp',
+            isForwarder: false,
+            kernelAddress: '0x123',
+            proxyAddress: '0x456'
+          }, {
+            abi: 'abi for votingApp',
+            appId: 'votingApp',
+            codeAddress: '0xvotingApp',
+            isForwarder: false,
+            kernelAddress: '0x123',
+            proxyAddress: '0x789'
+          }
+        ])
+        resolve()
+      })
+    })
+  })
+})
+
+test('should update the apps correctly on SetApp', async (t) => {
+  const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
+  const setAppEventStub = new Subject()
+
+  t.plan(4)
+  // arrange
+  const kernelAddress = '0x123'
+  const permissionsObj = {
+    '0x456': 'some permissions',
+    '0x789': 'some permissions'
+  }
+  const appIds = {
+    [kernelAddress]: 'kernel',
+    '0x456': 'counterApp',
+    '0x789': 'votingApp'
+  }
+  const codeAddresses = {
+    [kernelAddress]: '0xkernel',
+    '0x456': '0xcounterApp',
+    '0x789': '0xvotingApp'
+  }
+  // Stub makeProxy for each app
+  Object.keys(appIds).forEach(address => {
+    const proxyStub = {
+      call: sinon.stub()
+    }
+    proxyStub.call
+      .withArgs('kernel').resolves(kernelAddress)
+      .withArgs('appId').resolves(appIds[address])
+      .withArgs('implementation').resolves(codeAddresses[address])
+      .withArgs('isForwarder').resolves(false)
+
+    utilsStub.makeProxy
+      .withArgs(address).returns(proxyStub)
+  })
+  apmStub.getLatestVersionForContract = (appId) => Promise.resolve({
+    abi: `abi for ${appId}`
+  })
+  aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
+    abi: 'abi for kernel',
+    isAragonOsInternalApp: true
+  })
+
+  const instance = new Aragon()
+  instance.permissions = of(permissionsObj)
+  instance.kernelProxy = {
+    address: kernelAddress,
+    call: sinon.stub().withArgs('KERNEL_APP_ID').resolves('kernel'),
+    events: sinon.stub()
+      .withArgs('SetApp', {})
+      .returns(setAppEventStub)
+  }
+
+  // act
+  await instance.initApps()
+
+  // assert
+  // Check initial value of apps
+  await new Promise(resolve => {
     instance.apps.pipe(first()).subscribe(value => {
       t.deepEqual(value, [
         {
@@ -388,16 +487,23 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
           proxyAddress: '0x789'
         }
       ])
+      resolve()
     })
+  })
 
-    // hack: wait 200ms for the subscribe callback above to be called,
-    // otherwise it will emit with the identifier set below
-    await new Promise(resolve => setTimeout(resolve, 200))
+  // act
+  setAppEventStub.next({
+    returnValues: {
+      appId: 'counterApp',
+      namespace: APP_NAMESPACE_HASH
+    }
+  })
+  await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
 
-    // act
-    await instance.setAppIdentifier('0x456', 'CNT')
-    // assert
-    instance.apps.subscribe(value => {
+  // assert
+  // Check app has been updated
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
       t.deepEqual(value, [
         {
           abi: 'abi for kernel',
@@ -412,7 +518,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
           isForwarder: false,
           kernelAddress: '0x123',
           proxyAddress: '0x456',
-          identifier: 'CNT'
+          updated: true
         }, {
           abi: 'abi for votingApp',
           appId: 'votingApp',
@@ -422,6 +528,139 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
           proxyAddress: '0x789'
         }
       ])
+      resolve()
+    })
+  })
+
+  // act
+  setAppEventStub.next({
+    returnValues: {
+      appId: 'votingApp',
+      namespace: APP_NAMESPACE_HASH
+    }
+  })
+  await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
+
+  // assert
+  // Check correct app has been updated
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0xkernel',
+          isAragonOsInternalApp: true,
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x456'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x789',
+          updated: true
+        }
+      ])
+      resolve()
+    })
+  })
+
+  // act
+  setAppEventStub.next({
+    returnValues: {
+      appId: 'counterApp',
+      namespace: CORE_NAMESPACE_HASH
+    }
+  })
+  await new Promise(resolve => setTimeout(resolve, 100)) // let the emission propagate
+
+  // assert
+  // Check that we filtered the last emission as it wasn't the correct namespace
+  await new Promise(resolve => {
+    instance.apps.pipe(first()).subscribe(value => {
+      t.deepEqual(value, [
+        {
+          abi: 'abi for kernel',
+          appId: 'kernel',
+          codeAddress: '0xkernel',
+          isAragonOsInternalApp: true,
+          proxyAddress: '0x123'
+        }, {
+          abi: 'abi for counterApp',
+          appId: 'counterApp',
+          codeAddress: '0xcounterApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x456'
+        }, {
+          abi: 'abi for votingApp',
+          appId: 'votingApp',
+          codeAddress: '0xvotingApp',
+          isForwarder: false,
+          kernelAddress: '0x123',
+          proxyAddress: '0x789',
+          updated: true
+        }
+      ])
+      resolve()
+    })
+  })
+})
+
+test('should init the app identifiers correctly', async (t) => {
+  t.plan(1)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  // act
+  await instance.initAppIdentifiers()
+  // assert
+  instance.appIdentifiers.subscribe(value => {
+    t.deepEqual(value, {})
+  })
+})
+
+test('should emit reduced app identifiers correctly', async (t) => {
+  t.plan(3)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  await instance.initAppIdentifiers()
+
+  // act
+  instance.setAppIdentifier('0x123', 'ANT')
+  // assert
+  instance.appIdentifiers.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': 'ANT'
+    })
+  })
+
+  // act
+  instance.setAppIdentifier('0x456', 'BNT')
+  // assert
+  instance.appIdentifiers.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': 'ANT',
+      '0x456': 'BNT'
+    })
+  })
+
+  // act
+  instance.setAppIdentifier('0x123', 'CNT')
+  // assert
+  instance.appIdentifiers.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': 'CNT',
+      '0x456': 'BNT'
     })
   })
 })
@@ -558,7 +797,7 @@ test('should run the app and reply to a request', async (t) => {
   const { Aragon, messengerConstructorStub, utilsStub } = t.context
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
-  t.plan(4)
+  t.plan(5)
   // arrange
   const requestsStub = of({
     id: 'uuid1',
@@ -594,14 +833,134 @@ test('should run the app and reply to a request', async (t) => {
   const connect = await instance.runApp('0x789')
   const result = connect('someMessageProvider')
   // assert
-  t.true(result.shutdown !== undefined)
   t.true(result.setContext !== undefined)
+  t.true(result.shutdown !== undefined)
+  t.true(result.shutdownAndClearCache !== undefined)
   /**
    * What we're testing here is that the request for getting the cache (messenger.requests())
    * is handled by the appropriate requestHandler.
    */
   t.is(messengerStub.sendResponse.getCall(0).args[0], 'uuid1')
   t.is(messengerStub.sendResponse.getCall(0).args[1], 'user settings for the voting app')
+})
+
+test('should run the app and be able to shutdown', async (t) => {
+  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+
+  // Note: This is not a "real" unit test because the rpc handlers are not mocked
+  t.plan(1)
+  // arrange
+  const requestsStub = new Subject()
+  const messengerStub = {
+    sendResponse: sinon.stub(),
+    requests: () => requestsStub
+  }
+  messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
+  const instance = new Aragon()
+  instance.accounts = of('account 1')
+  instance.apps = of([
+    {
+      appId: 'some other app with a different proxy',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+    address: proxyAddress,
+    updateInitializationBlock: () => {}
+  })
+  instance.kernelProxy = { initializationBlock: 0 }
+  // act
+  const connect = await instance.runApp('0x789')
+  const result = connect('someMessageProvider')
+
+  // send one message
+  requestsStub.next({
+    id: 'uuid1',
+    method: 'accounts'
+  })
+
+  // shutdown
+  result.shutdown()
+
+  // should not handle message after shutdown
+  requestsStub.next({
+    id: 'uuid2',
+    method: 'accounts'
+  })
+
+  // assert
+  // test that we've only handled messages before the handlers were shutdown
+  t.is(messengerStub.sendResponse.callCount, 1)
+})
+
+test('should run the app and be able to shutdown and clear cache', async (t) => {
+  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+  const runningProxyAddress = '0x789'
+
+  // Note: This is not a "real" unit test because the rpc handlers are not mocked
+  t.plan(2)
+  // arrange
+  const requestsStub = new Subject()
+  const messengerStub = {
+    sendResponse: sinon.stub(),
+    requests: () => requestsStub
+  }
+  messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
+  const instance = new Aragon()
+  instance.accounts = of('account 1')
+  instance.apps = of([
+    {
+      appId: 'some other app with a different proxy',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: runningProxyAddress
+    }
+  ])
+
+  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+    address: proxyAddress,
+    updateInitializationBlock: () => {}
+  })
+  instance.kernelProxy = { initializationBlock: 0 }
+
+  // set up cache
+  await instance.cache.init()
+  await instance.cache.set(`${runningProxyAddress}.key1`, 'value1')
+  await instance.cache.set(`${runningProxyAddress}.key2`, 'value2')
+  await instance.cache.set('alternative.key', 'alternative value')
+
+  // act
+  const connect = await instance.runApp(runningProxyAddress)
+  const result = connect('someMessageProvider')
+
+  // send one message
+  requestsStub.next({
+    id: 'uuid1',
+    method: 'accounts'
+  })
+
+  // shutdown and clear cache
+  await result.shutdownAndClearCache()
+
+  // should not handle message after shutdown
+  requestsStub.next({
+    id: 'uuid2',
+    method: 'accounts'
+  })
+
+  // assert
+  // test that we've only handled messages before the handlers were shutdown
+  t.is(messengerStub.sendResponse.callCount, 1)
+  // test that we've cleared the cache for the running app
+  t.true(Object.keys(await instance.cache.getAll()).every(key => !key.startsWith(runningProxyAddress)))
 })
 
 test('should get the app from a proxy address', async (t) => {

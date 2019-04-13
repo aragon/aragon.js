@@ -29,10 +29,11 @@ export default class AsyncRequestCache {
    * Resets the cache for `key` if the request was not successful.
    *
    * @param  {string} key Key to request
+   * @param  {boolean} [invalidate] Invalidate any previous requests
    * @return {Promise<*>} Request result
    */
-  request (key) {
-    if (this.has(key)) {
+  request (key, invalidate) {
+    if (!invalidate && this.has(key)) {
       return this.#cache.get(key)
     }
     const request = Promise.resolve(this.#requestFn(key))
