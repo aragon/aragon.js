@@ -173,6 +173,7 @@ export default class Aragon {
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
+    this.signatures = new Subject()
   }
 
   /**
@@ -736,7 +737,8 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -770,6 +772,26 @@ export default class Aragon {
    */
   getAccounts () {
     return this.accounts.pipe(first()).toPromise()
+  }
+
+  /**
+   * Allows apps to sign arbitrary data via a RPC call
+   *
+   * @param {string} message to be signed
+   * @param {string} requestingApp proxy address of requesting app
+   * @return {Promise<string>} signature hash
+   */
+  signMessage (message, requestingApp) {
+    return new Promise((resolve, reject) => {
+      this.signatures.next({
+        message,
+        requestingApp,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The message was not signed'))
+        }
+      })
+    })
   }
 
   /**
