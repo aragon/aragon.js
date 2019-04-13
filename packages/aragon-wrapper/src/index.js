@@ -741,7 +741,7 @@ export default class Aragon {
           return nextRepos
         }
       }, []),
-      debounceTime(200),
+      debounceTime(100),
       publishReplay(1)
     )
     this.installedRepos.connect()
