@@ -867,6 +867,9 @@ export default class Aragon {
    * @return {Promise<string>} signature hash
    */
   signMessage (message, requestingApp) {
+    if (typeof message !== 'string') {
+      return Promise.reject(new Error('Message to sign must be a string'))
+    }
     return new Promise((resolve, reject) => {
       this.signatures.next({
         message,
