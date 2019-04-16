@@ -4,6 +4,7 @@ import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
 import { getKernelNamespace } from './core/aragonOS'
+import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
 // soliditySha3('app')
@@ -1201,4 +1202,58 @@ test('should throw if no ABI is found, when calculating the transaction path', a
        * forwarders array does not throw any errors when they are being extracted from their observables.
        */
     })
+})
+
+test('should be able to decode an evm call script with a single transaction', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  const script = encodeCallScript([{
+    to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+    data: '0xcafe'
+  }])
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      data: '0xcafe',
+      to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c'
+    }
+  ])
+})
+
+test('should be able to decode an evm call script with multiple transactions', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  const script = encodeCallScript([{
+    to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+    data: '0xcafe'
+  }, {
+    to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0xbeef'
+  }, {
+    to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0x'
+  }])
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+      data: '0xcafe'
+    }, {
+      to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
+      data: '0xbeef'
+    }, {
+      to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      data: '0x'
+    }
+  ])
 })
