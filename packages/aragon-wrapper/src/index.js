@@ -19,13 +19,13 @@ import {
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
+import abi from 'web3-eth-abi'
 import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
 import * as radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
-import { hash as namehash } from 'eth-ens-namehash'
 import apm from '@aragon/apm'
 
 // RPC
@@ -1382,16 +1382,28 @@ export default class Aragon {
 
       let description
       let annotatedDescription
-      try {
-        description = await radspec.evaluate(
-          expression,
-          {
-            abi: app.abi,
-            transaction: step
-          },
-          { ethNode: this.web3.currentProvider }
-        )
-      } catch (err) { }
+
+      // Detect if we should try to handle the description for this step ourselves
+      if (this.isKernelAddress(step.to) && method.sig === 'setApp(bytes32,bytes32,address)') {
+        // setApp() call; attempt to make a more friendly description
+        try {
+          description = await this.tryDescribingUpdateAppIntent(step)
+        } catch (err) { }
+      }
+
+      if (!description) {
+        // Use radspec normally
+        try {
+          description = await radspec.evaluate(
+            expression,
+            {
+              abi: app.abi,
+              transaction: step
+            },
+            { ethNode: this.web3.currentProvider }
+          )
+        } catch (err) { }
+      }
 
       if (description) {
         const processed = await this.postprocessRadspecDescription(description)
@@ -1409,10 +1421,46 @@ export default class Aragon {
   }
 
   /**
+   * Attempt to describe a setApp() intent. Only describes the APP_BASE namespace.
+   *
+   * @param  {string} description
+   * @return {Promise<string>} Description, if one could be made.
+   */
+  async tryDescribingUpdateAppIntent (intent) {
+    // Strip 0x prefix + bytes4 sig to get parameter data
+    const txData = intent.data.substring(10)
+    const types = [
+      {
+        type: 'bytes32',
+        name: 'namespace'
+      }, {
+        type: 'bytes32',
+        name: 'appId'
+      }, {
+        type: 'address',
+        name: 'appAddress'
+      }
+    ]
+    const { appId, appAddress, namespace } = abi.decodeParameters(types, txData)
+
+    if (getKernelNamespace(namespace).name !== 'App code') {
+      return
+    }
+
+    // Fetch aragonPM information
+    const repo = await makeRepoProxy(appId, this.apm, this.web3)
+    const latestVersion = (await repo.call('getLatestForContractAddress', appAddress))
+      .semanticVersion
+      .join('.')
+
+    return `Upgrade ${appId} app instances to v${latestVersion}.`
+  }
+
+  /**
    * Look for known addresses and roles in a radspec description and substitute them with a human string
    *
    * @param  {string} description
-   * @return {Promise<Object>} description and annotated description
+   * @return {Promise<Object>} Description and annotated description
    */
   async postprocessRadspecDescription (description) {
     const addressRegexStr = '0x[a-fA-F0-9]{40}'
@@ -1458,9 +1506,7 @@ export default class Aragon {
         return [input, `'${role.name}'`, { type: 'role', value: role }]
       }
 
-      const app = apps.find(
-        ({ appName }) => appName && namehash(appName) === input
-      )
+      const app = apps.find(({ appId }) => appId === input)
 
       if (app) {
         // return the entire app as it contains APM package details
