@@ -8,6 +8,9 @@ test('encodeCallScript', (t) => {
   }, {
     to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
     data: '0xbeef'
+  }, {
+    to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0x'
   }])
 
   t.is(
@@ -44,5 +47,15 @@ test('encodeCallScript', (t) => {
     callScript.slice(110, 114),
     'beef',
     'sixth part of callscript should be data for tx 2'
+  )
+  t.is(
+    callScript.slice(114, 154),
+    'baaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+    'seventh part of callscript should be address for tx 3'
+  )
+  t.is(
+    callScript.slice(154, 162),
+    '00000000',
+    'eigth part of callscript should be data length for tx 3'
   )
 })

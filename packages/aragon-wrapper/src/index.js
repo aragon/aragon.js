@@ -1213,53 +1213,6 @@ export default class Aragon {
   }
 
   /**
-   * Decodes an EVM callscript and returns the transaction path it describes.
-   *
-   * @param  {string} script
-   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
-   */
-  decodeTransactionPath (script) {
-    // TODO: Support callscripts with multiple transactions in one (i.e. one ID, multiple destinations)
-    function decodePathSegment (script) {
-      // Remove script identifier
-      script = script.substr(10)
-
-      // Get address
-      const destination = `0x${script.substr(0, 40)}`
-      script = script.substr(40)
-
-      // Get data
-      const dataLength = parseInt(`0x${script.substr(0, 8)}`) * 2
-      script = script.substr(8)
-      const data = `0x${script.substr(0, dataLength)}`
-      script = script.substr(dataLength)
-
-      return {
-        to: destination,
-        data
-      }
-    }
-
-    let scriptId = script.substr(0, 10)
-    if (scriptId !== CALLSCRIPT_ID) {
-      throw new Error(`Unknown script ID ${scriptId}`)
-    }
-
-    let path = []
-    while (script.startsWith(CALLSCRIPT_ID)) {
-      const segment = decodePathSegment(script)
-
-      // Set script
-      script = segment.data
-
-      // Push segment
-      path.push(segment)
-    }
-
-    return path
-  }
-
-  /**
    * Calculate the transaction path for a transaction to `destination`
    * that invokes `methodName` with `params`.
    *
@@ -1353,6 +1306,51 @@ export default class Aragon {
   }
 
   /**
+   * Decodes an EVM callscript and returns the transaction path it describes.
+   *
+   * @param  {string} script
+   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   */
+  decodeTransactionPath (script) {
+    function decodePathSegment (script) {
+      // Get address
+      const to = `0x${script.substring(0, 40)}`
+      script = script.substring(40)
+
+      // Get data
+      const dataLength = parseInt(`0x${script.substring(0, 8)}`, 16) * 2
+      script = script.substring(8)
+      const data = `0x${script.substring(0, dataLength)}`
+
+      // Return rest of script for processing
+      script = script.substring(dataLength)
+
+      return {
+        segment: {
+          data,
+          to
+        },
+        scriptLeft: script
+      }
+    }
+
+    // Get script identifier (0x prefix + bytes4)
+    const scriptId = script.substring(0, 10)
+    if (scriptId !== CALLSCRIPT_ID) {
+      throw new Error(`Unknown script ID ${scriptId}`)
+    }
+
+    const segments = []
+    let scriptData = script.substring(10)
+    while (scriptData.length > 0) {
+      const { segment, scriptLeft } = decodePathSegment(scriptData)
+      segments.push(segment)
+      scriptData = scriptLeft
+    }
+    return segments
+  }
+
+  /**
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
    * @param  {Array<Object>} path
@@ -1369,9 +1367,9 @@ export default class Aragon {
       if (!app.functions) return step
 
       // Find the method
-      const methodId = step.data.substr(2, 8)
+      const methodId = step.data.substring(2, 10)
       const method = app.functions.find(
-        (method) => keccak256(method.sig).substr(0, 8) === methodId
+        (method) => keccak256(method.sig).substring(0, 8) === methodId
       )
 
       // Method does not exist in artifact
