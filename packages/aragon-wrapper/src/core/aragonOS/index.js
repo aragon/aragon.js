@@ -40,4 +40,12 @@ function getKernelNamespace (hash) {
   }
 }
 
-export { getAragonOsInternalAppInfo, getKernelNamespace }
+function isAragonOsInternalApp (appId) {
+  return APP_MAPPINGS.has(appId)
+}
+
+export {
+  getAragonOsInternalAppInfo,
+  getKernelNamespace,
+  isAragonOsInternalApp
+}
