@@ -853,6 +853,104 @@ test('should send notifications correctly', async (t) => {
   })
 })
 
+test('should emit an intent when requesting message signing', async (t) => {
+  const { Aragon } = t.context
+  const messageToSign = 'test message'
+  const requestingApp = '0x123'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  instance.signatures = new Subject()
+
+  // act
+  instance.signatures.subscribe(intent => {
+    t.is(intent.message, messageToSign)
+    t.is(intent.requestingApp, requestingApp)
+  })
+
+  instance.signMessage(messageToSign, requestingApp)
+})
+
+test('should be able to resolve intent when requesting message signing', async (t) => {
+  const { Aragon } = t.context
+  const messageToSign = 'test message'
+  const requestingApp = '0x123'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  instance.signatures = new Subject()
+
+  // act
+  let counter = 0
+  instance.signatures.subscribe(intent => {
+    intent.resolve(counter++)
+  })
+
+  return Promise.all([
+    instance.signMessage(messageToSign, requestingApp).then(val => t.is(val, 0)),
+    instance.signMessage(messageToSign, requestingApp).then(val => t.is(val, 1))
+  ])
+})
+
+test('should be able to reject intent when requesting message signing', async (t) => {
+  const { Aragon } = t.context
+  const messageToSign = 'test message'
+  const requestingApp = '0x123'
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  instance.signatures = new Subject()
+
+  // act
+  let counter = 0
+  instance.signatures.subscribe(intent => {
+    if (counter === 0) {
+      intent.reject()
+    } else {
+      intent.reject(new Error('custom error'))
+    }
+    counter++
+  })
+
+  return Promise.all([
+    t.throwsAsync(
+      instance.signMessage(messageToSign, requestingApp),
+      {
+        instanceOf: Error,
+        message: 'The message was not signed'
+      }
+    ),
+    t.throwsAsync(
+      instance.signMessage(messageToSign, requestingApp),
+      {
+        instanceOf: Error,
+        message: 'custom error'
+      }
+    )
+  ])
+})
+
+test('should reject non-string message when requesting message signature', async (t) => {
+  const { Aragon } = t.context
+  const messageToSign = { key: 'this is not a string' }
+  const requestingApp = '0x123'
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+
+  // act
+  return t.throwsAsync(instance.signMessage(messageToSign, requestingApp),
+    {
+      instanceOf: Error,
+      message: 'Message to sign must be a string'
+    }
+  )
+})
+
 test('should emit an intent when performing transaction path', async (t) => {
   const { Aragon } = t.context
   const initialAddress = '0x123'

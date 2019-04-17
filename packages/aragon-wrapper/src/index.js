@@ -1155,6 +1155,9 @@ export default class Aragon {
    * @return {Promise<string>} signature hash
    */
   signMessage (message, requestingApp) {
+    if (typeof message !== 'string') {
+      return Promise.reject(new Error('Message to sign must be a string'))
+    }
     return new Promise((resolve, reject) => {
       this.signatures.next({
         message,
@@ -1721,7 +1724,6 @@ export default class Aragon {
         return [directTransaction]
       }
 
-      // TODO: Support multiple needed roles?
       const roleSig = app.roles.find(
         (role) => role.id === method.roles[0]
       ).bytes
@@ -1733,7 +1735,7 @@ export default class Aragon {
         []
       )
 
-      // No one has access
+      // No one has access, so of course we (or the final forwarder) don't as well
       if (appsWithPermissionForMethod.length === 0) {
         return []
       }
@@ -1808,7 +1810,7 @@ export default class Aragon {
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
-      let script = encodeCallScript([directTransaction])
+      const script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
         transaction.pretransaction = pretransaction
@@ -1838,19 +1840,21 @@ export default class Aragon {
       ]
     })
 
-    // Find the shortest path
+    // Find the shortest path via a depth-first search of forwarder paths
+    // We eagerly evaluate paths that look promising; as soon as we find a forwarder that
+    // "links" up with a previous forwarder, we continue exploring this path immediately.
     // TODO(onbjerg): Should we find and return multiple paths?
     do {
       const [path, [forwarder, ...nextQueue]] = queue.shift()
 
-      // Skip paths longer than 10
-      if (path.length > 10) continue
+      // Skip if no forwarder or the path is longer than 5
+      if (!forwarder || path.length > 5) continue
 
       // Get the previous forwarder address
       const previousForwarder = path[0].to
 
       // Encode the previous transaction into an EVM callscript
-      let script = encodeCallScript([path[0]])
+      const script = encodeCallScript([path[0]])
 
       if (await this.canForward(previousForwarder, forwarder, script)) {
         if (await this.canForward(forwarder, sender, script)) {
@@ -1865,8 +1869,13 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
           // possible path in the queue for later exploration.
-          // TODO(onbjerg): Should `forwarders` be filtered to exclude forwarders in the path already?
-          queue.push([[createForwarderTransaction(forwarder, script), ...path], forwarders])
+          queue.push([
+            [createForwarderTransaction(forwarder, script), ...path],
+            // Avoid including the current forwarder as a candidate for the next step
+            // in the path. Note that this is naive and may result in repeating cycles,
+            // but the maximum path length would prevent against infinite loops
+            forwarders.filter((nextForwarder) => nextForwarder !== forwarder)
+          ])
         }
       }
 
