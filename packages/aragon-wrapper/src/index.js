@@ -20,7 +20,7 @@ import {
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import abi from 'web3-eth-abi'
-import { isAddress, toBN } from 'web3-utils'
+import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
 import * as radspec from 'radspec'
 
@@ -50,6 +50,11 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import {
+  createDirectTransaction,
+  createForwarderTransactionBuilder,
+  getRecommendedGasLimit
+} from './utils/transactions'
 
 // Templates
 import Templates from './templates'
@@ -1243,6 +1248,99 @@ export default class Aragon {
   }
 
   /**
+   * Calculate the transaction path for a basket of intents.
+   * Expects the `intentBasket` to be an array of tuples holding the following:
+   *   {string}   destination: destination address
+   *   {string}   methodName: method to invoke on destination
+   *   {Array<*>} params: method params
+   * These are the same parameters as the ones used for `getTransactionPath()`
+   *
+   * Allows user to specify how many of the intents should be checked.
+   * `checkMode` supports:
+   *   'all': All intents will be checked to make sure they use the same forwarding path.
+   *   'single': assumes all intents can use the path found from the first intent
+   *
+   * @param  {Array<Array<string, string, Array<*>>>} intentBasket Intents
+   * @param  {Object} [options]
+   * @param  {string} [options.checkMode] Path checking mode
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
+   */
+  async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
+    // Get transaction paths for entire basket
+    const intentsToCheck =
+      checkMode === 'all'
+        ? intentBasket // all -- use all intents
+        : checkMode === 'single'
+          ? [intentBasket[0]] // single -- only use first intent
+          : []
+    const intentPaths = await Promise.all(
+      intentsToCheck.map(
+        ([destination, methodName, params]) =>
+          this.getTransactionPath(destination, methodName, params))
+    )
+
+    // Check paths all match
+    const individualPaths = intentPaths
+      // Map each path to just be an array of destination addresses
+      .map(path =>
+        path.map(({ to }) => to)
+      )
+      // Take each array of destination addresses and create a single string
+      .map(path => path.join('.'))
+    // Check if they all match by seeing if a unique set of the individual path
+    // strings is a single path
+    const pathsMatch = (new Set(individualPaths)).size === 1
+
+    if (!pathsMatch) {
+      return []
+    }
+
+    // Let's create direction transactions for each intent in the intentBasket
+    const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
+    const directTransactions = await Promise.all(
+      intentBasket.map(
+        async ([destination, methodName, params]) =>
+          createDirectTransaction(sender, await this.getApp(destination), methodName, params, this.web3)
+      )
+    )
+
+    if (intentPaths[0].length === 1) {
+      // Sender has direct access
+      return {
+        direct: true,
+        transactions: directTransactions
+      }
+    }
+
+    // Create the forwarder transactions for the path with the callscript
+    const createForwarderTransaction = createForwarderTransactionBuilder(sender, {}, this.web3)
+    const forwarderPath = intentPaths[0]
+      // Ignore the last part of the path, which was the original intent
+      .slice(0, -1)
+      // Start from the "last" forwarder and move backwards to the sender
+      .reverse()
+      // Just use the forwarders' addresses
+      .map(({ to }) => to)
+      .reduce(
+        (path, nextForwarder) => {
+          const lastStep = path[0]
+          const encodedLastStep = encodeCallScript(Array.isArray(lastStep) ? lastStep : [lastStep])
+          return [createForwarderTransaction(nextForwarder, encodedLastStep), ...path]
+        },
+        // Start the recursive calls script encoding with the direct transactions for our
+        // intent basket, encoding process
+        [directTransactions]
+      )
+
+    // Put the finishing touches: apply gas, and add radspec descriptions
+    forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
+    return {
+      direct: false,
+      path: await this.describeTransactionPath(forwarderPath)
+    }
+  }
+
+  /**
    * Get the permission manager for an `app`'s and `role`.
    *
    * @param {string} appAddress
@@ -1629,73 +1727,7 @@ export default class Aragon {
 
     const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
-
-    if (!app) {
-      throw new Error(`No artifact found for ${destination}`)
-    }
-
-    const jsonInterface = app.abi
-    if (!jsonInterface) {
-      throw new Error(`No ABI specified in artifact for ${destination}`)
-    }
-
-    const methodABI = app.abi.find(
-      (method) => method.name === methodName
-    )
-    if (!methodABI) {
-      throw new Error(`${methodName} not found on ABI for ${destination}`)
-    }
-
-    let transactionOptions = {}
-
-    // If an extra parameter has been provided, it is the transaction options if it is an object
-    if (methodABI.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
-      const options = params.pop()
-      transactionOptions = { ...transactionOptions, ...options }
-    }
-
-    // The direct transaction we eventually want to perform
-    const directTransaction = {
-      ...transactionOptions, // Options are overwriten by the values below
-      from: sender,
-      to: destination,
-      data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
-    }
-
-    if (transactionOptions.token) {
-      const { address: tokenAddress, value: tokenValue } = transactionOptions.token
-
-      const erc20ABI = getAbi('standard/ERC20')
-      const tokenContract = new this.web3.eth.Contract(erc20ABI, tokenAddress)
-      const balance = await tokenContract.methods.balanceOf(sender).call()
-
-      const tokenValueBN = toBN(tokenValue)
-
-      if (toBN(balance).lt(tokenValueBN)) {
-        throw new Error(`Balance too low. ${sender} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
-      }
-
-      const allowance = await tokenContract.methods.allowance(sender, destination).call()
-      const allowanceBN = toBN(allowance)
-
-      // If allowance is already greater than or equal to amount, there is no need to do an approve transaction
-      if (allowanceBN.lt(tokenValueBN)) {
-        if (allowanceBN.gt(toBN(0))) {
-          // TODO: Actually handle existing approvals (some tokens fail when the current allowance is not 0)
-          console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
-        }
-
-        const tokenApproveTransaction = {
-          // TODO: should we include transaction options?
-          from: sender,
-          to: tokenAddress,
-          data: tokenContract.methods.approve(destination, tokenValue).encodeABI()
-        }
-
-        directTransaction.pretransaction = tokenApproveTransaction
-        delete transactionOptions.token
-      }
-    }
+    const directTransaction = await createDirectTransaction(sender, app, methodName, params, this.web3)
 
     let appsWithPermissionForMethod = []
 
@@ -1790,20 +1822,7 @@ export default class Aragon {
     const pretransaction = directTransaction.pretransaction
     delete directTransaction.pretransaction
 
-    // TODO: No need for contract?
-    // A helper method to create a transaction that calls `forward` on a forwarder with `script`
-    const forwardMethod = new this.web3.eth.Contract(
-      getAbi('aragon/Forwarder')
-    ).methods['forward']
-
-    const createForwarderTransaction = (forwarderAddress, script) => (
-      {
-        ...directTransaction, // Options are overwriten by the values below
-        from: sender,
-        to: forwarderAddress,
-        data: forwardMethod(script).encodeABI()
-      }
-    )
+    const createForwarderTransaction = createForwarderTransactionBuilder(sender, directTransaction, this.web3)
 
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
