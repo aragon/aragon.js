@@ -25,7 +25,6 @@ import dotprop from 'dot-prop'
 import * as radspec from 'radspec'
 
 // APM
-import { keccak256 } from 'js-sha3'
 import apm from '@aragon/apm'
 
 // RPC
@@ -46,7 +45,7 @@ import {
   makeAddressMapProxy,
   makeProxy,
   makeProxyFromABI,
-  getRecommendedGasLimit,
+  findMethodOnAppFromData,
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
@@ -1456,23 +1455,19 @@ export default class Aragon {
    */
   describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
+      if (Array.isArray(step)) {
+        // Intent basket with multiple transactions in a single callscript
+        let description
+        try {
+          description = this.tryDescribingOrganizationUpgradeIntents(step)
+        } catch (err) { }
+
+        // If the basket wasn't handled by us, just describe all the steps
+        return description || this.describeTransactionPath(step)
+      }
+
       const app = await this.getApp(step.to)
-
-      // No app artifact
-      if (!app) return step
-
-      // Missing methods in artifact
-      if (!app.functions) return step
-
-      // Find the method
-      const methodId = step.data.substring(2, 10)
-      const method = app.functions.find(
-        (method) => keccak256(method.sig).substring(0, 8) === methodId
-      )
-
-      // Method does not exist in artifact
-      if (!method) return step
-
+      const method = findMethodOnAppFromData(step.data, app)
       const expression = method.notice
 
       // No expression
@@ -1552,6 +1547,33 @@ export default class Aragon {
       .join('.')
 
     return `Upgrade ${appId} app instances to v${latestVersion}.`
+  }
+
+  /**
+   * Attempt to parse a complete organization upgrade intent
+   *
+   * @param  {string} description
+   * @return {Promise<Object>} Description and annotated description
+   */
+  async tryDescribingOrganizationUpgradeIntents (intents) {
+    const allKernel = intents.every(({ to }) => this.isKernelAddress(to))
+    if (!allKernel) return
+
+    const kernelApp = await this.getApp(intents[0].to)
+    const allSetApp = intents.every(({ data }) => {
+      const intentMethod = findMethodOnAppFromData(data, kernelApp)
+      return intentMethod && intentMethod.sig === 'setApp(bytes32,bytes32,address)'
+    })
+
+    // Just assume for now updating all four apps (finance, token manager, vault, voting)
+    if (allSetApp && intents.length === 4) {
+      return {
+        description: 'Upgrade organization to Aragon 0.7 Bella',
+        to: intents[0].to,
+        name: kernelApp.name,
+        identifier: kernelApp.identifier
+      }
+    }
   }
 
   /**
