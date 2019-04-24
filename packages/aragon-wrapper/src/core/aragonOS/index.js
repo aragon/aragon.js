@@ -11,8 +11,8 @@ function getAragonOsInternalAppInfo (appId) {
   const appInfo = getAppInfo(appId, 'aragon')
 
   return appInfo && {
-    isAragonOsInternalApp: true,
-    ...appInfo
+    ...appInfo,
+    isAragonOsInternalApp: true
   }
 }
 
