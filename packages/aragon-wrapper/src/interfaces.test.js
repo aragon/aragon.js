@@ -90,6 +90,7 @@ test('interfaces: getAppInfo', async (t) => {
 })
 
 test('interfaces: hasAppInfo', async (t) => {
+  t.plan(11)
   const availableMappings = [
     ['aragon', [
       apmAppId('acl'),
