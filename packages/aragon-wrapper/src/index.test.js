@@ -16,8 +16,10 @@ test.beforeEach(t => {
   const apmStub = sinon.stub()
   const aragonOSCoreStub = {
     getAragonOsInternalAppInfo: sinon.stub(),
-    getApmAppInfo: sinon.stub(),
     getKernelNamespace
+  }
+  const apmCoreStub = {
+    getApmAppInfo: sinon.stub()
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
@@ -30,6 +32,7 @@ test.beforeEach(t => {
     '@aragon/apm': sinon.stub().returns(apmStub),
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
+    './core/apm': apmCoreStub,
     './utils': utilsStub
   }).default
 
@@ -37,6 +40,7 @@ test.beforeEach(t => {
     Aragon,
     apmStub,
     aragonOSCoreStub,
+    apmCoreStub,
     messengerConstructorStub,
     utilsStub
   }
@@ -312,20 +316,22 @@ const appInitTestCases = [
     {
       [kernelAddress]: 'some permissions',
       '0x456': 'some permissions',
-      '0x789': 'some permissions'
+      '0x789': 'some permissions',
+      '0xrepo': 'some permissions'
     }
   ],
   [
     'without kernel in permissions',
     {
       '0x456': 'some permissions',
-      '0x789': 'some permissions'
+      '0x789': 'some permissions',
+      '0xrepo': 'some permissions'
     }
   ]
 ]
 appInitTestCases.forEach(([testName, permissionsObj]) => {
   test(`should init the apps correctly - ${testName}`, async (t) => {
-    const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
+    const { Aragon, apmStub, aragonOSCoreStub, apmCoreStub, utilsStub } = t.context
 
     t.plan(1)
     // arrange
@@ -333,12 +339,14 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
     const appIds = {
       [kernelAddress]: 'kernel',
       '0x456': 'counterApp',
-      '0x789': 'votingApp'
+      '0x789': 'votingApp',
+      '0xrepo': 'repoApp'
     }
     const codeAddresses = {
       [kernelAddress]: '0xkernel',
       '0x456': '0xcounterApp',
-      '0x789': '0xvotingApp'
+      '0x789': '0xvotingApp',
+      '0xrepo': '0xrepoApp'
     }
     // Stub makeProxy for each app
     Object.keys(appIds).forEach(address => {
@@ -360,6 +368,9 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
     aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
       abi: 'abi for kernel',
       isAragonOsInternalApp: true
+    })
+    apmCoreStub.getApmAppInfo.withArgs(appIds['0xrepo']).returns({
+      abi: 'abi for repo'
     })
 
     const instance = new Aragon()
@@ -398,6 +409,13 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
             isForwarder: false,
             kernelAddress: '0x123',
             proxyAddress: '0x789'
+          }, {
+            abi: 'abi for repo',
+            appId: 'repoApp',
+            codeAddress: '0xrepoApp',
+            isForwarder: false,
+            kernelAddress: '0x123',
+            proxyAddress: '0xrepo'
           }
         ])
         resolve()
