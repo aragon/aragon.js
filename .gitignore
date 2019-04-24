@@ -4,6 +4,10 @@
 # Dependencies
 node_modules
 
+# Ignore lock files
+package-lock.json
+yarn.lock
+
 # Artifacts
 dist
 

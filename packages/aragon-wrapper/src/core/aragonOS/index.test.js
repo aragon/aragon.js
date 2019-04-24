@@ -17,7 +17,7 @@ test('aragonOS: getKernelNamespace', async (t) => {
   // assert
   t.is(result.hash, coreNamespaceHash)
   t.is(result.name, 'Core')
-  t.is(emptyResult, undefined)
+  t.is(emptyResult, null)
 })
 
 test('aragonOS: getAragonOsInternalAppInfo', async (t) => {
@@ -31,5 +31,5 @@ test('aragonOS: getAragonOsInternalAppInfo', async (t) => {
   // assert
   t.is(result.name, 'ACL')
   t.is(result.isAragonOsInternalApp, true)
-  t.is(emptyResult, undefined)
+  t.is(emptyResult, null)
 })

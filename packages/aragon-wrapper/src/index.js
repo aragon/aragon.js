@@ -1,18 +1,31 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, combineLatest, merge } from 'rxjs'
+import { ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
 import {
-  map, startWith, scan, tap, publishReplay, switchMap, filter, first,
-  debounceTime, skipWhile
+  concatMap,
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  first,
+  map,
+  mergeAll,
+  mergeMap,
+  publishReplay,
+  scan,
+  skipWhile,
+  startWith,
+  switchMap,
+  tap,
+  withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
+import abi from 'web3-eth-abi'
 import { isAddress, toBN } from 'web3-utils'
 import dotprop from 'dot-prop'
 import * as radspec from 'radspec'
 
 // APM
 import { keccak256 } from 'js-sha3'
-import { hash as namehash } from 'eth-ens-namehash'
 import apm from '@aragon/apm'
 
 // RPC
@@ -20,6 +33,13 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
+import { getApmAppInfo } from './core/apm'
+import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
+import {
+  getAragonOsInternalAppInfo,
+  getKernelNamespace,
+  isAragonOsInternalApp
+} from './core/aragonOS'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   addressesEqual,
@@ -31,8 +51,6 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
-
-import { getAragonOsInternalAppInfo, getAPMAppInfo, getKernelNamespace } from './core/aragonOS'
 
 // Templates
 import Templates from './templates'
@@ -170,9 +188,11 @@ export default class Aragon {
     await this.initIdentityProviders()
     this.initApps()
     this.initForwarders()
+    this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
     this.transactions = new Subject()
+    this.signatures = new Subject()
   }
 
   /**
@@ -291,17 +311,22 @@ export default class Aragon {
    * @return {void}
    */
   initApps () {
-    // Cache requests so we don't make unnecessary calls when a call is already in-flight
+    /******************************
+     *                            *
+     *          CACHING           *
+     *                            *
+     ******************************/
+
     const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
-        getAPMAppInfo(appId) ||
+        getApmAppInfo(appId) ||
         this.apm.getLatestVersionForContract(appId, codeAddress)
     })
 
     const proxyContractValueCache = new AsyncRequestCache((proxyAddress) => {
       if (this.isKernelAddress(proxyAddress)) {
-        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3, this.kernelProxy.initializationBlock)
+        const kernelProxy = makeProxy(proxyAddress, 'ERCProxy', this.web3)
 
         return Promise.all([
           // Use Kernel ABI
@@ -316,8 +341,8 @@ export default class Aragon {
         }))
       }
 
-      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3, this.kernelProxy.initializationBlock)
-      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3, this.kernelProxy.initializationBlock)
+      const appProxy = makeProxy(proxyAddress, 'AppProxy', this.web3)
+      const appProxyForwarder = makeProxy(proxyAddress, 'Forwarder', this.web3)
 
       return Promise.all([
         appProxy.call('kernel'),
@@ -333,15 +358,32 @@ export default class Aragon {
       }))
     })
 
-    // Get all app proxy addresses
-    const baseApps$ = this.permissions.pipe(
+    /******************************
+     *                            *
+     *            APPS            *
+     *                            *
+     ******************************/
+
+    // Get all installed app proxy addresses
+    const installedApps$ = this.permissions.pipe(
       map(Object.keys),
+      // Dedupe until apps change
+      distinctUntilChanged((oldProxies, newProxies) => {
+        if (oldProxies.length !== newProxies.length) {
+          return false
+        }
+        const oldSet = new Set(oldProxies)
+        const intersection = new Set(newProxies.filter(newProxy => oldSet.has(newProxy)))
+        return intersection.size === oldSet.size
+      }),
       // Add Kernel as the first "app"
       map((proxyAddresses) => {
         const appsWithoutKernel = proxyAddresses.filter((address) => !this.isKernelAddress(address))
         return [this.kernelProxy.address].concat(appsWithoutKernel)
       }),
       // Get proxy values
+      // Note that we can safely discard throttled values,
+      // so we use a `switchMap()` instead of a `mergeMap()`
       switchMap(
         (proxyAddresses) => Promise.all(
           proxyAddresses.map(async (proxyAddress) => {
@@ -363,9 +405,58 @@ export default class Aragon {
       ))
     )
 
+    // SetApp events are emitted when apps are installed and upgraded
+    // These may modify the implementation addresses of the proxies (modifying their behaviour), so
+    // we invalidate any caching we've done
+    const updatedApps$ = this.kernelProxy
+      // Override events subscription with empty options to subscribe from latest block
+      .events('SetApp', {})
+      .pipe(
+        // Only care about changes if they're in the APP_BASE namespace
+        filter(({ returnValues }) => {
+          const namespace = getKernelNamespace(returnValues.namespace)
+          return namespace && namespace.name === 'App code'
+        }),
+
+        // Merge with latest value of installedApps$ so we can return the full list of apps
+        withLatestFrom(
+          installedApps$,
+          function updateApps (setAppEvent, apps) {
+            const { appId: setAppId } = setAppEvent.returnValues
+            return apps.map(async (app) => {
+              if (app.appId !== setAppId) {
+                return app
+              }
+
+              let proxyValues
+              try {
+                proxyValues = await proxyContractValueCache.request(
+                  app.proxyAddress,
+                  true // force cache invalidation
+                )
+              } catch (_) {}
+
+              return {
+                ...app,
+                ...proxyValues,
+                updated: true
+              }
+            })
+          }
+        ),
+        // Emit resolved array of promises, one at a time
+        concatMap(updatedApps => Promise.all(updatedApps))
+      )
+
+    // We merge these two observables, which both return the full list of apps attached with their
+    // proxy values:
+    //   - installedApps$: emits any time the list of installed apps changes
+    //   - updatedApps$:   emits any time SetApp could modify an installed app
+    const apps$ = merge(installedApps$, updatedApps$)
+
     // Get artifact info for apps
-    const appsWithInfo$ = baseApps$.pipe(
-      switchMap(
+    const appsWithInfo$ = apps$.pipe(
+      concatMap(
         (apps) => Promise.all(
           apps.map(async (app) => {
             let appInfo
@@ -382,46 +473,280 @@ export default class Aragon {
       )
     )
 
-    // Combine the loaded apps with any identifiers they may have declared
-    this.identifiers = new Subject()
-    this.apps = combineLatest(
-      appsWithInfo$,
-      this.identifiers.pipe(
-        scan(
-          (identifiers, { address, identifier }) =>
-            Object.assign(identifiers, { [address]: identifier }),
-          {}),
-        startWith({})
-      ),
-      function attachIdentifiers (apps, identifiers) {
-        return apps.map(
-          (app) => {
-            if (identifiers[app.proxyAddress]) {
-              return Object.assign(app, { identifier: identifiers[app.proxyAddress] })
-            }
-
-            return app
-          }
-        )
-      }
-    ).pipe(
+    this.apps = appsWithInfo$.pipe(
       publishReplay(1)
     )
     this.apps.connect()
-  }
 
-  /**
-   * Set the identifier of an app.
-   *
-   * @param {string} address The proxy address of the app
-   * @param {string} identifier The identifier of the app
-   * @return {void}
-   */
-  setAppIdentifier (address, identifier) {
-    this.identifiers.next({
-      address,
-      identifier
-    })
+    /*******************************
+     *                             *
+     *            REPOS            *
+     *                             *
+     ******************************/
+
+    // Initialize installed repos from the list of apps
+    const installedRepoCache = new Map()
+    const repo$ = apps$.pipe(
+      // Map installed apps into a deduped list of their aragonPM repos, with these assumptions:
+      //   - No apps are lying about their appId (malicious apps _could_ masquerade as other
+      //     apps by setting this value themselves)
+      //   - `contractAddress`s will stay the same across all installed apps.
+      //      This is technically not true as apps could set this value themselves
+      //      (e.g. as pinned apps do), but these apps wouldn't be able to upgrade anyway
+      //
+      //  Ultimately returns an array of objects, holding the repo's:
+      //    - appId
+      //    - base contractAddress
+      map((apps) => Object.values(
+        apps
+          .filter(({ appId }) => !isAragonOsInternalApp(appId))
+          .reduce((installedRepos, { appId, codeAddress, updated }) => {
+            installedRepos[appId] = {
+              appId,
+              updated,
+              contractAddress: codeAddress
+            }
+            return installedRepos
+          }, {})
+      )),
+
+      // Filter list of installed repos into:
+      //   - New repos we haven't seen before (so we only subscribe once to their events)
+      //   - Repos with apps that were updated in the kernel, to recalculate their current version
+      map((repos) => {
+        const newRepoAppIds = []
+        const updatedRepoAppIds = []
+
+        repos.forEach((repo) => {
+          const { appId, updated } = repo
+          if (!installedRepoCache.has(appId)) {
+            newRepoAppIds.push(appId)
+          } else if (updated) {
+            updatedRepoAppIds.push(appId)
+          }
+
+          // Mark repo as seen and cache installed information
+          installedRepoCache.set(appId, repo)
+        })
+
+        return [newRepoAppIds, updatedRepoAppIds]
+      }),
+
+      // Stop if there's no new repos or updated apps
+      filter(([newRepoAppIds, updatedRepoAppIds]) =>
+        newRepoAppIds.length || updatedRepoAppIds.length
+      ),
+
+      // Project new repos into their ids and web3 proxy objects
+      concatMap(async ([newRepoAppIds, updatedRepoAppIds]) => {
+        const newRepos = await Promise.all(
+          newRepoAppIds.map(async (appId) => {
+            const repoProxy = await makeRepoProxy(appId, this.apm, this.web3)
+            await repoProxy.updateInitializationBlock()
+
+            return {
+              appId,
+              repoProxy
+            }
+          })
+        )
+        return [newRepos, updatedRepoAppIds]
+      }),
+
+      // Here's where the fun begins!
+      // It'll be easy to get lost, so remember to take it slowly.
+      // Just remember, with this `mergeMap()`, we'll be subscribing to all the projected (returned)
+      // observables and merging their respective emissions into a single observable.
+      //
+      // The output of this merged observable are update events containing the following:
+      //   - `appId`: mandatory, signifies which repo was updated
+      //   - `repoAddress`: optional, address of the repo contract itself
+      //   - `versions`: optional, new version information
+      mergeMap(([newRepos, updatedRepoAppIds]) => {
+        // Create a new observable to project each new update as its own update emission.
+        const update$ = of(...updatedRepoAppIds).pipe(
+          map((appId) => ({ appId }))
+        )
+
+        // Create a new observable to project each new repo as its own emission.
+        const newRepo$ = of(...newRepos)
+
+        // Create a new observable to project each new repo's address as its own update emission.
+        const repoAddress$ = newRepo$.pipe(
+          map(({ appId, repoProxy }) => ({
+            appId,
+            repoAddress: repoProxy.address
+          }))
+        )
+
+        // Create a new observable that projects each NewVersion event as its own update event
+        // emission.
+        // This one is a bit trickier, due to the higher order observable. Keep reading.
+        const version$ = newRepo$.pipe(
+          // `mergeMap()` to "flatten" the async transformation. This async function returns an
+          // observable, which is ultimately the NewVersion stream. More on this, after the break.
+          // Note: we don't care about the ordering, so we use `mergeMap()` instead of `concatMap()`
+          mergeMap(async ({ appId, repoProxy }) => {
+            const initialVersions = [
+              // Immediately query state from the repo contract, to avoid having to wait until all
+              // past events sync (may be long)
+              ...await getAllRepoVersions(repoProxy)
+            ]
+
+            // Return an observable subscribed to NewVersion events, giving us:
+            //   - Timestamps for versions that were published prior to this process running
+            //   - Notifications for newly published versions
+            //
+            // Reduce this with the cached version information to emit version updates for the repo.
+            return repoProxy.events('NewVersion').pipe(
+              // Project each event to a new version info object, one at a time
+              concatMap(async (event) => {
+                const { versionId: eventVersionId } = event.returnValues
+
+                // Adjust from Ethereum time
+                const timestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp * 1000
+
+                const versionIndex = initialVersions.findIndex(({ versionId }) => versionId === eventVersionId)
+                const versionInfo =
+                  versionIndex === -1
+                    ? await getRepoVersionById(repoProxy, eventVersionId)
+                    : initialVersions[versionIndex]
+
+                return {
+                  ...versionInfo,
+                  timestamp
+                }
+              }),
+
+              // Trick to immediately emit (e.g. similar to a do/while loop)
+              startWith(null),
+
+              // Reduce newly emitted versions into the full list of versions
+              scan(({ appId, versions }, newVersionInfo) => {
+                let newVersions = versions
+                if (newVersionInfo) {
+                  const versionIndex = versions.findIndex(({ versionId }) => versionId === newVersionInfo.versionId)
+
+                  if (versionIndex === -1) {
+                    newVersions = versions.concat(newVersionInfo)
+                  } else {
+                    newVersions = Array.from(versions)
+                    newVersions[versionIndex] = newVersionInfo
+                  }
+                }
+
+                return {
+                  appId,
+                  versions: newVersions
+                }
+              }, {
+                appId,
+                versions: initialVersions
+              })
+            )
+          }),
+
+          // This bit is interesting.
+          // We've "flattened" our async transformation with the `mergeMap()` above, but it still
+          // returns an observable. We need to flatten this observable's emissions into the upper
+          // stream, which is what `mergeAll()` achieves.
+          mergeAll()
+        )
+
+        // Merge all of the repo update events resulting from the apps being updated, and return it
+        // to the upper `mergeMap()` so it can be re-flattened into a single event stream.
+        return merge(repoAddress$, version$, update$)
+      }),
+
+      // Reduce the event stream into a current representation of the installed repos, and which
+      // repo to update next.
+      scan(({ repos }, repoUpdate) => {
+        const { appId: updatedAppId, ...update } = repoUpdate
+        const updatedRepoInfo = {
+          ...repos[updatedAppId],
+          ...update
+        }
+
+        return {
+          repos: {
+            ...repos,
+            [updatedAppId]: updatedRepoInfo
+          },
+          updatedRepoAppId: updatedAppId
+        }
+      }, {
+        repos: {},
+        updatedRepoAppId: null
+      }),
+
+      // Stop if we don't have enough information yet to continue
+      filter(({ repos, updatedRepoAppId }) =>
+        !!updatedRepoAppId && Array.isArray(repos[updatedRepoAppId].versions)
+      ),
+
+      // Grab the full information of the updated repo using its latest values.
+      // With this, we've taken the basic stream of updates for events and mapped them onto their
+      // full repo objects.
+      concatMap(async ({ repos, updatedRepoAppId: appId }) => {
+        const { repoAddress, versions } = repos[appId]
+        const installedRepoInfo = installedRepoCache.get(appId)
+
+        const latestVersion = versions[versions.length - 1]
+        const currentVersion = Array.from(versions)
+          // Apply reverse to find the latest version with the currently installed contract address
+          .reverse()
+          .find(version => version.contractAddress === installedRepoInfo.contractAddress)
+
+        // Get info for the current and latest versions of the repo
+        const currentVersionRequest = applicationInfoCache
+          .request(`${appId}.${currentVersion.contractAddress}`)
+          .catch(() => ({}))
+          .then(content => ({
+            content,
+            version: currentVersion.version
+          }))
+
+        const versionInfos = await Promise.all([
+          currentVersionRequest,
+          currentVersion.contractAddress === latestVersion.contractAddress
+            ? currentVersionRequest // current version is also the latest, no need to refetch
+            : applicationInfoCache
+              .request(`${appId}.${latestVersion.contractAddress}`)
+              .catch(() => ({}))
+              .then(content => ({
+                content,
+                version: latestVersion.version
+              }))
+        ])
+
+        // Emit updated repo information
+        return {
+          appId,
+          repoAddress,
+          versions,
+          currentVersion: versionInfos[0],
+          latestVersion: versionInfos[1]
+        }
+      })
+    )
+
+    this.installedRepos = repo$.pipe(
+      // Finally, we reduce the merged updates from individual repos into one final, expanding array
+      // of the installed repos
+      scan((repos, updatedRepo) => {
+        const repoIndex = repos.findIndex(repo => repo.repoAddress === updatedRepo.repoAddress)
+        if (repoIndex === -1) {
+          return repos.concat(updatedRepo)
+        } else {
+          const nextRepos = Array.from(repos)
+          nextRepos[repoIndex] = updatedRepo
+          return nextRepos
+        }
+      }, []),
+      debounceTime(100),
+      publishReplay(1)
+    )
+    this.installedRepos.connect()
   }
 
   /**
@@ -437,6 +762,36 @@ export default class Aragon {
       publishReplay(1)
     )
     this.forwarders.connect()
+  }
+
+  /**
+   * Initialise app identifier observable.
+   *
+   * @return {void}
+   */
+  initAppIdentifiers () {
+    this.appIdentifiers = new BehaviorSubject({}).pipe(
+      scan(
+        (identifiers, { address, identifier }) =>
+          Object.assign(identifiers, { [address]: identifier })
+      ),
+      publishReplay(1)
+    )
+    this.appIdentifiers.connect()
+  }
+
+  /**
+   * Set the identifier of an app.
+   *
+   * @param {string} address The proxy address of the app
+   * @param {string} identifier The identifier of the app
+   * @return {void}
+   */
+  setAppIdentifier (address, identifier) {
+    this.appIdentifiers.next({
+      address,
+      identifier
+    })
   }
 
   /**
@@ -517,7 +872,9 @@ export default class Aragon {
           address,
           providerName,
           resolve,
-          reject
+          reject (err) {
+            reject(err || new Error('The identity modification was not completed'))
+          }
         })
       })
     }
@@ -724,7 +1081,7 @@ export default class Aragon {
       request$.connect()
 
       // Register request handlers
-      const shutdown = handlers.combineRequestHandlers(
+      const handlerSubscription = handlers.combineRequestHandlers(
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
         handlers.createRequestHandler(request$, 'events', handlers.events),
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
@@ -733,11 +1090,12 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
-        handlers.createRequestHandler(request$, 'identify', handlers.identifier),
+        handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth)
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -747,9 +1105,27 @@ export default class Aragon {
         return messenger.send('context', [context])
       }
 
+      // The attached unsubscribe isn't automatically bound to the subscription
+      const shutdown = () => handlerSubscription.unsubscribe()
+
+      const shutdownAndClearCache = async () => {
+        shutdown()
+
+        return Promise.all(
+          Object
+            .keys(await this.cache.getAll())
+            .map(cacheKey =>
+              cacheKey.startsWith(proxyAddress)
+                ? this.cache.remove(cacheKey)
+                : Promise.resolve()
+            )
+        )
+      }
+
       return {
+        setContext,
         shutdown,
-        setContext
+        shutdownAndClearCache
       }
     }
   }
@@ -774,6 +1150,29 @@ export default class Aragon {
   }
 
   /**
+   * Allows apps to sign arbitrary data via a RPC call
+   *
+   * @param {string} message to be signed
+   * @param {string} requestingApp proxy address of requesting app
+   * @return {Promise<string>} signature hash
+   */
+  signMessage (message, requestingApp) {
+    if (typeof message !== 'string') {
+      return Promise.reject(new Error('Message to sign must be a string'))
+    }
+    return new Promise((resolve, reject) => {
+      this.signatures.next({
+        message,
+        requestingApp,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The message was not signed'))
+        }
+      })
+    })
+  }
+
+  /**
    * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
    * @return {Promise<string>} transaction hash
    */
@@ -782,9 +1181,7 @@ export default class Aragon {
       this.transactions.next({
         transaction: transactionPath[0],
         path: transactionPath,
-        accept (transactionHash) {
-          resolve(transactionHash)
-        },
+        resolve,
         reject (err) {
           reject(err || new Error('The transaction was not signed'))
         }
@@ -815,53 +1212,6 @@ export default class Aragon {
       map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxyAddress))),
       first()
     ).toPromise()
-  }
-
-  /**
-   * Decodes an EVM callscript and returns the transaction path it describes.
-   *
-   * @param  {string} script
-   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
-   */
-  decodeTransactionPath (script) {
-    // TODO: Support callscripts with multiple transactions in one (i.e. one ID, multiple destinations)
-    function decodePathSegment (script) {
-      // Remove script identifier
-      script = script.substr(10)
-
-      // Get address
-      const destination = `0x${script.substr(0, 40)}`
-      script = script.substr(40)
-
-      // Get data
-      const dataLength = parseInt(`0x${script.substr(0, 8)}`) * 2
-      script = script.substr(8)
-      const data = `0x${script.substr(0, dataLength)}`
-      script = script.substr(dataLength)
-
-      return {
-        to: destination,
-        data
-      }
-    }
-
-    let scriptId = script.substr(0, 10)
-    if (scriptId !== CALLSCRIPT_ID) {
-      throw new Error(`Unknown script ID ${scriptId}`)
-    }
-
-    let path = []
-    while (script.startsWith(CALLSCRIPT_ID)) {
-      const segment = decodePathSegment(script)
-
-      // Set script
-      script = segment.data
-
-      // Push segment
-      path.push(segment)
-    }
-
-    return path
   }
 
   /**
@@ -958,6 +1308,51 @@ export default class Aragon {
   }
 
   /**
+   * Decodes an EVM callscript and returns the transaction path it describes.
+   *
+   * @param  {string} script
+   * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
+   */
+  decodeTransactionPath (script) {
+    function decodePathSegment (script) {
+      // Get address
+      const to = `0x${script.substring(0, 40)}`
+      script = script.substring(40)
+
+      // Get data
+      const dataLength = parseInt(`0x${script.substring(0, 8)}`, 16) * 2
+      script = script.substring(8)
+      const data = `0x${script.substring(0, dataLength)}`
+
+      // Return rest of script for processing
+      script = script.substring(dataLength)
+
+      return {
+        segment: {
+          data,
+          to
+        },
+        scriptLeft: script
+      }
+    }
+
+    // Get script identifier (0x prefix + bytes4)
+    const scriptId = script.substring(0, 10)
+    if (scriptId !== CALLSCRIPT_ID) {
+      throw new Error(`Unknown script ID ${scriptId}`)
+    }
+
+    const segments = []
+    let scriptData = script.substring(10)
+    while (scriptData.length > 0) {
+      const { segment, scriptLeft } = decodePathSegment(scriptData)
+      segments.push(segment)
+      scriptData = scriptLeft
+    }
+    return segments
+  }
+
+  /**
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
    * @param  {Array<Object>} path
@@ -974,9 +1369,9 @@ export default class Aragon {
       if (!app.functions) return step
 
       // Find the method
-      const methodId = step.data.substr(2, 8)
+      const methodId = step.data.substring(2, 10)
       const method = app.functions.find(
-        (method) => keccak256(method.sig).substr(0, 8) === methodId
+        (method) => keccak256(method.sig).substring(0, 8) === methodId
       )
 
       // Method does not exist in artifact
@@ -989,16 +1384,28 @@ export default class Aragon {
 
       let description
       let annotatedDescription
-      try {
-        description = await radspec.evaluate(
-          expression,
-          {
-            abi: app.abi,
-            transaction: step
-          },
-          { ethNode: this.web3.currentProvider }
-        )
-      } catch (err) { }
+
+      // Detect if we should try to handle the description for this step ourselves
+      if (this.isKernelAddress(step.to) && method.sig === 'setApp(bytes32,bytes32,address)') {
+        // setApp() call; attempt to make a more friendly description
+        try {
+          description = await this.tryDescribingUpdateAppIntent(step)
+        } catch (err) { }
+      }
+
+      if (!description) {
+        // Use radspec normally
+        try {
+          description = await radspec.evaluate(
+            expression,
+            {
+              abi: app.abi,
+              transaction: step
+            },
+            { ethNode: this.web3.currentProvider }
+          )
+        } catch (err) { }
+      }
 
       if (description) {
         const processed = await this.postprocessRadspecDescription(description)
@@ -1016,10 +1423,47 @@ export default class Aragon {
   }
 
   /**
+   * Attempt to describe a setApp() intent. Only describes the APP_BASE namespace.
+   *
+   * @param  {string} description
+   * @return {Promise<string>} Description, if one could be made.
+   */
+  async tryDescribingUpdateAppIntent (intent) {
+    // Strip 0x prefix + bytes4 sig to get parameter data
+    const txData = intent.data.substring(10)
+    const types = [
+      {
+        type: 'bytes32',
+        name: 'namespace'
+      }, {
+        type: 'bytes32',
+        name: 'appId'
+      }, {
+        type: 'address',
+        name: 'appAddress'
+      }
+    ]
+    const { appId, appAddress, namespace } = abi.decodeParameters(types, txData)
+
+    const kernelNamespace = getKernelNamespace(namespace)
+    if (!kernelNamespace || kernelNamespace.name !== 'App code') {
+      return
+    }
+
+    // Fetch aragonPM information
+    const repo = await makeRepoProxy(appId, this.apm, this.web3)
+    const latestVersion = (await repo.call('getLatestForContractAddress', appAddress))
+      .semanticVersion
+      .join('.')
+
+    return `Upgrade ${appId} app instances to v${latestVersion}.`
+  }
+
+  /**
    * Look for known addresses and roles in a radspec description and substitute them with a human string
    *
    * @param  {string} description
-   * @return {Promise<Object>} description and annotated description
+   * @return {Promise<Object>} Description and annotated description
    */
   async postprocessRadspecDescription (description) {
     const addressRegexStr = '0x[a-fA-F0-9]{40}'
@@ -1065,9 +1509,7 @@ export default class Aragon {
         return [input, `'${role.name}'`, { type: 'role', value: role }]
       }
 
-      const app = apps.find(
-        ({ appName }) => appName && namehash(appName) === input
-      )
+      const app = apps.find(({ appId }) => appId === input)
 
       if (app) {
         // return the entire app as it contains APM package details
@@ -1283,7 +1725,6 @@ export default class Aragon {
         return [directTransaction]
       }
 
-      // TODO: Support multiple needed roles?
       const roleSig = app.roles.find(
         (role) => role.id === method.roles[0]
       ).bytes
@@ -1295,7 +1736,7 @@ export default class Aragon {
         []
       )
 
-      // No one has access
+      // No one has access, so of course we (or the final forwarder) don't as well
       if (appsWithPermissionForMethod.length === 0) {
         return []
       }
@@ -1370,7 +1811,7 @@ export default class Aragon {
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly
     for (const forwarder of forwardersWithPermission) {
-      let script = encodeCallScript([directTransaction])
+      const script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
         transaction.pretransaction = pretransaction
@@ -1400,19 +1841,24 @@ export default class Aragon {
       ]
     })
 
-    // Find the shortest path
+    // Find the shortest path via a breadth-first search of forwarder paths.
+    // We do a breadth-first instead of depth-first search because:
+    //   - We assume that most forwarding paths will be quite short, so it should be faster
+    //     to check in "stages" rather than exhaust single paths
+    //   - We don't currently protect against cycles in the path, and so exhausting single
+    //     paths can be wasteful if they result in dead ends
     // TODO(onbjerg): Should we find and return multiple paths?
     do {
       const [path, [forwarder, ...nextQueue]] = queue.shift()
 
-      // Skip paths longer than 10
-      if (path.length > 10) continue
+      // Skip if no forwarder or the path is longer than 5
+      if (!forwarder || path.length > 5) continue
 
       // Get the previous forwarder address
       const previousForwarder = path[0].to
 
       // Encode the previous transaction into an EVM callscript
-      let script = encodeCallScript([path[0]])
+      const script = encodeCallScript([path[0]])
 
       if (await this.canForward(previousForwarder, forwarder, script)) {
         if (await this.canForward(forwarder, sender, script)) {
@@ -1427,8 +1873,13 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
           // possible path in the queue for later exploration.
-          // TODO(onbjerg): Should `forwarders` be filtered to exclude forwarders in the path already?
-          queue.push([[createForwarderTransaction(forwarder, script), ...path], forwarders])
+          queue.push([
+            [createForwarderTransaction(forwarder, script), ...path],
+            // Avoid including the current forwarder as a candidate for the next step
+            // in the path. Note that this is naive and may result in repeating cycles,
+            // but the maximum path length would prevent against infinite loops
+            forwarders.filter((nextForwarder) => nextForwarder !== forwarder)
+          ])
         }
       }
 

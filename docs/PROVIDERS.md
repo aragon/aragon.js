@@ -27,17 +27,18 @@ A provider communicates through the [MessageChannel PostMessage API](https://dev
 
 **Parameters**
 
-1. [`target`] (`Object`): The object (that implements the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage)) to send messages to. (optional, default `self`)
+1. [`target`](`Object`): The object (that implements the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage)) to send messages to. (optional, default `self`)
 
 ## WindowMessage
 
-A provider that communicates through the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage).  It is suitable to use in front-ends connected through an iframe by passing [window.parent](https://developer.mozilla.org/en-US/docs/Web/API/Window/parent).
+A provider that communicates through the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage). It is suitable to use in front-ends connected through an iframe by passing [window.parent](https://developer.mozilla.org/en-US/docs/Web/API/Window/parent).
 
 **Example**
+
 ```
 const provider = new WindowMessage(window.parent)
 ```
 
 **Parameters**
 
-1. [`target`] (`Object`): The object (that implements the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)) to send messages to.
+1. [`target`](`Object`): The object (that implements the [Window PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)) to send messages to.
