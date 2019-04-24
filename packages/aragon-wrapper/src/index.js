@@ -1838,9 +1838,12 @@ export default class Aragon {
       ]
     })
 
-    // Find the shortest path via a depth-first search of forwarder paths
-    // We eagerly evaluate paths that look promising; as soon as we find a forwarder that
-    // "links" up with a previous forwarder, we continue exploring this path immediately.
+    // Find the shortest path via a breadth-first search of forwarder paths.
+    // We do a breadth-first instead of depth-first search because:
+    //   - We assume that most forwarding paths will be quite short, so it should be faster
+    //     to check in "stages" rather than exhaust single paths
+    //   - We don't currently protect against cycles in the path, and so exhausting single
+    //     paths can be wasteful if they result in dead ends
     // TODO(onbjerg): Should we find and return multiple paths?
     do {
       const [path, [forwarder, ...nextQueue]] = queue.shift()
