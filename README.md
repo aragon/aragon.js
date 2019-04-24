@@ -25,11 +25,7 @@
 
 <div align="center">
   <h4>
-    <a href="https://aragon.org">
-      Website
-    </a>
-    <span> | </span>
-    <a href="https://hack.aragon.org/docs/aragonjs-intro.html">
+    <a href="https://hack.aragon.org/docs/api-intro.html">
       Documentation
     </a>
     <span> | </span>
@@ -43,7 +39,7 @@
   </h4>
 </div>
 
-# aragon.js Basic Overview
+## Overview
 
 The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https://github.com/aragon/aragon) and the [Aragon Apps](https://github.com/aragon/aragon-apps). Use it to build your own Aragon app.
 
