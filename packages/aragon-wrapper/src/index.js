@@ -465,7 +465,11 @@ export default class Aragon {
               } catch (_) { }
             }
 
-            return Object.assign(app, appInfo)
+            return {
+              ...appInfo,
+              // Override the fetched appInfo with the actual app proxy's values to avoid mismatches
+              ...app
+            }
           })
         )
       )
