@@ -1,4 +1,5 @@
 {
+  "appName": "apm-repo.aragonpm.eth",
 	"roles": [
 		{
 			"id": "CREATE_VERSION_ROLE",

@@ -1,4 +1,5 @@
 {
+  "appName": "apm-registry.aragonpm.eth",
 	"roles": [
 		{
 			"id": "CREATE_REPO_ROLE",

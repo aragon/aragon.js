@@ -1,4 +1,5 @@
 {
+  "appName": "acl.aragonpm.eth",
   "roles": [
     {
       "name": "Create permissions",
