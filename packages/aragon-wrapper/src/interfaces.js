@@ -69,20 +69,20 @@ export const getAbi = name => ABIS[name] || null
 export const getArtifact = name => ARTIFACTS[name] || null
 
 export function getAppInfo (appId, namespace) {
-  const mapping = APP_NAMESPACE_MAPPINGS.get(namespace)
+  const nameMapping = APP_NAMESPACE_MAPPINGS.get(namespace)
 
-  if (!mapping || !mapping.has(appId)) {
+  if (!nameMapping || !nameMapping.has(appId)) {
     return null
   }
 
-  const appName = mapping.get(appId)
-  const app = `${namespace}/${appName}`
+  const name = nameMapping.get(appId)
+  const app = `${namespace}/${name}`
   const abi = getAbi(app)
   const artifact = getArtifact(app)
 
   return {
     abi,
-    name: appName,
+    name,
     ...artifact
   }
 }
