@@ -1246,7 +1246,9 @@ export default class Aragon {
       )
 
       if (path.length > 0) {
-        return this.describeTransactionPath(path)
+        try {
+          return this.describeTransactionPath(path)
+        } catch (_) { }
       }
     }
 
@@ -1291,52 +1293,64 @@ export default class Aragon {
 
     // If the paths don't match, we can't send the transactions in this intent basket together
     const pathsMatch = doIntentPathsMatch(intentPaths)
-    if (!pathsMatch) {
-      return []
-    }
-
-    // Let's create direct transactions for each intent in the intentBasket
-    const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
-    const directTransactions = await Promise.all(
-      intentBasket.map(
-        async ([destination, methodName, params]) =>
-          createDirectTransaction(sender, await this.getApp(destination), methodName, params, this.web3)
+    if (pathsMatch) {
+      // Create direct transactions for each intent in the intentBasket
+      const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
+      const directTransactions = await Promise.all(
+        intentBasket.map(
+          async ([destination, methodName, params]) =>
+            createDirectTransaction(sender, await this.getApp(destination), methodName, params, this.web3)
+        )
       )
-    )
 
-    if (intentPaths[0].length === 1) {
-      // Sender has direct access
-      return {
-        direct: true,
-        transactions: directTransactions
+      if (intentPaths[0].length === 1) {
+        // Sender has direct access
+        try {
+          const decoratedTransactions = await this.describeTransactionPath(
+            await Promise.all(directTransactions.map(this.applyTransactionGas))
+          )
+
+          return {
+            direct: true,
+            transactions: decoratedTransactions
+          }
+        } catch (_) { }
+      } else {
+        // Need to encode calls scripts for each forwarder transaction in the path
+        const createForwarderTransaction = createForwarderTransactionBuilder(sender, {}, this.web3)
+        const forwarderPath = intentPaths[0]
+          // Ignore the last part of the path, which was the original intent
+          .slice(0, -1)
+          // Start from the "last" forwarder and move backwards to the sender
+          .reverse()
+          // Just use the forwarders' addresses
+          .map(({ to }) => to)
+          .reduce(
+            (path, nextForwarder) => {
+              const lastStep = path[0]
+              const encodedLastStep = encodeCallScript(Array.isArray(lastStep) ? lastStep : [lastStep])
+              return [createForwarderTransaction(nextForwarder, encodedLastStep), ...path]
+            },
+            // Start the recursive calls script encoding with the direct transactions for the
+            // intent basket
+            [directTransactions]
+          )
+
+        try {
+          // Put the finishing touches: apply gas, and add radspec descriptions
+          forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
+          return {
+            direct: false,
+            path: await this.describeTransactionPath(forwarderPath)
+          }
+        } catch (_) { }
       }
     }
 
-    // Create the forwarder transactions for the path with the callscript
-    const createForwarderTransaction = createForwarderTransactionBuilder(sender, {}, this.web3)
-    const forwarderPath = intentPaths[0]
-      // Ignore the last part of the path, which was the original intent
-      .slice(0, -1)
-      // Start from the "last" forwarder and move backwards to the sender
-      .reverse()
-      // Just use the forwarders' addresses
-      .map(({ to }) => to)
-      .reduce(
-        (path, nextForwarder) => {
-          const lastStep = path[0]
-          const encodedLastStep = encodeCallScript(Array.isArray(lastStep) ? lastStep : [lastStep])
-          return [createForwarderTransaction(nextForwarder, encodedLastStep), ...path]
-        },
-        // Start the recursive calls script encoding with the direct transactions for our
-        // intent basket, encoding process
-        [directTransactions]
-      )
-
-    // Put the finishing touches: apply gas, and add radspec descriptions
-    forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
+    // Failed to find a path
     return {
       direct: false,
-      path: await this.describeTransactionPath(forwarderPath)
+      transactions: []
     }
   }
 
@@ -1463,8 +1477,8 @@ export default class Aragon {
           description = this.tryDescribingOrganizationUpgradeIntents(step)
         } catch (err) { }
 
-        // If the basket wasn't handled by us, just describe all the steps
-        return description || this.describeTransactionPath(step)
+        // If the basket wasn't handled by us, just individually describe each of the transactions
+        return description || await Promise.all(step.map(this.describeTransactionPath))
       }
 
       const app = await this.getApp(step.to)
@@ -1775,7 +1789,13 @@ export default class Aragon {
       // If the method has no ACL requirements, we assume we
       // can perform the action directly
       if (method.roles.length === 0) {
-        return [directTransaction]
+        try {
+          // `applyTransactionGas` can throw if the transaction will fail
+          // If that happens, we give up as we should've been able to perform the action directly
+          return [await this.applyTransactionGas(directTransaction)]
+        } catch (_) {
+          return []
+        }
       }
 
       const roleSig = app.roles.find(
@@ -1796,7 +1816,7 @@ export default class Aragon {
 
       try {
         // `applyTransactionGas` can throw if the transaction will fail
-        // if that happens, we will try to find a transaction path through a forwarder
+        // If that happens, we will try to find a transaction path through a forwarder
         return [await this.applyTransactionGas(directTransaction)]
       } catch (_) { }
     }
