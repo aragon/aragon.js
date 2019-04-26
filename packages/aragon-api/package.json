@@ -1,12 +1,13 @@
 {
   "name": "@aragon/api",
-  "version": "1.0.0-beta.1",
+  "version": "1.1.0",
   "description": "Aragon app API",
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\"",
     "test": "nyc --silent ava 'src/**/*.test.js'",
+    "test:watch": "ava --watch -v 'src/**/*.test.js'",
     "build": "babel src -d dist -s",
     "build:dev": "npm run build -- inline",
     "prepublishOnly": "env NODE_ENV=production npm run build"
@@ -68,7 +69,7 @@
   },
   "dependencies": {
     "rxjs": "^6.2.1",
-    "@aragon/rpc-messenger": "^1.0.0-beta.1",
+    "@aragon/rpc-messenger": "^1.1.0",
     "@babel/runtime": "^7.1.2"
   }
 }

@@ -24,7 +24,7 @@ Next, you need to specify that your app has a background script. In your `manife
 
 ## Building State
 
-All of the [`AragonApp`](/docs/APP.md#aragonapp) methods are available to you. We highly recommend that you use  [`AragonApp#store`](/docs/APP.md#store) as it handles state caching and events subscriptions for you.
+All of the [`AragonApp`](/docs/APP.md#aragonapp) methods are available to you. We highly recommend that you use [`AragonApp#store`](/docs/APP.md#store) as it handles state caching and events subscriptions for you.
 
 ```js
 const state$ = app.store((state, event) => {

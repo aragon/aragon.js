@@ -41,6 +41,39 @@ test('should set to the cache and emit the change', async (t) => {
   await instance.set('counter', 5)
 })
 
+test('should set to the cache and return all', async t => {
+  t.plan(3)
+  // arrange
+  const instance = new Cache(t.title)
+  await instance.init()
+
+  const allBefore = await instance.getAll()
+  t.deepEqual(allBefore, {}, 'empty object when cache is empty')
+
+  await instance.set('one', 1)
+  await instance.set('two', 2)
+  await instance.set('three', 3)
+  await instance.set('four', 4)
+
+  const allAfter = await instance.getAll()
+  t.is(Object.keys(allAfter).length, 4)
+  t.deepEqual(allAfter, {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4
+  })
+})
+
+test('should return null when getting a non existant item', async t => {
+  t.plan(1)
+  const instance = new Cache('counterapp')
+  await instance.init()
+
+  const item = await instance.get('nonexistant')
+  t.is(item, null)
+})
+
 test('should remove from the cache and emit the change', async (t) => {
   t.plan(2)
   // arrange

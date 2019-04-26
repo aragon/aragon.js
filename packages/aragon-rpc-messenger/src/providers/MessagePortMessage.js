@@ -1,6 +1,6 @@
 import Provider from './Provider'
 import { fromEvent } from 'rxjs'
-import { filter, pluck } from 'rxjs/operators'
+import { filter, pluck, publish } from 'rxjs/operators'
 
 /**
  * A provider that communicates through the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage).
@@ -20,6 +20,14 @@ export default class MessagePortMessage extends Provider {
   constructor (target = self) {
     super()
     this.target = target
+    this.messages$ = fromEvent(this.target, 'message', false).pipe(
+      // We can't use event.source in WebWorker messages as it seems to be null
+      // However, the fallback to check the target should always be true
+      filter((event) => (event.source || event.target) === this.target),
+      pluck('data'),
+      publish()
+    )
+    this.messages$.connect()
   }
 
   /**
@@ -28,12 +36,7 @@ export default class MessagePortMessage extends Provider {
    * @returns {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html)
    */
   messages () {
-    return fromEvent(this.target, 'message', false).pipe(
-      // We can't use event.source in WebWorker messages as it seems to be null
-      // However, the fallback to check the target should always be true
-      filter((event) => (event.source || event.target) === this.target),
-      pluck('data')
-    )
+    return this.messages$
   }
 
   /**

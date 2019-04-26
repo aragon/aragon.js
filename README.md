@@ -25,11 +25,7 @@
 
 <div align="center">
   <h4>
-    <a href="https://aragon.org">
-      Website
-    </a>
-    <span> | </span>
-    <a href="https://hack.aragon.org/docs/aragonjs-intro.html">
+    <a href="https://hack.aragon.org/docs/api-intro.html">
       Documentation
     </a>
     <span> | </span>
@@ -43,7 +39,7 @@
   </h4>
 </div>
 
-# aragon.js Basic Overview
+## Overview
 
 The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https://github.com/aragon/aragon) and the [Aragon Apps](https://github.com/aragon/aragon-apps). Use it to build your own Aragon app.
 
@@ -67,6 +63,25 @@ The layer between [aragonOS](https://github.com/aragon/aragonOS), [Aragon](https
         <!-- Downloads -->
         <a href="https://npmjs.org/package/@aragon/api">
           <img src="https://img.shields.io/npm/dm/@aragon/api.svg?style=flat-square"
+            alt="Downloads" />
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td>
+      @aragon/api-react
+      </td>
+      <td>
+        <!-- NPM version -->
+        <a href="https://npmjs.org/package/@aragon/api-react">
+          <img src="https://img.shields.io/npm/v/@aragon/api-react.svg?style=flat-square"
+            alt="NPM version" />
+        </a>
+      </td>
+      <td>
+        <!-- Downloads -->
+        <a href="https://npmjs.org/package/@aragon/api-react">
+          <img src="https://img.shields.io/npm/dm/@aragon/api-react.svg?style=flat-square"
             alt="Downloads" />
         </a>
       </td>
