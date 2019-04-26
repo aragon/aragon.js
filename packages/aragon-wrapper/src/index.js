@@ -240,6 +240,7 @@ export default class Aragon {
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
     const ACL_CACHE_KEY = `acl-${aclAddress}`
+    const REORG_SAFETY_BLOCK_AGE = 100
 
     // Check if we have cached ACL for this address
     // Cache object for an ACL: { permissions, blockNumber }
@@ -249,21 +250,27 @@ export default class Aragon {
     // When using cache, fetch events from the next block after cache
     const events = this.aclProxy.events(null, cachedPermissions && (cachedBlockNumber + 1))
 
+    const latestBlock$ = this.getLatestBlockNumber()
+
     // A set for keeping track of the events' blockNumber
     // -1 is to ensure it passes the first comparisons with event's blockNumber
     const blockNumbers = new Set([-1])
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
     const fetchedPermissions = events.pipe(
-      // Keep track of all events types that have been processed
-      scan((permissions, event) => {
+      withLatestFrom(latestBlock$),
+      scan((permissions, [event, latestBlockNumber]) => {
+        // console.count('acl event')
+        // console.log(`current blockNumber: ${event.blockNumber}`)
         const lastBlockProcessed = [...blockNumbers].pop()
 
         // Cache the permissions when we finished processing a block
         if (event.blockNumber > lastBlockProcessed) {
           blockNumbers.add(event.blockNumber)
 
-          if (lastBlockProcessed > 0) {
+          // Save fully processed valid (non-zero) blocks that are at least 100 blocks old
+          if (lastBlockProcessed > 0 && lastBlockProcessed < (latestBlockNumber - REORG_SAFETY_BLOCK_AGE)) {
+            console.log(`Save to cache ${lastBlockProcessed} | latest: ${latestBlockNumber}`)
             // clone the permissions so it can be saved without proxy
             const permissionsToCache = Object.assign({}, permissions)
             // cache optimistically without worrying if it succeeded
