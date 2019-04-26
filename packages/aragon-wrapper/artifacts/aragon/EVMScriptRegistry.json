@@ -1,4 +1,5 @@
 {
+  "appName": "evmreg.aragonpm.eth",
   "roles": [
     {
       "name": "Add executors",

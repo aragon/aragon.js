@@ -33,7 +33,8 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
-import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm'
+import { getApmAppInfo } from './core/apm'
+import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
   getKernelNamespace,
@@ -319,6 +320,7 @@ export default class Aragon {
     const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
+        getApmAppInfo(appId) ||
         this.apm.getLatestVersionForContract(appId, codeAddress)
     })
 
@@ -1447,7 +1449,8 @@ export default class Aragon {
     ]
     const { appId, appAddress, namespace } = abi.decodeParameters(types, txData)
 
-    if (getKernelNamespace(namespace).name !== 'App code') {
+    const kernelNamespace = getKernelNamespace(namespace)
+    if (!kernelNamespace || kernelNamespace.name !== 'App code') {
       return
     }
 
