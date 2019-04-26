@@ -19,7 +19,6 @@ import {
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
-import abi from 'web3-eth-abi'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
 import * as radspec from 'radspec'
@@ -40,6 +39,10 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
+import {
+  tryDescribingUpdateAppIntent,
+  tryDescribingUpgradeOrganizationBasket
+} from './radspec'
 import {
   addressesEqual,
   includesAddress,
@@ -1474,11 +1477,11 @@ export default class Aragon {
         // Intent basket with multiple transactions in a single callscript
         let description
         try {
-          description = this.tryDescribingOrganizationUpgradeIntents(step)
+          description = tryDescribingUpgradeOrganizationBasket(step, this)
         } catch (err) { }
 
         // If the basket wasn't handled by us, just individually describe each of the transactions
-        return description || await Promise.all(step.map(this.describeTransactionPath))
+        return description || Promise.all(step.map(this.describeTransactionPath))
       }
 
       const app = await this.getApp(step.to)
@@ -1495,7 +1498,7 @@ export default class Aragon {
       if (this.isKernelAddress(step.to) && method.sig === 'setApp(bytes32,bytes32,address)') {
         // setApp() call; attempt to make a more friendly description
         try {
-          description = await this.tryDescribingUpdateAppIntent(step)
+          description = await tryDescribingUpdateAppIntent(step, this)
         } catch (err) { }
       }
 
@@ -1526,70 +1529,6 @@ export default class Aragon {
         identifier: app.identifier
       })
     }))
-  }
-
-  /**
-   * Attempt to describe a setApp() intent. Only describes the APP_BASE namespace.
-   *
-   * @param  {string} description
-   * @return {Promise<string>} Description, if one could be made.
-   */
-  async tryDescribingUpdateAppIntent (intent) {
-    // Strip 0x prefix + bytes4 sig to get parameter data
-    const txData = intent.data.substring(10)
-    const types = [
-      {
-        type: 'bytes32',
-        name: 'namespace'
-      }, {
-        type: 'bytes32',
-        name: 'appId'
-      }, {
-        type: 'address',
-        name: 'appAddress'
-      }
-    ]
-    const { appId, appAddress, namespace } = abi.decodeParameters(types, txData)
-
-    const kernelNamespace = getKernelNamespace(namespace)
-    if (!kernelNamespace || kernelNamespace.name !== 'App code') {
-      return
-    }
-
-    // Fetch aragonPM information
-    const repo = await makeRepoProxy(appId, this.apm, this.web3)
-    const latestVersion = (await repo.call('getLatestForContractAddress', appAddress))
-      .semanticVersion
-      .join('.')
-
-    return `Upgrade ${appId} app instances to v${latestVersion}.`
-  }
-
-  /**
-   * Attempt to parse a complete organization upgrade intent
-   *
-   * @param  {string} description
-   * @return {Promise<Object>} Description and annotated description
-   */
-  async tryDescribingOrganizationUpgradeIntents (intents) {
-    const allKernel = intents.every(({ to }) => this.isKernelAddress(to))
-    if (!allKernel) return
-
-    const kernelApp = await this.getApp(intents[0].to)
-    const allSetApp = intents.every(({ data }) => {
-      const intentMethod = findMethodOnAppFromData(data, kernelApp)
-      return intentMethod && intentMethod.sig === 'setApp(bytes32,bytes32,address)'
-    })
-
-    // Just assume for now updating all four apps (finance, token manager, vault, voting)
-    if (allSetApp && intents.length === 4) {
-      return {
-        description: 'Upgrade organization to Aragon 0.7 Bella',
-        to: intents[0].to,
-        name: kernelApp.name,
-        identifier: kernelApp.identifier
-      }
-    }
   }
 
   /**
