@@ -32,7 +32,8 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
-import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm'
+import { getApmAppInfo } from './core/apm'
+import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
   getKernelNamespace,
@@ -323,6 +324,7 @@ export default class Aragon {
     const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
+        getApmAppInfo(appId) ||
         this.apm.getLatestVersionForContract(appId, codeAddress)
     })
 
@@ -469,7 +471,11 @@ export default class Aragon {
               } catch (_) { }
             }
 
-            return Object.assign(app, appInfo)
+            return {
+              ...appInfo,
+              // Override the fetched appInfo with the actual app proxy's values to avoid mismatches
+              ...app
+            }
           })
         )
       )
@@ -1536,7 +1542,8 @@ export default class Aragon {
     ]
     const { appId, appAddress, namespace } = abi.decodeParameters(types, txData)
 
-    if (getKernelNamespace(namespace).name !== 'App code') {
+    const kernelNamespace = getKernelNamespace(namespace)
+    if (!kernelNamespace || kernelNamespace.name !== 'App code') {
       return
     }
 
@@ -1879,9 +1886,12 @@ export default class Aragon {
       ]
     })
 
-    // Find the shortest path via a depth-first search of forwarder paths
-    // We eagerly evaluate paths that look promising; as soon as we find a forwarder that
-    // "links" up with a previous forwarder, we continue exploring this path immediately.
+    // Find the shortest path via a breadth-first search of forwarder paths.
+    // We do a breadth-first instead of depth-first search because:
+    //   - We assume that most forwarding paths will be quite short, so it should be faster
+    //     to check in "stages" rather than exhaust single paths
+    //   - We don't currently protect against cycles in the path, and so exhausting single
+    //     paths can be wasteful if they result in dead ends
     // TODO(onbjerg): Should we find and return multiple paths?
     do {
       const [path, [forwarder, ...nextQueue]] = queue.shift()
