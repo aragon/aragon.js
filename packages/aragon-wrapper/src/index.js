@@ -50,6 +50,7 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { doIntentPathsMatch } from './utils/intents'
 import {
   createDirectTransaction,
   createForwarderTransactionBuilder,
@@ -1260,15 +1261,19 @@ export default class Aragon {
    *   {Array<*>} params: method params
    * These are the same parameters as the ones used for `getTransactionPath()`
    *
-   * Allows user to specify how many of the intents should be checked.
-   * `checkMode` supports:
+   * Allows user to specify how many of the intents should be checked to ensure their paths are
+   * compatible. `checkMode` supports:
    *   'all': All intents will be checked to make sure they use the same forwarding path.
    *   'single': assumes all intents can use the path found from the first intent
    *
    * @param  {Array<Array<string, string, Array<*>>>} intentBasket Intents
    * @param  {Object} [options]
    * @param  {string} [options.checkMode] Path checking mode
-   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
+   * @return {Promise<Object>} An object containing:
+   *   - `direct`: whether the current account can directly invoke this basket
+   *     (requiring separate transactions)
+   *   - `transactions`: array of Ethereum transactions that describe each step in the path, with
+   *     the last step being an array of transactions that describe each intent in the basket
    */
   async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
     // Get transaction paths for entire basket
@@ -1284,23 +1289,13 @@ export default class Aragon {
           this.getTransactionPath(destination, methodName, params))
     )
 
-    // Check paths all match
-    const individualPaths = intentPaths
-      // Map each path to just be an array of destination addresses
-      .map(path =>
-        path.map(({ to }) => to)
-      )
-      // Take each array of destination addresses and create a single string
-      .map(path => path.join('.'))
-    // Check if they all match by seeing if a unique set of the individual path
-    // strings is a single path
-    const pathsMatch = (new Set(individualPaths)).size === 1
-
+    // If the paths don't match, we can't send the transactions in this intent basket together
+    const pathsMatch = doIntentPathsMatch(intentPaths)
     if (!pathsMatch) {
       return []
     }
 
-    // Let's create direction transactions for each intent in the intentBasket
+    // Let's create direct transactions for each intent in the intentBasket
     const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
     const directTransactions = await Promise.all(
       intentBasket.map(
