@@ -1,5 +1,5 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
+import { ReplaySubject, Subject, BehaviorSubject, merge, of, interval } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -13,6 +13,7 @@ import {
   publishReplay,
   scan,
   startWith,
+  share,
   switchMap,
   tap,
   withLatestFrom
@@ -212,6 +213,16 @@ export default class Aragon {
     this.setAccounts(accounts)
   }
 
+  getLatestBlockNumber () {
+    const AVERAGE_BLOCK_TIME_MS = 15 * 1000
+    const POLL_INTERVAL = AVERAGE_BLOCK_TIME_MS * 1.5
+
+    return interval(POLL_INTERVAL).pipe(
+      startWith(0), // trigger a fetch immediately when starting
+      switchMap(() => this.web3.eth.getBlockNumber()),
+      share()
+    )
+  }
   /**
    * Initialise the ACL (Access Control List).
    *
