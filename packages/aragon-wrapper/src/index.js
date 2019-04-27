@@ -21,7 +21,6 @@ import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
-import * as radspec from 'radspec'
 
 // APM
 import apm from '@aragon/apm'
@@ -41,7 +40,8 @@ import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/ke
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
-  tryDescribingUpgradeOrganizationBasket
+  tryDescribingUpgradeOrganizationBasket,
+  tryEvaluatingRadspec
 } from './radspec'
 import {
   addressesEqual,
@@ -52,7 +52,6 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
-import { findMethodOnAppFromData } from './utils/apps'
 import { doIntentPathsMatch } from './utils/intents'
 import {
   createDirectTransaction,
@@ -1466,65 +1465,47 @@ export default class Aragon {
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
    * @param  {Array<Object>} path
-   * @return {Promise<Array<Object>>} The given `path`, with descriptions included at each step
+   * @return {Promise<Array<Object>>} The given `path`, with decorated with descriptions at each step
    */
   describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
+      let decoratedStep
+
       if (Array.isArray(step)) {
         // Intent basket with multiple transactions in a single callscript
-        let description
+        // First see if the step can be handled with a specialized descriptor
         try {
-          description = tryDescribingUpgradeOrganizationBasket(step, this)
+          decoratedStep = tryDescribingUpgradeOrganizationBasket(step, this)
         } catch (err) { }
 
-        // If the basket wasn't handled by us, just individually describe each of the transactions
-        return description || Promise.all(step.map(this.describeTransactionPath))
+        // If the step wasn't handled, just individually describe each of the transactions
+        // TODO: annotate this description
+        return decoratedStep || Promise.all(step.map(this.describeTransactionPath))
       }
 
-      const app = await this.getApp(step.to)
-      const method = findMethodOnAppFromData(step.data, app)
-      const expression = method.notice
+      // Single transaction step
+      // First see if the step can be handled with a specialized descriptor
+      try {
+        decoratedStep = await tryDescribingUpdateAppIntent(step, this)
+      } catch (err) { }
 
-      // No expression
-      if (!expression) return step
-
-      let description
-      let annotatedDescription
-
-      // Detect if we should try to handle the description for this step ourselves
-      if (this.isKernelAddress(step.to) && method.sig === 'setApp(bytes32,bytes32,address)') {
-        // setApp() call; attempt to make a more friendly description
+      // Finally, if the step wasn't handled yet, evaluate via radspec normally
+      if (!decoratedStep) {
         try {
-          description = await tryDescribingUpdateAppIntent(step, this)
+          decoratedStep = await tryEvaluatingRadspec(step, this)
         } catch (err) { }
       }
 
-      if (!description) {
-        // Use radspec normally
+      // Annotate the description, if one was found
+      if (decoratedStep.description) {
         try {
-          description = await radspec.evaluate(
-            expression,
-            {
-              abi: app.abi,
-              transaction: step
-            },
-            { ethNode: this.web3.currentProvider }
-          )
+          const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+          decoratedStep.description = processed.description
+          decoratedStep.annotatedDescription = processed.annotatedDescription
         } catch (err) { }
       }
 
-      if (description) {
-        const processed = await this.postprocessRadspecDescription(description)
-        description = processed.description
-        annotatedDescription = processed.annotatedDescription
-      }
-
-      return Object.assign(step, {
-        description,
-        annotatedDescription,
-        name: app.name,
-        identifier: app.identifier
-      })
+      return decoratedStep
     }))
   }
 
