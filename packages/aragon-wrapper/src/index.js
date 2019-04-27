@@ -49,10 +49,10 @@ import {
   makeAddressMapProxy,
   makeProxy,
   makeProxyFromABI,
-  findMethodOnAppFromData,
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { findMethodOnAppFromData } from './utils/apps'
 import { doIntentPathsMatch } from './utils/intents'
 import {
   createDirectTransaction,

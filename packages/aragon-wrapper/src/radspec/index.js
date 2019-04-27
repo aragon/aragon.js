@@ -1,7 +1,7 @@
 import abi from 'web3-eth-abi'
 import { makeRepoProxy } from '../core/apm/repo'
 import { getKernelNamespace } from '../core/aragonOS'
-import { findMethodOnAppFromData } from '../utils'
+import { findMethodOnAppFromData } from '../utils/apps'
 
 /**
  * Attempt to describe a setApp() intent. Only describes the APP_BASE namespace.
