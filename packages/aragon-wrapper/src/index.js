@@ -35,9 +35,9 @@ import { getApmAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
-  getKernelNamespace,
   isAragonOsInternalApp
 } from './core/aragonOS'
+import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
@@ -421,10 +421,7 @@ export default class Aragon {
       .events('SetApp', {})
       .pipe(
         // Only care about changes if they're in the APP_BASE namespace
-        filter(({ returnValues }) => {
-          const namespace = getKernelNamespace(returnValues.namespace)
-          return namespace && namespace.name === 'App code'
-        }),
+        filter(({ returnValues }) => isKernelAppCodeNamespace(returnValues.namespace)),
 
         // Merge with latest value of installedApps$ so we can return the full list of apps
         withLatestFrom(
