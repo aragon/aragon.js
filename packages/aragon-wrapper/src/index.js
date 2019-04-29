@@ -1306,7 +1306,9 @@ export default class Aragon {
         // Sender has direct access
         try {
           const decoratedTransactions = await this.describeTransactionPath(
-            await Promise.all(directTransactions.map(this.applyTransactionGas))
+            await Promise.all(
+              directTransactions.map(transaction => this.applyTransactionGas(transaction))
+            )
           )
 
           return {
