@@ -1110,6 +1110,7 @@ export default class Aragon {
       const handlerSubscription = handlers.combineRequestHandlers(
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
         handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
         handlers.createRequestHandler(request$, 'network', handlers.network),

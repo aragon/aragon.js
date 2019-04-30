@@ -1,5 +1,5 @@
-import { fromEvent } from 'rxjs'
-import { filter } from 'rxjs/operators'
+import { fromEvent, from } from 'rxjs'
+import { filter, flatMap } from 'rxjs/operators'
 
 export default class Proxy {
   constructor (address, jsonInterface, web3, initializationBlock = 0) {
@@ -12,6 +12,38 @@ export default class Proxy {
     this.initializationBlock = initializationBlock
   }
 
+  /**
+   * Fetches past events for a given block range
+   *
+   * @param {Array<String>} eventNames events to fetch
+   * @param {Object} options object with fromBlock and toBlock to specify the range
+   * @return {Observable} Single emission observable with the past events
+   */
+  pastEvents (eventNames, { fromBlock = this.initializationBlock, toBlock = null } = {}) {
+    // Get all events
+    if (!eventNames) {
+      eventNames = ['allEvents']
+    }
+
+    // Convert `eventNames` to an array in order to
+    // support `.events(name)` and `.events([a, b])`
+    if (!Array.isArray(eventNames)) {
+      eventNames = [eventNames]
+    }
+
+    if (eventNames.length === 1) {
+      //
+      return from(
+        this.contract.getPastEvents(eventNames[0], { fromBlock, toBlock })
+      )
+    } else {
+      // Get all events in the block range and filter
+      return from(
+        this.contract.getPastEvents('allEvents', { fromBlock, toBlock })
+          .then(events => events.filter(event => eventNames.includes(event.event)))
+      )
+    }
+  }
   // TODO: Make this a hot observable
   events (eventNames, options = { fromBlock: this.initializationBlock }) {
     // Get all events

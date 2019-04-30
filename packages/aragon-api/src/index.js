@@ -107,12 +107,34 @@ export class AppProxy {
   /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
+   * @param  {string} fromBlock block from which to fetch the events
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  events () {
+  events (fromBlock) {
     return defer(
       () => this.rpc.sendAndObserveResponses(
-        'events'
+        'events',
+        [fromBlock]
+      ).pipe(
+        pluck('result')
+      )
+    )
+  }
+
+  /**
+   * Fetch past events from your app's smart contract for requestsed range
+   *
+   * @param  {string} fromBlock block from which to fetch the events
+   * @param  {string} toBlock block up to which to fetch the events
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
+   */
+  pastEvents (fromBlock, toBlock) {
+    // Defer will send a requests for each subscription making observables are cold until subscribed to
+    // This is to avoid missing events
+    return defer(
+      () => this.rpc.sendAndObserveResponse(
+        'past_events',
+        [fromBlock, toBlock]
       ).pipe(
         pluck('result')
       )
@@ -183,6 +205,21 @@ export class AppProxy {
     )
 
     return value
+  }
+
+  /**
+   * Get a value in from the application cache.
+   *
+   * @param  {string} key   The cache key to set a value for
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the cached value every time it changes. The type of the emitted values is cache key specific.
+   */
+  getCache (key) {
+    return this.rpc.sendAndObserveResponse(
+      'cache',
+      ['get', key]
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
