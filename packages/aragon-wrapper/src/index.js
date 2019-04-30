@@ -261,8 +261,6 @@ export default class Aragon {
     const fetchedPermissions = events.pipe(
       withLatestFrom(latestBlock$),
       scan((permissions, [event, latestBlockNumber]) => {
-        // console.count('acl event')
-        // console.log(`current blockNumber: ${event.blockNumber}`)
         const lastBlockProcessed = [...blockNumbers].pop()
 
         // Cache the permissions when we finished processing a block
@@ -271,7 +269,6 @@ export default class Aragon {
 
           // Save fully processed valid (non-zero) blocks that are at least 100 blocks old
           if (lastBlockProcessed > 0 && lastBlockProcessed < (latestBlockNumber - REORG_SAFETY_BLOCK_AGE)) {
-            console.log(`Save to cache ${lastBlockProcessed} | latest: ${latestBlockNumber}`)
             // clone the permissions so it can be saved without proxy
             const permissionsToCache = Object.assign({}, permissions)
             // cache optimistically without worrying if it succeeded
@@ -320,7 +317,6 @@ export default class Aragon {
       this.permissions = fetchedPermissions
     }
 
-    // this.permissions.subscribe((v) => console.log('permissions val', v))
     this.permissions.connect()
   }
 
