@@ -1499,7 +1499,7 @@ export default class Aragon {
       }
 
       // Annotate the description, if one was found
-      if (decoratedStep.description) {
+      if (decoratedStep && decoratedStep.description) {
         try {
           const processed = await this.postprocessRadspecDescription(decoratedStep.description)
           decoratedStep.description = processed.description
@@ -1507,7 +1507,7 @@ export default class Aragon {
         } catch (err) { }
       }
 
-      return decoratedStep
+      return decoratedStep || step
     }))
   }
 

@@ -15,7 +15,7 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
   const method = findAppMethodFromData(app, intent.data)
 
   let evaluatedNotice
-  if (method.notice) {
+  if (method && method.notice) {
     try {
       evaluatedNotice = await radspec.evaluate(
         method.notice,
