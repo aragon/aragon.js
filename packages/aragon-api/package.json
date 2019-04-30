@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
-    "lint": "standard \"src/**/*.js\"",
+    "lint": "eslint ./src",
     "test": "nyc --silent ava 'src/**/*.test.js'",
     "test:watch": "ava --watch -v 'src/**/*.test.js'",
     "build": "babel src -d dist -s",
@@ -42,21 +42,25 @@
     "babel-eslint": "^10.0.1",
     "babel-preset-minify": "^0.5.0",
     "debug": "^3.1.0",
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^4.2.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-config-standard-react": "^7.0.2",
     "eslint-plugin-flowtype": "^2.50.3",
+    "eslint-plugin-import": "^2.17.2",
+    "eslint-plugin-node": "^8.0.1",
+    "eslint-plugin-prettier": "^3.0.1",
+    "eslint-plugin-promise": "^4.1.1",
+    "eslint-plugin-react": "^7.12.4",
+    "eslint-plugin-standard": "^4.0.0",
     "flow-bin": "^0.63.1",
     "nyc": "^11.4.1",
+    "prettier": "^1.17.0",
     "proxyquire": "^2.0.1",
-    "sinon": "^6.3.1",
-    "standard": "^12.0.1"
+    "sinon": "^6.3.1"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "standard": {
-    "parser": "babel-eslint",
-    "plugins": [
-      "flowtype"
-    ]
   },
   "ava": {
     "require": [
