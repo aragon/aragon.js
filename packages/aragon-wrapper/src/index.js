@@ -19,13 +19,10 @@ import {
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
-import abi from 'web3-eth-abi'
-import { isAddress, toBN } from 'web3-utils'
+import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
-import * as radspec from 'radspec'
 
 // APM
-import { keccak256 } from 'js-sha3'
 import apm from '@aragon/apm'
 
 // RPC
@@ -37,20 +34,30 @@ import { getApmAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
-  getKernelNamespace,
   isAragonOsInternalApp
 } from './core/aragonOS'
+import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
+import {
+  tryDescribingUpdateAppIntent,
+  tryDescribingUpgradeOrganizationBasket,
+  tryEvaluatingRadspec
+} from './radspec'
 import {
   addressesEqual,
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
   makeProxyFromABI,
-  getRecommendedGasLimit,
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { doIntentPathsMatch } from './utils/intents'
+import {
+  createDirectTransaction,
+  createForwarderTransactionBuilder,
+  getRecommendedGasLimit
+} from './utils/transactions'
 
 // Templates
 import Templates from './templates'
@@ -413,10 +420,7 @@ export default class Aragon {
       .events('SetApp', {})
       .pipe(
         // Only care about changes if they're in the APP_BASE namespace
-        filter(({ returnValues }) => {
-          const namespace = getKernelNamespace(returnValues.namespace)
-          return namespace && namespace.name === 'App code'
-        }),
+        filter(({ returnValues }) => isKernelAppCodeNamespace(returnValues.namespace)),
 
         // Merge with latest value of installedApps$ so we can return the full list of apps
         withLatestFrom(
@@ -1241,11 +1245,114 @@ export default class Aragon {
       )
 
       if (path.length > 0) {
-        return this.describeTransactionPath(path)
+        try {
+          return this.describeTransactionPath(path)
+        } catch (_) { }
       }
     }
 
     return []
+  }
+
+  /**
+   * Calculate the transaction path for a basket of intents.
+   * Expects the `intentBasket` to be an array of tuples holding the following:
+   *   {string}   destination: destination address
+   *   {string}   methodName: method to invoke on destination
+   *   {Array<*>} params: method params
+   * These are the same parameters as the ones used for `getTransactionPath()`
+   *
+   * Allows user to specify how many of the intents should be checked to ensure their paths are
+   * compatible. `checkMode` supports:
+   *   'all': All intents will be checked to make sure they use the same forwarding path.
+   *   'single': assumes all intents can use the path found from the first intent
+   *
+   * @param  {Array<Array<string, string, Array<*>>>} intentBasket Intents
+   * @param  {Object} [options]
+   * @param  {string} [options.checkMode] Path checking mode
+   * @return {Promise<Object>} An object containing:
+   *   - `direct`: whether the current account can directly invoke this basket
+   *     (requiring separate transactions)
+   *   - `transactions`: array of Ethereum transactions that describe each step in the path, with
+   *     the last step being an array of transactions that describe each intent in the basket
+   */
+  async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
+    // Get transaction paths for entire basket
+    const intentsToCheck =
+      checkMode === 'all'
+        ? intentBasket // all -- use all intents
+        : checkMode === 'single'
+          ? [intentBasket[0]] // single -- only use first intent
+          : []
+    const intentPaths = await Promise.all(
+      intentsToCheck.map(
+        ([destination, methodName, params]) =>
+          this.getTransactionPath(destination, methodName, params))
+    )
+
+    // If the paths don't match, we can't send the transactions in this intent basket together
+    const pathsMatch = doIntentPathsMatch(intentPaths)
+    if (pathsMatch) {
+      // Create direct transactions for each intent in the intentBasket
+      const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
+      const directTransactions = await Promise.all(
+        intentBasket.map(
+          async ([destination, methodName, params]) =>
+            createDirectTransaction(sender, await this.getApp(destination), methodName, params, this.web3)
+        )
+      )
+
+      if (intentPaths[0].length === 1) {
+        // Sender has direct access
+        try {
+          const decoratedTransactions = await this.describeTransactionPath(
+            await Promise.all(
+              directTransactions.map(transaction => this.applyTransactionGas(transaction))
+            )
+          )
+
+          return {
+            direct: true,
+            transactions: decoratedTransactions
+          }
+        } catch (_) { }
+      } else {
+        // Need to encode calls scripts for each forwarder transaction in the path
+        const createForwarderTransaction = createForwarderTransactionBuilder(sender, {}, this.web3)
+        const forwarderPath = intentPaths[0]
+          // Ignore the last part of the path, which was the original intent
+          .slice(0, -1)
+          // Start from the "last" forwarder and move backwards to the sender
+          .reverse()
+          // Just use the forwarders' addresses
+          .map(({ to }) => to)
+          .reduce(
+            (path, nextForwarder) => {
+              const lastStep = path[0]
+              const encodedLastStep = encodeCallScript(Array.isArray(lastStep) ? lastStep : [lastStep])
+              return [createForwarderTransaction(nextForwarder, encodedLastStep), ...path]
+            },
+            // Start the recursive calls script encoding with the direct transactions for the
+            // intent basket
+            [directTransactions]
+          )
+
+        try {
+          // Put the finishing touches: apply gas, and add radspec descriptions
+          forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
+          return {
+            direct: false,
+            path: await this.describeTransactionPath(forwarderPath)
+          }
+        } catch (_) { }
+      }
+    }
+
+    // Failed to find a path
+    return {
+      direct: false,
+      transactions: []
+    }
   }
 
   /**
@@ -1360,107 +1467,48 @@ export default class Aragon {
    * Use radspec to create a human-readable description for each transaction in the given `path`
    *
    * @param  {Array<Object>} path
-   * @return {Promise<Array<Object>>} The given `path`, with descriptions included at each step
+   * @return {Promise<Array<Object>>} The given `path`, with decorated with descriptions at each step
    */
   describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
-      const app = await this.getApp(step.to)
+      let decoratedStep
 
-      // No app artifact
-      if (!app) return step
-
-      // Missing methods in artifact
-      if (!app.functions) return step
-
-      // Find the method
-      const methodId = step.data.substring(2, 10)
-      const method = app.functions.find(
-        (method) => keccak256(method.sig).substring(0, 8) === methodId
-      )
-
-      // Method does not exist in artifact
-      if (!method) return step
-
-      const expression = method.notice
-
-      // No expression
-      if (!expression) return step
-
-      let description
-      let annotatedDescription
-
-      // Detect if we should try to handle the description for this step ourselves
-      if (this.isKernelAddress(step.to) && method.sig === 'setApp(bytes32,bytes32,address)') {
-        // setApp() call; attempt to make a more friendly description
+      if (Array.isArray(step)) {
+        // Intent basket with multiple transactions in a single callscript
+        // First see if the step can be handled with a specialized descriptor
         try {
-          description = await this.tryDescribingUpdateAppIntent(step)
+          decoratedStep = tryDescribingUpgradeOrganizationBasket(step, this)
+        } catch (err) { }
+
+        // If the step wasn't handled, just individually describe each of the transactions
+        // TODO: annotate this description
+        return decoratedStep || Promise.all(step.map(this.describeTransactionPath))
+      }
+
+      // Single transaction step
+      // First see if the step can be handled with a specialized descriptor
+      try {
+        decoratedStep = await tryDescribingUpdateAppIntent(step, this)
+      } catch (err) { }
+
+      // Finally, if the step wasn't handled yet, evaluate via radspec normally
+      if (!decoratedStep) {
+        try {
+          decoratedStep = await tryEvaluatingRadspec(step, this)
         } catch (err) { }
       }
 
-      if (!description) {
-        // Use radspec normally
+      // Annotate the description, if one was found
+      if (decoratedStep.description) {
         try {
-          description = await radspec.evaluate(
-            expression,
-            {
-              abi: app.abi,
-              transaction: step
-            },
-            { ethNode: this.web3.currentProvider }
-          )
+          const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+          decoratedStep.description = processed.description
+          decoratedStep.annotatedDescription = processed.annotatedDescription
         } catch (err) { }
       }
 
-      if (description) {
-        const processed = await this.postprocessRadspecDescription(description)
-        description = processed.description
-        annotatedDescription = processed.annotatedDescription
-      }
-
-      return Object.assign(step, {
-        description,
-        annotatedDescription,
-        name: app.name,
-        identifier: app.identifier
-      })
+      return decoratedStep
     }))
-  }
-
-  /**
-   * Attempt to describe a setApp() intent. Only describes the APP_BASE namespace.
-   *
-   * @param  {string} description
-   * @return {Promise<string>} Description, if one could be made.
-   */
-  async tryDescribingUpdateAppIntent (intent) {
-    // Strip 0x prefix + bytes4 sig to get parameter data
-    const txData = intent.data.substring(10)
-    const types = [
-      {
-        type: 'bytes32',
-        name: 'namespace'
-      }, {
-        type: 'bytes32',
-        name: 'appId'
-      }, {
-        type: 'address',
-        name: 'appAddress'
-      }
-    ]
-    const { appId, appAddress, namespace } = abi.decodeParameters(types, txData)
-
-    const kernelNamespace = getKernelNamespace(namespace)
-    if (!kernelNamespace || kernelNamespace.name !== 'App code') {
-      return
-    }
-
-    // Fetch aragonPM information
-    const repo = await makeRepoProxy(appId, this.apm, this.web3)
-    const latestVersion = (await repo.call('getLatestForContractAddress', appAddress))
-      .semanticVersion
-      .join('.')
-
-    return `Upgrade ${appId} app instances to v${latestVersion}.`
   }
 
   /**
@@ -1636,73 +1684,7 @@ export default class Aragon {
 
     const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
-
-    if (!app) {
-      throw new Error(`No artifact found for ${destination}`)
-    }
-
-    const jsonInterface = app.abi
-    if (!jsonInterface) {
-      throw new Error(`No ABI specified in artifact for ${destination}`)
-    }
-
-    const methodABI = app.abi.find(
-      (method) => method.name === methodName
-    )
-    if (!methodABI) {
-      throw new Error(`${methodName} not found on ABI for ${destination}`)
-    }
-
-    let transactionOptions = {}
-
-    // If an extra parameter has been provided, it is the transaction options if it is an object
-    if (methodABI.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
-      const options = params.pop()
-      transactionOptions = { ...transactionOptions, ...options }
-    }
-
-    // The direct transaction we eventually want to perform
-    const directTransaction = {
-      ...transactionOptions, // Options are overwriten by the values below
-      from: sender,
-      to: destination,
-      data: this.web3.eth.abi.encodeFunctionCall(methodABI, params)
-    }
-
-    if (transactionOptions.token) {
-      const { address: tokenAddress, value: tokenValue } = transactionOptions.token
-
-      const erc20ABI = getAbi('standard/ERC20')
-      const tokenContract = new this.web3.eth.Contract(erc20ABI, tokenAddress)
-      const balance = await tokenContract.methods.balanceOf(sender).call()
-
-      const tokenValueBN = toBN(tokenValue)
-
-      if (toBN(balance).lt(tokenValueBN)) {
-        throw new Error(`Balance too low. ${sender} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
-      }
-
-      const allowance = await tokenContract.methods.allowance(sender, destination).call()
-      const allowanceBN = toBN(allowance)
-
-      // If allowance is already greater than or equal to amount, there is no need to do an approve transaction
-      if (allowanceBN.lt(tokenValueBN)) {
-        if (allowanceBN.gt(toBN(0))) {
-          // TODO: Actually handle existing approvals (some tokens fail when the current allowance is not 0)
-          console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
-        }
-
-        const tokenApproveTransaction = {
-          // TODO: should we include transaction options?
-          from: sender,
-          to: tokenAddress,
-          data: tokenContract.methods.approve(destination, tokenValue).encodeABI()
-        }
-
-        directTransaction.pretransaction = tokenApproveTransaction
-        delete transactionOptions.token
-      }
-    }
+    const directTransaction = await createDirectTransaction(sender, app, methodName, params, this.web3)
 
     let appsWithPermissionForMethod = []
 
@@ -1726,7 +1708,13 @@ export default class Aragon {
       // If the method has no ACL requirements, we assume we
       // can perform the action directly
       if (method.roles.length === 0) {
-        return [directTransaction]
+        try {
+          // `applyTransactionGas` can throw if the transaction will fail
+          // If that happens, we give up as we should've been able to perform the action directly
+          return [await this.applyTransactionGas(directTransaction)]
+        } catch (_) {
+          return []
+        }
       }
 
       const roleSig = app.roles.find(
@@ -1747,7 +1735,7 @@ export default class Aragon {
 
       try {
         // `applyTransactionGas` can throw if the transaction will fail
-        // if that happens, we will try to find a transaction path through a forwarder
+        // If that happens, we will try to find a transaction path through a forwarder
         return [await this.applyTransactionGas(directTransaction)]
       } catch (_) { }
     }
@@ -1797,20 +1785,7 @@ export default class Aragon {
     const pretransaction = directTransaction.pretransaction
     delete directTransaction.pretransaction
 
-    // TODO: No need for contract?
-    // A helper method to create a transaction that calls `forward` on a forwarder with `script`
-    const forwardMethod = new this.web3.eth.Contract(
-      getAbi('aragon/Forwarder')
-    ).methods['forward']
-
-    const createForwarderTransaction = (forwarderAddress, script) => (
-      {
-        ...directTransaction, // Options are overwriten by the values below
-        from: sender,
-        to: forwarderAddress,
-        data: forwardMethod(script).encodeABI()
-      }
-    )
+    const createForwarderTransaction = createForwarderTransactionBuilder(sender, directTransaction, this.web3)
 
     // Check if one of the forwarders that has permission to perform an action
     // with `sig` on `address` can forward for us directly

@@ -3,7 +3,6 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
-import { getKernelNamespace } from './core/aragonOS'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -15,8 +14,7 @@ const CORE_NAMESPACE_HASH = '0xc681a85306374a5ab27f0bbc385296a54bcd314a1948b6cf6
 test.beforeEach(t => {
   const apmStub = sinon.stub()
   const aragonOSCoreStub = {
-    getAragonOsInternalAppInfo: sinon.stub(),
-    getKernelNamespace
+    getAragonOsInternalAppInfo: sinon.stub()
   }
   const apmCoreStub = {
     getApmAppInfo: sinon.stub()
