@@ -1,5 +1,5 @@
-import { defer, empty, from, merge } from 'rxjs'
-import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
+import { combineLatest, defer, empty, from, merge, concat } from 'rxjs'
+import { first, map, filter, last, pluck, flatMap, switchMap, debounceTime, take, mergeScan, publishReplay, tap, mergeMap, takeLast, publishLast } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const AppProxyHandler = {
@@ -253,8 +253,13 @@ export class AppProxy {
    * @param  {Observable[]} [events] An optional array of `Observable`s to merge in with the internal events observable
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
    */
-  store (reducer, events = [empty()]) {
-    const initialState = this.state().pipe(first())
+  store (reducer, events = [empty()], init) {
+    const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
+    const BLOCK_REORG_MARGIN = 100
+    const cachedState$ = this.state().pipe(first())
+    const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
+    const latestBlock$ = this.web3Eth('getBlockNumber')
+    const initState$ = init ? from(init()) : from([null])
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
@@ -268,16 +273,43 @@ export class AppProxy {
         Promise.resolve(reducer(state, event))
       )
 
-    const store$ = initialState.pipe(
-      switchMap((initialState) =>
-        merge(
-          this.events(),
-          ...events
-        ).pipe(
-          mergeScan(wrappedReducer, initialState, 1),
-          map((state) => this.cache('state', state))
+    const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
+      switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
+        console.log('initState', initState)
+        console.log('cachedState', cachedState)
+        console.log(`cachedBlock ${cachedBlock} |  latestBlock: ${latestBlock}`)
+
+        const pastEventsToBlock = latestBlock - BLOCK_REORG_MARGIN
+
+        console.log(`--- pastEvents: ${cachedBlock} -> ${pastEventsToBlock}`)
+        const pastEvent$ = this.pastEvents(cachedBlock, pastEventsToBlock).pipe(
+          // single emission array of all pastEvents -> flatten to process events
+          flatMap(pastEvents => from(pastEvents))
         )
-      ),
+        console.log(`--- currentEvents$: from: ${pastEventsToBlock} -> future`)
+        const currentEvents$ = this.events(pastEventsToBlock)
+        // currentEvents$.subscribe((v) => console.log('--- lala', v))
+
+        const pastState$ = pastEvent$.pipe(
+          mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          debounceTime(200),
+          tap((state) => {
+            this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
+            this.cache('state', state)
+          })
+        )
+
+        const currentState$ = pastState$.pipe(
+          // Use the last past state as the initial state for reducing current/future states
+          last(),
+          switchMap(pastState => merge(currentEvents$, ...events).pipe(
+            mergeScan(wrappedReducer, pastState, 1)
+          )),
+          tap((state) => { this.cache('state', state); console.log('--- currentState', state) }),
+        )
+
+        return merge(pastState$, currentState$)
+      }),
       publishReplay(1)
     )
     store$.connect()
