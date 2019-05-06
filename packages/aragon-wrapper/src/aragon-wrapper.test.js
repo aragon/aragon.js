@@ -26,7 +26,7 @@ test.beforeEach(t => {
     makeProxy: sinon.stub(),
     addressesEqual: Object.is
   }
-  const Aragon = proxyquire.noCallThru().load('./index', {
+  const Aragon = proxyquire.noCallThru().load('./aragon-wrapper', {
     '@aragon/apm': sinon.stub().returns(apmStub),
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
