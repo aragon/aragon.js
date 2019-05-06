@@ -1,5 +1,5 @@
 import { combineLatest, defer, empty, from, merge } from 'rxjs'
-import { first, map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap } from 'rxjs/operators'
+import { first, map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, share } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const AppProxyHandler = {
@@ -285,15 +285,15 @@ export class AppProxy {
         const pastEventsToBlock = latestBlock - BLOCK_REORG_MARGIN
 
         console.log(`--- pastEvents: ${cachedBlock} -> ${pastEventsToBlock}`)
-        const pastEvent$ = this.pastEvents(cachedBlock, pastEventsToBlock).pipe(
-          // single emission array of all pastEvents -> flatten to process events
-          flatMap(pastEvents => from(pastEvents))
-        )
         console.log(`--- currentEvents$: from: ${pastEventsToBlock} -> future`)
         // currentEvents$ is an observable for events starting from pastEventsToBlock
         const currentEvents$ = this.events(pastEventsToBlock)
 
-        const pastState$ = pastEvent$.pipe(
+        const pastState$ = this.pastEvents(cachedBlock, pastEventsToBlock).pipe(
+          // Prevent multiple subscriptions invoking duplicate calls
+          share(),
+          // single emission array of all pastEvents -> flatten to process events
+          flatMap(pastEvents => from(pastEvents)),
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           // debounce to reduce rendering and caching overthead
           debounceTime(200),
