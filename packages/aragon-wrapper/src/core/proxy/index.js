@@ -1,5 +1,5 @@
 import { fromEvent, from } from 'rxjs'
-import { filter, flatMap } from 'rxjs/operators'
+import { filter } from 'rxjs/operators'
 
 export default class Proxy {
   constructor (address, jsonInterface, web3, initializationBlock = 0) {
