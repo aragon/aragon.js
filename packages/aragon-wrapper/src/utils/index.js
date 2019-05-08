@@ -21,7 +21,12 @@ export function includesAddress (arr, address) {
 
 // Address map that ensures consistent non-checksummed interpretations of addresses
 export function makeAddressMapProxy (target = {}) {
-  return new Proxy(target, {
+  const targetLowerCaseKeys = {}
+  Object.keys(target).forEach(addr => {
+    targetLowerCaseKeys[addr.toLowerCase()] = target[addr]
+  })
+
+  return new Proxy(targetLowerCaseKeys, {
     get (target, property, receiver) {
       if (property in target) {
         return target[property]
