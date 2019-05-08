@@ -1,5 +1,5 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, merge, of, interval } from 'rxjs'
+import { concat, ReplaySubject, Subject, BehaviorSubject, merge, of, interval } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -9,7 +9,6 @@ import {
   map,
   mergeAll,
   mergeMap,
-  publish,
   publishReplay,
   scan,
   startWith,
@@ -259,7 +258,7 @@ export default class Aragon {
     const blockNumbers = new Set([-1])
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
-    const fetchedPermissions = events.pipe(
+    const fetchedPermissions$ = events.pipe(
       withLatestFrom(latestBlock$),
       scan((permissions, [event, latestBlockNumber]) => {
         const lastBlockProcessed = [...blockNumbers].pop()
@@ -311,12 +310,9 @@ export default class Aragon {
       publishReplay(1)
     )
 
-    if (cachedPermissions) {
-      const permissons = of(cachedPermissions).pipe(publish())
-      this.permissions = merge(permissons, fetchedPermissions).pipe(publishReplay(1))
-    } else {
-      this.permissions = fetchedPermissions
-    }
+    const cachedPermissions$ = cachedPermissions ? of(cachedPermissions) : of()
+    this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
+    fetchedPermissions$.connect()
 
     this.permissions.connect()
   }
