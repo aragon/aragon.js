@@ -248,7 +248,7 @@ export default class Aragon {
     const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cached
 
     // When using cache, fetch events from the next block after cache
-    const eventsOptions = cachedPermissions && { fromBlock: (cachedBlockNumber + 1) }
+    const eventsOptions = cachedPermissions ? { fromBlock: (cachedBlockNumber + 1) } : undefined
     const events = this.aclProxy.events(null, eventsOptions)
 
     const latestBlock$ = this.getLatestBlockNumber()
