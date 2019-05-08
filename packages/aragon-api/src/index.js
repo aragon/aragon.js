@@ -2,6 +2,8 @@ import { combineLatest, defer, empty, from, merge } from 'rxjs'
 import { first, map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, share } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
+export const ACCOUNTS_TRIGGER = Symbol('ACCOUNTS_TRIGGER')
+
 export const AppProxyHandler = {
   get (target, name, receiver) {
     if (name in target) {
@@ -262,6 +264,20 @@ export class AppProxy {
     const latestBlock$ = this.web3Eth('getBlockNumber')
     const initState$ = init ? from(init()) : from([null])
 
+    // Hot observable which emits an web3.js event-like object with the address of the active account.
+    const accounts$ = this.accounts().pipe(
+      map(accounts => {
+        return {
+          event: ACCOUNTS_TRIGGER,
+          returnValues: {
+            account: accounts[0]
+          }
+        }
+      }),
+      publishReplay(1)
+    )
+    accounts$.connect()
+
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
     // in our reducer. That's a lot of reducing.
@@ -307,7 +323,7 @@ export class AppProxy {
         const currentState$ = pastState$.pipe(
           // Use the last past state as the initial state for reducing current/future states
           last(),
-          switchMap(pastState => merge(currentEvents$, ...events).pipe(
+          switchMap(pastState => merge(currentEvents$, accounts$, ...events).pipe(
             mergeScan(wrappedReducer, pastState, 1)
           )),
           tap((state) => {
