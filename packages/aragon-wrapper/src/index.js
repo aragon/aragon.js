@@ -239,7 +239,8 @@ export default class Aragon {
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
-    const ACL_CACHE_KEY = `acl-${aclAddress}`
+    const ACL_CACHE_KEY = this.cache.getCacheKey(aclAddress, 'acl')
+
     const REORG_SAFETY_BLOCK_AGE = 100
 
     // Check if we have cached ACL for this address

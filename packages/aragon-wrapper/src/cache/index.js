@@ -41,6 +41,16 @@ export default class Cache {
     }
   }
 
+  /**
+   * Get a standard cache key
+   *
+   * @param {string} proxyAddress
+   * @param {string} location
+   */
+  getCacheKey(proxyAddress, location) {
+    return `${proxyAddress}.${location}`
+  }
+
   async set (key, value) {
     await this.db.setItem(
       key,
