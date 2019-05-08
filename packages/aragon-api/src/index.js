@@ -271,6 +271,7 @@ export class AppProxy {
     // (because of the `Promise.resolve`).
     const wrappedReducer = (state, event) =>
       from(
+        // Ensure a promise is returned even if the reducer returns an array
         Promise.resolve(reducer(state, event))
       )
 
