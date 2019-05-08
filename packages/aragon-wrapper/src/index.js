@@ -9,6 +9,7 @@ import {
   map,
   mergeAll,
   mergeMap,
+  pairwise,
   publishReplay,
   scan,
   startWith,
@@ -212,16 +213,6 @@ export default class Aragon {
     this.setAccounts(accounts)
   }
 
-  getLatestBlockNumber () {
-    const AVERAGE_BLOCK_TIME_MS = 15 * 1000
-    const POLL_INTERVAL = AVERAGE_BLOCK_TIME_MS * 1.5
-
-    return interval(POLL_INTERVAL).pipe(
-      startWith(0), // trigger a fetch immediately when starting
-      switchMap(() => this.web3.eth.getBlockNumber()),
-      share()
-    )
-  }
   /**
    * Initialise the ACL (Access Control List).
    *
@@ -251,30 +242,12 @@ export default class Aragon {
     const eventsOptions = cachedPermissions ? { fromBlock: (cachedBlockNumber + 1) } : undefined
     const events = this.aclProxy.events(null, eventsOptions)
 
-    const latestBlock$ = this.getLatestBlockNumber()
-
-    // A set for keeping track of the events' blockNumber
-    // -1 is to ensure it passes the first comparisons with event's blockNumber
-    const blockNumbers = new Set([-1])
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = currentBlock - REORG_SAFETY_BLOCK_AGE
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
     const fetchedPermissions$ = events.pipe(
-      withLatestFrom(latestBlock$),
-      scan((permissions, [event, latestBlockNumber]) => {
-        const lastBlockProcessed = [...blockNumbers].pop()
-
-        // Cache the permissions when we finished processing a block
-        if (event.blockNumber > lastBlockProcessed) {
-          blockNumbers.add(event.blockNumber)
-
-          // Save fully processed valid (non-zero) blocks that are at least 100 blocks old
-          if (lastBlockProcessed > 0 && lastBlockProcessed < (latestBlockNumber - REORG_SAFETY_BLOCK_AGE)) {
-            // clone the permissions so it can be saved without proxy
-            const permissionsToCache = Object.assign({}, permissions)
-            // cache optimistically without worrying if it succeeded
-            this.cache.set(ACL_CACHE_KEY, { permissions: permissionsToCache, blockNumber: lastBlockProcessed })
-          }
-        }
+      scan(([permissions], event) => {
         const eventData = event.returnValues
 
         // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
@@ -301,8 +274,20 @@ export default class Aragon {
         }
 
         permissions[eventData.app] = appPermissions
-        return permissions
-      }, makeAddressMapProxy(cachedPermissions || {})),
+        return [
+          permissions,
+          Object.assign({}, permissions), // unique permissions copy for each emission
+          event.blockNumber
+        ]
+      }, [ makeAddressMapProxy(cachedPermissions || {}) ]),
+      startWith([null, null, null]),
+      pairwise(),
+      map(([[, lastPermissionsCache, lastBlockNumber], [currentPermissions,, currentBlockNumber]]) => {
+        if (lastPermissionsCache && lastBlockNumber < currentBlockNumber && lastBlockNumber <= cacheBlockHeight) {
+          this.cache.set(ACL_CACHE_KEY, { permissions: lastPermissionsCache, blockNumber: lastBlockNumber })
+        }
+        return currentPermissions
+      }),
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
@@ -313,7 +298,6 @@ export default class Aragon {
     const cachedPermissions$ = cachedPermissions ? of(cachedPermissions) : of()
     this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
     fetchedPermissions$.connect()
-
     this.permissions.connect()
   }
 
