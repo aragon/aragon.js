@@ -280,6 +280,7 @@ export default class Aragon {
           event.blockNumber
         ]
       }, [ makeAddressMapProxy(cachedPermissions || {}) ]),
+      // start with an empty emission to allow pairwise to process the first permissions emission
       startWith([null, null, null]),
       pairwise(),
       map(([[, lastPermissionsCache, lastBlockNumber], [currentPermissions,, currentBlockNumber]]) => {
