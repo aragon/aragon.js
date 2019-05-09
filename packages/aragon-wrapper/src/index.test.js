@@ -272,7 +272,6 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   const instance = new Aragon()
   instance.cache.get = sinon.stub().returns({})
 
-
   // act
   await instance.initAcl()
   // assert
@@ -300,7 +299,6 @@ test('should init the acl with the provided acl', async (t) => {
 
   const instance = new Aragon()
   instance.cache.get = sinon.stub().returns({})
-
 
   // act
   await instance.initAcl({ aclAddress: givenAclAddress })

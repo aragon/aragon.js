@@ -47,7 +47,7 @@ export default class Cache {
    * @param {string} proxyAddress
    * @param {string} location
    */
-  getCacheKey(proxyAddress, location) {
+  getCacheKey (proxyAddress, location) {
     return `${proxyAddress}.${location}`
   }
 

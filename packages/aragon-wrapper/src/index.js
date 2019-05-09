@@ -1,5 +1,5 @@
 // Externals
-import { concat, ReplaySubject, Subject, BehaviorSubject, merge, of, interval } from 'rxjs'
+import { concat, ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -13,7 +13,6 @@ import {
   publishReplay,
   scan,
   startWith,
-  share,
   switchMap,
   tap,
   withLatestFrom
