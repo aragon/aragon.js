@@ -222,7 +222,7 @@ test('should use the correct options for requested past events with toBlock and 
   t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: initializationBlock, toBlock }))
 })
 
-test('should use the correct options for requested past events with single event filter', (t) => {
+test('should filter past events correctly when more than one eventName is passed', (t) => {
   t.plan(3)
   // arrange
   const pastEventsStub = sinon.stub().resolves([{ event: 'Orange', amount: 16 }, { event: 'Apple', amount: 16 }, { event: 'Pear', amount: 5 }])
