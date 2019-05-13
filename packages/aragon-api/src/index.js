@@ -241,22 +241,27 @@ export class AppProxy {
   }
 
   /**
+   * Aoplication store constructor to be used in app script
    * Listens for events, passes them through `reducer`, caches the resulting state and re-emits that state for easy chaining.
+   * `cache`ing the `state` key will emit the new state in the application frontend.
    *
-   * This is in fact sugar on top of [`state`](#state), [`events`](#events) and [`cache`](#cache).
+   * For caching purposes the event fetching is split into two steps:
+   *  - Fetching past events with `pastEvents`
+   *  - Subscribing to new events
    *
-   * The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event.
+   * The reducer takes the signature `(state, event)` and must return a promise that resolves to state, even if it is unaltered by the event.
    *
    * Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
    *
    * Optionally takes an array of other `Observable`s to merge with this app's events; for example you might use an external contract's Web3 events.
    *
-   * @param  {Function} reducer A function that reduces events to a state. This can return a Promise that resolves to a new state.
-   * @param  {Observable[]} [events] An optional array of `Observable`s to merge in with the internal events observable
-   * @param  {Function} [init] An   optional array of `Observable`s to merge in with the internal events observable
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
+   * @param  {Function} reducer A function that reduces events to state. Can return a Promise that resolves to a new state.
+   * @param  {object} [options] An optional options object
+   * @param  {Observable[]} [options.events] An optional array of `Observable`s to merge in with the internal events observable
+   * @param  {Function} [options.init] An optional initialisation function for the state. Should return a promise that resolves to the init state.
+   * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
-  store (reducer, events = [empty()], init) {
+  store (reducer, { events = [empty()], init } = {}) {
     const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
     const BLOCK_REORG_MARGIN = 100
     const cachedState$ = this.state().pipe(first())
