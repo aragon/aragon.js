@@ -1,5 +1,7 @@
+import { getCacheKey } from '../../utils/index'
+
 export default function (request, proxy, wrapper) {
-  const cacheKey = wrapper.cache.getCacheKey(proxy.address, request.params[1])
+  const cacheKey = getCacheKey(proxy.address, request.params[1])
   if (request.params[0] === 'get') {
     return wrapper.cache.observe(cacheKey)
   }

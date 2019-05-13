@@ -42,6 +42,7 @@ import {
 import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   addressesEqual,
+  getCacheKey,
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
@@ -228,7 +229,7 @@ export default class Aragon {
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
-    const ACL_CACHE_KEY = this.cache.getCacheKey(aclAddress, 'acl')
+    const ACL_CACHE_KEY = getCacheKey(aclAddress, 'acl')
 
     const REORG_SAFETY_BLOCK_AGE = 100
 

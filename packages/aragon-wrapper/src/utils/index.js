@@ -48,6 +48,16 @@ export function makeAddressMapProxy (target = {}) {
   })
 }
 
+/**
+ * Get a standard cache key
+ *
+ * @param {string} address
+ * @param {string} location
+ */
+export function getCacheKey (address, location) {
+  return `${address}.${location}`
+}
+
 export function makeProxy (address, interfaceName, web3, initializationBlock) {
   const abi = getAbi(`aragon/${interfaceName}`)
   return makeProxyFromABI(address, abi, web3, initializationBlock)
