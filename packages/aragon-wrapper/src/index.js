@@ -1117,6 +1117,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),

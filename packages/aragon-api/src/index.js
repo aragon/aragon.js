@@ -172,6 +172,25 @@ export class AppProxy {
             pluck('result')
           )
         )
+      },
+      pastEvents: (fromBlock, toBlock) => {
+        const eventArgs = [
+          address,
+          jsonInterface.filter(
+            (item) => item.type === 'event'
+          ),
+          fromBlock,
+          toBlock
+        ]
+
+        return defer(
+          () => this.rpc.sendAndObserveResponse(
+            'external_past_events',
+            eventArgs
+          ).pipe(
+            pluck('result')
+          )
+        )
       }
     }
 
