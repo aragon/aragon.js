@@ -16,8 +16,14 @@ export function includesAddress (arr, address) {
   return arr.some(a => addressesEqual(a, address))
 }
 
-export function makeAddressMapProxy (target) {
-  return new Proxy(target, {
+// Address map that ensures consistent non-checksummed interpretations of addresses
+export function makeAddressMapProxy (target = {}) {
+  const targetLowerCaseKeys = {}
+  Object.entries(target).forEach(([address, val]) => {
+    targetLowerCaseKeys[address.toLowerCase()] = val
+  })
+
+  return new Proxy(targetLowerCaseKeys, {
     get (target, property, receiver) {
       if (property in target) {
         return target[property]
@@ -37,6 +43,16 @@ export function makeAddressMapProxy (target) {
       return true
     }
   })
+}
+
+/**
+ * Get a standard cache key
+ *
+ * @param {string} address
+ * @param {string} location
+ */
+export function getCacheKey (address, location) {
+  return `${address}.${location}`
 }
 
 export function makeProxy (address, interfaceName, web3, initializationBlock) {
