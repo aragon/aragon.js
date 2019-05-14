@@ -2,9 +2,6 @@ import { isAddress } from 'web3-utils'
 import ContractProxy from '../core/proxy'
 import { getAbi } from '../interfaces'
 
-const DEFAULT_GAS_FUZZ_FACTOR = 1.5
-const PREVIOUS_BLOCK_GAS_LIMIT_FACTOR = 0.95
-
 export const ANY_ENTITY = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF'
 
 // Check address equality without checksums
@@ -65,23 +62,6 @@ export function makeProxy (address, interfaceName, web3, initializationBlock) {
 
 export function makeProxyFromABI (address, abi, web3, initializationBlock) {
   return new ContractProxy(address, abi, web3, initializationBlock)
-}
-
-export async function getRecommendedGasLimit (web3, estimatedGasLimit, { gasFuzzFactor = DEFAULT_GAS_FUZZ_FACTOR } = {}) {
-  const latestBlock = await web3.eth.getBlock('latest')
-  const latestBlockGasLimit = latestBlock.gasLimit
-
-  const upperGasLimit = Math.round(latestBlockGasLimit * PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
-  const bufferedGasLimit = Math.round(estimatedGasLimit * gasFuzzFactor)
-
-  if (estimatedGasLimit > upperGasLimit) {
-    // TODO: Consider whether we should throw an error rather than returning with a high gas limit
-    return estimatedGasLimit
-  } else if (bufferedGasLimit < upperGasLimit) {
-    return bufferedGasLimit
-  } else {
-    return upperGasLimit
-  }
 }
 
 export { default as AsyncRequestCache } from './AsyncRequestCache'
