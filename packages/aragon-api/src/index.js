@@ -228,7 +228,9 @@ export class AppProxy {
     // (because of the `Promise.resolve`).
     const wrappedReducer = (state, event) =>
       from(
-        Promise.resolve(reducer(state, event))
+        Promise.resolve(reducer(state, event)).catch(e => console.error(
+          `Error from app reducer:`, e)
+        )
       )
 
     const store$ = initialState.pipe(
