@@ -4,6 +4,7 @@ import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
 import { getKernelNamespace } from './core/aragonOS'
+import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -23,7 +24,8 @@ test.beforeEach(t => {
     AsyncRequestCache,
     makeAddressMapProxy: sinon.fake.returns({}),
     makeProxy: sinon.stub(),
-    addressesEqual: Object.is
+    addressesEqual: Object.is,
+    getCacheKey
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
