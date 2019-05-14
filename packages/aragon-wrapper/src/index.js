@@ -295,10 +295,10 @@ export default class Aragon {
       debounceTime(30),
       publishReplay(1)
     )
+    fetchedPermissions$.connect()
 
     const cachedPermissions$ = cachedPermissions ? of(cachedPermissions) : of()
     this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
-    fetchedPermissions$.connect()
     this.permissions.connect()
   }
 
