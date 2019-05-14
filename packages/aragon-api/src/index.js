@@ -293,7 +293,9 @@ export class AppProxy {
     const wrappedReducer = (state, event) =>
       from(
         // Ensure a promise is returned even if the reducer returns an array
-        Promise.resolve(reducer(state, event))
+        Promise.resolve(reducer(state, event)).catch(e => console.error(
+          `Error from app reducer:`, e)
+        )
       )
 
     const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
