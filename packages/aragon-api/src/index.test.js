@@ -206,7 +206,7 @@ test('should return the state from cache', t => {
   })
 })
 
-test('should create a store reducer', async t => {
+test('should create a store reducer', t => {
   t.plan(2)
   // arrange
   const storeFn = Index.AppProxy.prototype.store
@@ -265,6 +265,8 @@ test('should create a store reducer', async t => {
       ])
     }
   })
+
+  return result
 })
 
 test('should perform a call to the contract and observe the response', t => {
