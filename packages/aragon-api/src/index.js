@@ -280,7 +280,7 @@ export class AppProxy {
    * @param  {Function} [options.init] An optional initialisation function for the state. Should return a promise that resolves to the init state.
    * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
-  store (reducer, { events = [empty()], init } = {}) {
+  store (reducer, { events = [empty()], externals = [], init } = {}) {
     const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
     const BLOCK_REORG_MARGIN = 100
     const cachedState$ = this.state().pipe(first())
@@ -317,22 +317,34 @@ export class AppProxy {
         )
       )
 
+    const getCurrentEvents = (fromBlock) => merge(
+      this.events(fromBlock),
+      ...externals.map(external => external.events(fromBlock))
+    )
+
+    const getPastEvents = (fromBlock, toBlock) => merge(
+      this.pastEvents(fromBlock, toBlock),
+      ...externals.map(external => external.pastEvents(fromBlock, toBlock))
+    )
+
     const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
       switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
-        console.log('initState', initState)
-        console.log('cachedState', cachedState)
-        console.log(`cachedBlock ${cachedBlock} |  latestBlock: ${latestBlock}`)
+        console.debug('- store - initState', initState)
+        console.debug('- store - cachedState', cachedState)
+        console.debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
 
         // The block up to which to fetch past events.
         // The reduced state up to this point will be cached on every load
         const pastEventsToBlock = latestBlock - BLOCK_REORG_MARGIN
 
-        console.log(`--- pastEvents: ${cachedBlock} -> ${pastEventsToBlock}`)
-        console.log(`--- currentEvents$: from: ${pastEventsToBlock} -> future`)
+        console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+        console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
         // currentEvents$ is an observable for events starting from pastEventsToBlock
-        const currentEvents$ = this.events(pastEventsToBlock)
+        // const currentEvents$ = this.events(pastEventsToBlock)
+        const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
-        const pastState$ = this.pastEvents(cachedBlock, pastEventsToBlock).pipe(
+        // const pastState$ = this.pastEvents(cachedBlock, pastEventsToBlock).pipe(
+        const pastState$ = getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           // Prevent multiple subscriptions invoking duplicate calls
           share(),
           // single emission array of all pastEvents -> flatten to process events
@@ -341,20 +353,22 @@ export class AppProxy {
           // debounce to reduce rendering and caching overthead
           debounceTime(200),
           tap((state) => {
-            console.count('cache pastState')
             this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
             this.cache('state', state)
           })
         )
+
         const currentState$ = pastState$.pipe(
           // Use the last past state as the initial state for reducing current/future states
           last(),
-          switchMap(pastState => merge(currentEvents$, accounts$, ...events).pipe(
-            mergeScan(wrappedReducer, pastState, 1)
-          )),
+          switchMap(pastState => {
+            return merge(currentEvents$, accounts$, ...events).pipe(
+              mergeScan(wrappedReducer, pastState, 1)
+            )
+          }),
           tap((state) => {
             this.cache('state', state)
-            console.log('--- currentState', state)
+            console.debug('- store - reduced state:', state)
           })
         )
 
