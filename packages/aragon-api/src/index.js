@@ -272,21 +272,17 @@ export class AppProxy {
    *
    * Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
    *
-   * Optionally takes an array of other `Observable`s to merge with this app's events; for example you might use an external contract's Web3 events.
+   * Optionally takes an array of external contracts to merge with this app's events; for example you might use an external contract's Web3 events.
    *
    * @param  {Function} reducer A function that reduces events to state. Can return a Promise that resolves to a new state.
    * @param  {object} [options] An optional options object
-   * @param  {Observable[]} [options.events] An optional array of `Observable`s to merge in with the internal events observable
+   * @param  {Observable[]} [options.externals] An optional array of contracts (as returned from `api.external`) for which to fetch events
    * @param  {Function} [options.init] An optional initialisation function for the state. Should return a promise that resolves to the init state.
    * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
-  store (reducer, { events = [empty()], externals = [], init } = {}) {
+  store (reducer, { externals = [], init } = {}) {
     const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
     const BLOCK_REORG_MARGIN = 100
-    const cachedState$ = this.state().pipe(first())
-    const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
-    const latestBlock$ = this.web3Eth('getBlockNumber')
-    const initState$ = init ? from(init()) : from([null])
 
     // Hot observable which emits an web3.js event-like object with the address of the active account.
     const accounts$ = this.accounts().pipe(
@@ -327,6 +323,11 @@ export class AppProxy {
       ...externals.map(external => external.pastEvents(fromBlock, toBlock))
     )
 
+    const cachedState$ = this.state().pipe(first())
+    const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
+    const latestBlock$ = this.web3Eth('getBlockNumber')
+    const initState$ = init ? from(init()) : from([null])
+
     const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
       switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
         console.debug('- store - initState', initState)
@@ -340,10 +341,8 @@ export class AppProxy {
         console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
         // currentEvents$ is an observable for events starting from pastEventsToBlock
-        // const currentEvents$ = this.events(pastEventsToBlock)
         const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
-        // const pastState$ = this.pastEvents(cachedBlock, pastEventsToBlock).pipe(
         const pastState$ = getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           // Prevent multiple subscriptions invoking duplicate calls
           share(),
@@ -362,7 +361,7 @@ export class AppProxy {
           // Use the last past state as the initial state for reducing current/future states
           last(),
           switchMap(pastState => {
-            return merge(currentEvents$, accounts$, ...events).pipe(
+            return merge(currentEvents$, accounts$).pipe(
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
