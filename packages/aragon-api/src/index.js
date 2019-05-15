@@ -1,4 +1,4 @@
-import { combineLatest, defer, empty, from, merge } from 'rxjs'
+import { combineLatest, defer, from, merge } from 'rxjs'
 import { first, map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, share } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
