@@ -241,6 +241,9 @@ export default class Aragon {
 
     const REORG_SAFETY_BLOCK_AGE = 100
 
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = currentBlock - REORG_SAFETY_BLOCK_AGE
+
     // Check if we have cached ACL for this address
     // Cache object for an ACL: { permissions, blockNumber }
     const cached = await this.cache.get(ACL_CACHE_KEY, {})
@@ -249,9 +252,7 @@ export default class Aragon {
     // When using cache, fetch events from the next block after cache
     const eventsOptions = cachedPermissions ? { fromBlock: (cachedBlockNumber + 1) } : undefined
     const events = this.aclProxy.events(null, eventsOptions)
-
-    const currentBlock = await this.web3.eth.getBlockNumber()
-    const cacheBlockHeight = currentBlock - REORG_SAFETY_BLOCK_AGE
+ 
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
     const fetchedPermissions$ = events.pipe(
