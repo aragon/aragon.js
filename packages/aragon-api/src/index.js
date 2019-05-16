@@ -278,7 +278,7 @@ export class AppProxy {
    * @param  {Function} reducer A function that reduces events to state. Can return a Promise that resolves to a new state.
    * @param  {Object} [options] An optional options object
    * @param  {Array.<{contract: Object, initializationBlock: String}>} [options.externals] An optional array of objects containing `contract` (as returned from `api.external`) and an optional `initializationBlock` from which to fetch events
-   * @param  {Function} [options.init] An optional initialisation function for the state. Should return a promise that resolves to the init state.
+   * @param  {Function} [options.init] An optional initialization function for the state. Should return a promise that resolves to the init state.
    * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   store (reducer, { externals = [], init } = {}) {
