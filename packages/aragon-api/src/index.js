@@ -174,6 +174,7 @@ export class AppProxy {
         )
       },
       pastEvents: (fromBlock, toBlock) => {
+        console.debug(`- external.pastEvents ${fromBlock} -> ${toBlock}`)
         const eventArgs = [
           address,
           jsonInterface.filter(
@@ -275,8 +276,8 @@ export class AppProxy {
    * Optionally takes an array of external contracts to merge with this app's events; for example you might use an external contract's Web3 events.
    *
    * @param  {Function} reducer A function that reduces events to state. Can return a Promise that resolves to a new state.
-   * @param  {object} [options] An optional options object
-   * @param  {Observable[]} [options.externals] An optional array of contracts (as returned from `api.external`) for which to fetch events
+   * @param  {Object} [options] An optional options object
+   * @param  {Array.<{contract: Object, initializationBlock: String}>} [options.externals] An optional array of objects containing `contract` (as returned from `api.external`) and an optional `initializationBlock` from which to fetch events
    * @param  {Function} [options.init] An optional initialisation function for the state. Should return a promise that resolves to the init state.
    * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
@@ -315,12 +316,14 @@ export class AppProxy {
 
     const getCurrentEvents = (fromBlock) => merge(
       this.events(fromBlock),
-      ...externals.map(external => external.events(fromBlock))
+      ...externals.map(({ contract }) => contract.events(fromBlock))
     )
 
-    const getPastEvents = (fromBlock, toBlock) => merge(
-      this.pastEvents(fromBlock, toBlock),
-      ...externals.map(external => external.pastEvents(fromBlock, toBlock))
+    // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initialisationBlock
+    // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty
+    const getPastEvents = (cachedFromBlock, toBlock) => merge(
+      this.pastEvents(cachedFromBlock, toBlock),
+      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents(cachedFromBlock || initializationBlock, toBlock))
     )
 
     const cachedState$ = this.state().pipe(first())
