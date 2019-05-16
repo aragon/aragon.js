@@ -252,7 +252,7 @@ export default class Aragon {
     // When using cache, fetch events from the next block after cache
     const eventsOptions = cachedPermissions ? { fromBlock: (cachedBlockNumber + 1) } : undefined
     const events = this.aclProxy.events(null, eventsOptions)
- 
+
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
     const fetchedPermissions$ = events.pipe(
