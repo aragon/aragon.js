@@ -304,6 +304,41 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
     )
 ```
 
+### web3Eth
+
+Request a white-listed [web3.eth](https://web3js.readthedocs.io/en/1.0/web3-eth.html) function call.
+
+Currently the white-list includes:
+
+- `estimateGas`,
+- `getAccounts`,
+- `getBalance`,
+- `getBlock`,
+- `getBlockNumber`,
+- `getBlockTransactionCount`,
+- `getCode`,
+- `getCoinbase`,
+- `getCompilers`,
+- `getGasPrice`,
+- `getHashrate`,
+- `getPastLogs`,
+- `getProtocolVersion`,
+- `getStorageAt`,
+- `getTransaction`,
+- `getTransactionCount`,
+- `getTransactionFromBlock`,
+- `getTransactionReceipt`,
+- `getWork`,
+- `getUncle`,
+- `isMining`,
+- `isSyncing`
+
+#### Parameters
+
+- `params` **...any**: An optional variadic number of parameters for the function. See the [web3.eth docs](https://web3js.readthedocs.io/en/1.0/web3-eth.html) for more details.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable with the result of the call.
+
 ### context
 
 **NOTE: The wrapper does not currently send contexts to apps**
