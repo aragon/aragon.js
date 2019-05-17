@@ -111,47 +111,16 @@ Get the network the app is connected to over time.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an object with the connected network's id and type every time the network changes.
 
-### identify
+### call
 
-Set the app identifier.
-
-This identifier is used to distinguish multiple instances of your app, so choose something that provides additional context to the app instance.
-
-Examples include: the name of a token that the app manages, the type of content that a TCR is curating, the name of a group etc.
+Perform a read-only call on the app's smart contract.
 
 #### Parameters
 
-- `identifier` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The identifier of the app
+- `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the method to call
+- `params` **...any**: An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
 
-#### Examples
-
-```javascript
-api.identify('Customer counter')
-// or
-api.identify('Employee counter')
-```
-
-Returns **void**
-
-### resolveAddressIdentity
-
-Resolve an address' identity, using the highest priority provider.
-
-#### Parameters
-
-- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to resolve
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the resolved identity or null if not found
-
-### requestAddressIdentityModification
-
-Request an address' identity be modified with the highest priority provider. The request will typically be handled by the Aragon client.
-
-#### Parameters
-
-- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to modify
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits if the modification succeeded or was cancelled by the user.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the result of the call.
 
 ### events
 
@@ -258,17 +227,6 @@ const state$ = api.store(
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable  that emits the application state every time it changes. The type of the emitted values is application specific.
 
-### call
-
-Perform a read-only call on the app's smart contract.
-
-#### Parameters
-
-- `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the method to call
-- `params` **...any**: An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the result of the call.
-
 ### describeScript
 
 Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
@@ -278,6 +236,48 @@ Decodes an EVM callscript and tries to describe the transaction path that the sc
 - `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The EVM callscript to describe
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
+
+### identify
+
+Set the app identifier.
+
+This identifier is used to distinguish multiple instances of your app, so choose something that provides additional context to the app instance.
+
+Examples include: the name of a token that the app manages, the type of content that a TCR is curating, the name of a group etc.
+
+#### Parameters
+
+- `identifier` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The identifier of the app
+
+#### Examples
+
+```javascript
+api.identify('Customer counter')
+// or
+api.identify('Employee counter')
+```
+
+Returns **void**
+
+### resolveAddressIdentity
+
+Resolve an address' identity, using the highest priority provider.
+
+#### Parameters
+
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to resolve
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the resolved identity or null if not found
+
+### requestAddressIdentityModification
+
+Request an address' identity be modified with the highest priority provider. The request will typically be handled by the Aragon client.
+
+#### Parameters
+
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to modify
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits if the modification succeeded or was cancelled by the user.
 
 ### requestSignMessage
 
@@ -304,6 +304,20 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
     )
 ```
 
+### context
+
+**NOTE: The wrapper does not currently send contexts to apps**
+
+Listen for app contexts.
+
+An app context is an application specific message that the wrapper can send to the app.
+
+For example, if a notification or a shortcut is clicked, the context attached to either of those will be sent to the app.
+
+App contexts can be used to display specific views in your app or anything else you might find interesting.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits app contexts as they are received.-
+
 ### notify
 
 **NOTE: This call is not currently handled by the wrapper**
@@ -318,17 +332,3 @@ Send a notification.
 - `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** (optional, default `newDate()`): An optional date that specifies when the notification originally occured
 
 Returns **void**
-
-### context
-
-**NOTE: The wrapper does not currently send contexts to apps**
-
-Listen for app contexts.
-
-An app context is an application specific message that the wrapper can send to the app.
-
-For example, if a notification or a shortcut is clicked, the context attached to either of those will be sent to the app.
-
-App contexts can be used to display specific views in your app or anything else you might find interesting.
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits app contexts as they are received.-
