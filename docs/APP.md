@@ -163,9 +163,9 @@ Set a value in the application cache.
 #### Parameters
 
 - `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The cache key for the value
-- `value` **any**: The value to persist in the cache (must conform to the [structured cloning algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm)
+- `value` **any**: The value to persist in the cache (must conform to the [structured cloning algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm))
 
-Returns **string**: This method passes through `value`
+Returns **string**: This method passes through `value`.
 
 ### state
 
@@ -270,7 +270,7 @@ Resolve an address' identity, using the highest priority provider.
 
 - `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to resolve
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the resolved identity or null if not found
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the resolved identity or null if not found.
 
 ### requestAddressIdentityModification
 
@@ -354,11 +354,11 @@ For example, if a notification or a shortcut is clicked, the context attached to
 
 App contexts can be used to display specific views in your app or anything else you might find interesting.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits app contexts as they are received.-
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits app contexts as they are received.
 
 ### notify
 
-**NOTE: This call is not currently handled by the wrapper**
+**NOTE: This call is not currently handled by the wrapper.**
 
 Send a notification.
 
@@ -369,4 +369,4 @@ Send a notification.
 - `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): An optional context that will be sent back to the app if the notification is clicked
 - `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** (optional, default `newDate()`): An optional date that specifies when the notification originally occured
 
-Returns **void**
+Returns **void**.
