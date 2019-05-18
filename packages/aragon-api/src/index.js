@@ -230,10 +230,10 @@ export class AppProxy {
   }
 
   /**
-   * Get a value in from the application cache.
+   * Get a value from the application cache.
    *
-   * @param  {string} key   The cache key to set a value for
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the cached value every time it changes. The type of the emitted values is cache key specific.
+   * @param  {string} key   The cache key to get a value for
+   * @return {Observable} A single emission RxJS observable with the value for the specified cache key
    */
   getCache (key) {
     return this.rpc.sendAndObserveResponse(
@@ -261,9 +261,9 @@ export class AppProxy {
   }
 
   /**
-   * Aoplication store constructor to be used in app script
+   * Application store constructor to be used in app script
    * Listens for events, passes them through `reducer`, caches the resulting state and re-emits that state for easy chaining.
-   * `cache`ing the `state` key will emit the new state in the application frontend.
+   * Caches results to the `state` key to emit the new state for `api.state()` subscribers (e.g. a frontend).
    *
    * For caching purposes the event fetching is split into two steps:
    *  - Fetching past events with `pastEvents`
@@ -273,7 +273,11 @@ export class AppProxy {
    *
    * Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
    *
-   * Optionally takes an array of external contracts to merge with this app's events; for example you might use an external contract's Web3 events.
+   * Optionally takes an options object with:
+   *   - `externals`: an array of external contracts to merge with this app's events,
+   *     for example you might use an external contract's Web3 events
+   *   - `init`: an initialization function run before events are passed through to the reducer,
+   *     useful for refreshing stale state from the contract (e.g. token balances)
    *
    * @param  {Function} reducer A function that reduces events to state. Can return a Promise that resolves to a new state.
    * @param  {Object} [options] An optional options object
@@ -319,8 +323,9 @@ export class AppProxy {
       ...externals.map(({ contract }) => contract.events(fromBlock))
     )
 
-    // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initialisationBlock
-    // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty
+    // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
+    // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty,
+    // by default they will use the current app's initialization block.
     const getPastEvents = (cachedFromBlock, toBlock) => merge(
       this.pastEvents(cachedFromBlock, toBlock),
       ...externals.map(({ contract, initializationBlock }) => contract.pastEvents(cachedFromBlock || initializationBlock, toBlock))
