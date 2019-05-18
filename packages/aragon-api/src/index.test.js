@@ -106,6 +106,22 @@ test('should send an identify request', t => {
   t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['ANT'])
 })
 
+test('should send a member check request', t => {
+  t.plan(2)
+  // arrange
+  const isMemberFn = Index.AppProxy.prototype.isMember
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  isMemberFn.call(instanceStub, '0xb4124cEB3451635DAcedd11767f004d8a28c6eE7')
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'isMember')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xb4124cEB3451635DAcedd11767f004d8a28c6eE7'])
+})
+
 test('should return the events observable', t => {
   t.plan(3)
   // arrange

@@ -72,6 +72,23 @@ export class AppProxy {
     )
   }
 
+
+  /**
+   * Check user membership.
+   *
+   * Membership is determined by checking any token balance in all
+   * of the applications Token Manager applications.
+   *
+   * @param  {string} address The address of the account to check
+   * @return {void}
+   */
+  isMember (address) {
+    this.rpc.send(
+      'isMember',
+      [address]
+    )
+  }
+
   /**
    * Resolve an address' identity, using the highest priority provider.
    *

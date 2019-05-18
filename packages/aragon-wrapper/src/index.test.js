@@ -2,7 +2,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
-import { first } from 'rxjs/operators'
+import { first, take } from 'rxjs/operators'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -803,6 +803,75 @@ test('should init the forwarders correctly', async (t) => {
         isForwarder: true
       }
     ])
+  })
+})
+
+test('should init the Token Manager correctly', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.apps = of([
+    {
+      appId: 'counterApp'
+    }, {
+      appId: 'tokenManagerApp'
+    }
+  ])
+  // act
+  await instance.initTokenManagers()
+  // assert
+  instance.tokenManagers.subscribe(value => {
+    t.deepEqual(value, [
+      {
+        appId: 'tokenManagerApp'
+      }
+    ])
+  })
+})
+
+test('should check membership correctly', async (t) => {
+  const { Aragon } = t.context
+
+  // arrange
+  const instance = new Aragon()
+  let memberCheckerStub = sinon.stub();
+  memberCheckerStub.withArgs('balanceOf', '0x123').returns(1)
+  memberCheckerStub.withArgs('balanceOf', '0x432').returns(0)
+  instance.apps = of([
+    {
+      appId: 'counterApp'
+    }, {
+      appId: 'tokenManagerApp',
+      call: function(method, param) { return memberCheckerStub(method, param) }
+    }
+  ])
+
+  console.log("check stub", memberCheckerStub('balanceOf', '0x432'))
+  await instance.initTokenManagers()
+  await instance.initMembers()
+  // act
+  const isMemberOne = await instance.checkMember('0x123')
+  const isMemberTwo = await instance.checkMember('0x432')
+  instance.setMembership(
+    '0x123',
+    isMemberOne
+  )
+  instance.members.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': true,
+    })
+  })
+  instance.setMembership(
+    '0x432',
+    isMemberTwo
+  )
+  instance.members.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': true,
+      '0x432': false,
+    })
   })
 })
 

@@ -48,6 +48,7 @@ export function combineRequestHandlers (...handlers) {
 export { default as accounts } from './accounts'
 export { default as addressIdentity } from './address-identity'
 export { default as appIdentifier } from './app-identifier'
+export { default as memberChecker } from './member-checker'
 export { default as cache } from './cache'
 export { default as call } from './call'
 export { default as describeScript } from './describe-script'
