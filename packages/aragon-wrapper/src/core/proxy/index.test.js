@@ -169,7 +169,7 @@ test('should use the correct options for requested events', (t) => {
 })
 
 test('should use the correct options for requested past events with fromBlock and toBlock ', (t) => {
-  t.plan(3)
+  t.plan(4)
   // arrange
   const fromBlock = 10
   const toBlock = 5
@@ -192,6 +192,7 @@ test('should use the correct options for requested past events with fromBlock an
   t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock, toBlock }))
 
   events.subscribe(events => {
+    t.is(events.length, 2)
     t.deepEqual(events[0], { one: 1 })
     t.deepEqual(events[1], { two: 2 })
   })
@@ -223,9 +224,13 @@ test('should use the correct options for requested past events with toBlock and 
 })
 
 test('should filter past events correctly when more than one eventName is passed', (t) => {
-  t.plan(3)
+  t.plan(4)
   // arrange
-  const pastEventsStub = sinon.stub().resolves([{ event: 'Orange', amount: 16 }, { event: 'Apple', amount: 16 }, { event: 'Pear', amount: 5 }])
+  const pastEventsStub = sinon.stub().resolves([
+    { event: 'Orange', amount: 16 },
+    { event: 'Apple', amount: 10 },
+    { event: 'Pear', amount: 5 }
+  ])
 
   const contract = {
     getPastEvents: pastEventsStub
@@ -238,13 +243,14 @@ test('should filter past events correctly when more than one eventName is passed
   }
   const instance = new Proxy(null, null, web3Stub)
   // act
-  const events = instance.pastEvents(['Orange', 'Apple'])
+  const events = instance.pastEvents(['Orange', 'Pear'])
   // assert
   t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: 0, toBlock: null }))
 
   events.subscribe(events => {
-    t.is(events[0].amount, 16)
-    t.is(events[1].amount, 16)
+    t.is(events.length, 2)
+    t.deepEqual(events[0], { event: 'Orange', amount: 16 })
+    t.deepEqual(events[1], { event: 'Pear', amount: 5 })
   })
 
   return events // return observable for ava to wait for its completion
