@@ -1,8 +1,8 @@
+import { defer, first, filter, map } from 'rxjs/operators'
 import jsonrpc from './jsonrpc'
 import MessagePortMessage from './providers/MessagePortMessage'
 import WindowMessage from './providers/WindowMessage'
 import DevMessage from './providers/DevMessage'
-import { first, filter, map } from 'rxjs/operators'
 
 export const providers = {
   MessagePortMessage,
@@ -81,29 +81,33 @@ export default class Messenger {
   }
 
   /**
-   * Helper method to send a request and listen for responses to that request
+   * Helper method to send a request and listen for multiple responses to that request.
+   * To avoid dropping responses, the request is only sent once a subscriber is attached.
    *
    * @param {string} method The method name to call
    * @param {Array<any>} [params=[]] The parameters to send with the call
    * @returns {Observable} An observable of responses to the sent request
    */
   sendAndObserveResponses (method, params = []) {
-    const id = this.send(method, params)
+    return defer(() => {
+      const id = this.send(method, params)
 
-    return this.responses().pipe(
-      filter((message) => message.id === id),
-      map((response) => {
-        if (response.error) {
-          response.error = new Error(response.error)
-        }
-        return response
-      })
-      // Let callers handle errors themselves
-    )
+      return this.responses().pipe(
+        filter((message) => message.id === id),
+        map((response) => {
+          if (response.error) {
+            response.error = new Error(response.error)
+          }
+          return response
+        })
+        // Let callers handle errors themselves
+      )
+    })
   }
 
   /**
    * Helper method to send a request and listen for a single response to that request
+   * To avoid dropping the response, the request is only sent once a subscriber is attached.
    *
    * @param {string} method The method name to call
    * @param {Array<any>} [params] The parameters to send with the call
