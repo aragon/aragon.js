@@ -130,7 +130,10 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 ### external
 
-Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token). Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
+Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token).
+
+> **Note**<br>
+> Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
 
 #### Parameters
 
