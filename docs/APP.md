@@ -260,7 +260,7 @@ api.identify('Customer counter')
 api.identify('Employee counter')
 ```
 
-Returns **void**
+Returns **void**.
 
 ### resolveAddressIdentity
 
