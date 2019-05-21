@@ -334,7 +334,8 @@ export class AppProxy {
     const cachedState$ = this.state().pipe(first())
     const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
     const latestBlock$ = this.web3Eth('getBlockNumber')
-    const initState$ = init ? from(init()) : from([null])
+    // init the app state with the cached state
+    const initState$ = init ? cachedState$.pipe(switchMap(cachedState => from(init(cachedState)))) : from([null])
 
     const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
       switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
