@@ -347,7 +347,7 @@ export class AppProxy {
 
         // The block up to which to fetch past events.
         // The reduced state up to this point will be cached on every load
-        const pastEventsToBlock = Math.min(0, latestBlock - BLOCK_REORG_MARGIN)
+        const pastEventsToBlock = Math.max(0, latestBlock - BLOCK_REORG_MARGIN)
 
         console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
