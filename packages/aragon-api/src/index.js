@@ -356,12 +356,6 @@ export class AppProxy {
           // single emission array of all pastEvents -> flatten to process events
           flatMap(pastEvents => from(pastEvents)),
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
-          // debounce to reduce rendering and caching overthead
-          debounceTime(200),
-          tap((state) => {
-            this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
-            this.cache('state', state)
-          }),
           // Prevent multiple subscriptions invoking duplicate calls
           share()
         )
@@ -369,6 +363,10 @@ export class AppProxy {
         const currentState$ = pastState$.pipe(
           // Use the last past state as the initial state for reducing current/future states
           last(),
+          tap((state) => {
+            this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
+            this.cache('state', state)
+          }),
           switchMap(pastState => {
             const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
@@ -376,6 +374,8 @@ export class AppProxy {
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
+          // debounce to reduce rendering and caching overthead
+          debounceTime(200),
           tap((state) => {
             this.cache('state', state)
             console.debug('- store - reduced state:', state)
