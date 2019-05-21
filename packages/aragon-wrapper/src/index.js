@@ -242,7 +242,7 @@ export default class Aragon {
     const REORG_SAFETY_BLOCK_AGE = 100
 
     const currentBlock = await this.web3.eth.getBlockNumber()
-    const cacheBlockHeight = currentBlock - REORG_SAFETY_BLOCK_AGE
+    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
 
     // Check if we have cached ACL for this address
     // Cache object for an ACL: { permissions, blockNumber }
