@@ -351,8 +351,6 @@ export class AppProxy {
 
         console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
-        // currentEvents$ is an observable for events starting from pastEventsToBlock
-        const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
         const pastState$ = getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           // single emission array of all pastEvents -> flatten to process events
@@ -372,6 +370,8 @@ export class AppProxy {
           // Use the last past state as the initial state for reducing current/future states
           last(),
           switchMap(pastState => {
+            const currentEvents$ = getCurrentEvents(pastEventsToBlock)
+
             return merge(currentEvents$, accounts$).pipe(
               mergeScan(wrappedReducer, pastState, 1)
             )
