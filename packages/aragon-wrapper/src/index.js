@@ -198,6 +198,7 @@ export default class Aragon {
     this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
+    this.initForwardedActions()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -786,6 +787,47 @@ export default class Aragon {
       publishReplay(1)
     )
     this.appIdentifiers.connect()
+  }
+
+  /**
+   * Initialize the forwardedActions observable
+   * 
+   * @return {void}
+   */
+  initForwardedActions () {
+    this.forwardedActions = new BehaviorSubject({}).pipe(
+      scan(
+        (actions = [], {currentApp, actionId, evmScript = '', add = true}) => {
+          if (!add) {
+            return actions.filter(
+              action => action.currentApp !== currentApp || action.actionId !== actionId
+            )
+          }
+          const path = this.describeTransactionPath(this.decodeTransactionPath(evmScript))
+          const target = path && path[path.length-1]
+          return actions.push({currentApp, actionId, target, path, evmScript})
+        }
+      ),
+      publishReplay(1)
+    )
+    this.forwardedActions.connect()
+  }
+
+  /**
+   * set a forwarded action
+   * 
+   * @param {string} address 
+   * @param {string} actionId
+   * @param {evmScript} string
+   * @param {add} bool
+   */
+  setAction (currentApp, actionId, evmScript, add) {
+    this.forwardedActions.next({
+      currentApp,
+      actionId,
+      evmScript,
+      add,
+    })
   }
 
   /**
