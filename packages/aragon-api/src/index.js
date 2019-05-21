@@ -331,6 +331,9 @@ export class AppProxy {
     const getPastEvents = (cachedFromBlock, toBlock) => merge(
       this.pastEvents(cachedFromBlock, toBlock),
       ...externals.map(({ contract, initializationBlock }) => contract.pastEvents(cachedFromBlock || initializationBlock, toBlock))
+    ).pipe(
+      // single emission array of all pastEvents -> flatten to process events
+      flatMap(pastEvents => from(pastEvents))
     )
 
     const cachedState$ = this.state().pipe(first())
@@ -353,8 +356,6 @@ export class AppProxy {
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
 
         const pastState$ = getPastEvents(cachedBlock, pastEventsToBlock).pipe(
-          // single emission array of all pastEvents -> flatten to process events
-          flatMap(pastEvents => from(pastEvents)),
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           // Prevent multiple subscriptions invoking duplicate calls
           share()
