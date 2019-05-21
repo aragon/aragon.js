@@ -269,7 +269,9 @@ export class AppProxy {
    *  - Fetching past events with `pastEvents`
    *  - Subscribing to new events
    *
-   * The reducer takes the signature `(state, event)` and must return a promise that resolves to state, even if it is unaltered by the event.
+   * The reducer takes the signature `(state, event)` and should return either:
+   *  - a promise that resolves to state, even if it is unaltered by the event.
+   *  - a new state object
    *
    * Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
    *
