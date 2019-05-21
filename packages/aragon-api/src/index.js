@@ -1,8 +1,11 @@
 import { combineLatest, defer, from, merge } from 'rxjs'
-import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, share } from 'rxjs/operators'
+import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, share, endWith, startWith } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const ACCOUNTS_TRIGGER = Symbol('ACCOUNTS_TRIGGER')
+
+export const SYNC_STATUS_SYNCING = Symbol('SYNC_STATUS_SYNCING')
+export const SYNC_STATUS_SYNCED = Symbol('SYNC_STATUS_SYNCED')
 
 export const AppProxyHandler = {
   get (target, name, receiver) {
@@ -334,9 +337,19 @@ export class AppProxy {
       ...externals.map(({ contract, initializationBlock }) => contract.pastEvents(cachedFromBlock || initializationBlock, toBlock))
     ).pipe(
       // single emission array of all pastEvents -> flatten to process events
-      flatMap(pastEvents => from(pastEvents))
+      flatMap(pastEvents => from(pastEvents)),
+      startWith({
+        event: SYNC_STATUS_SYNCING,
+        returnValues: {
+          from: cachedFromBlock,
+          target: toBlock
+        }
+      }),
+      endWith({
+        event: SYNC_STATUS_SYNCED,
+        returnValues: {}
+      })
     )
-
     const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
     const cachedState$ = this.getCache(CACHED_STATE_KEY)
     const latestBlock$ = this.web3Eth('getBlockNumber')
