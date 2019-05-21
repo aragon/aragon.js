@@ -355,8 +355,6 @@ export class AppProxy {
         const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
         const pastState$ = getPastEvents(cachedBlock, pastEventsToBlock).pipe(
-          // Prevent multiple subscriptions invoking duplicate calls
-          share(),
           // single emission array of all pastEvents -> flatten to process events
           flatMap(pastEvents => from(pastEvents)),
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
@@ -365,7 +363,9 @@ export class AppProxy {
           tap((state) => {
             this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
             this.cache('state', state)
-          })
+          }),
+          // Prevent multiple subscriptions invoking duplicate calls
+          share()
         )
 
         const currentState$ = pastState$.pipe(
