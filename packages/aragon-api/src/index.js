@@ -289,6 +289,7 @@ export class AppProxy {
    */
   store (reducer, { externals = [], init } = {}) {
     const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
+    const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
 
     // Hot observable which emits an web3.js event-like object with the address of the active account.
@@ -336,8 +337,8 @@ export class AppProxy {
       flatMap(pastEvents => from(pastEvents))
     )
 
-    const cachedState$ = this.state().pipe(first())
     const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
+    const cachedState$ = this.getCache(CACHED_STATE_KEY)
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
     const initState$ = init ? cachedState$.pipe(switchMap(cachedState => from(init(cachedState)))) : from([null])
@@ -366,7 +367,8 @@ export class AppProxy {
           last(),
           tap((state) => {
             this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
-            this.cache('state', state)
+            console.debug('caching state:', state)
+            this.cache(CACHED_STATE_KEY, state)
           }),
           switchMap(pastState => {
             const currentEvents$ = getCurrentEvents(pastEventsToBlock)
