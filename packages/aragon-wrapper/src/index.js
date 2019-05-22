@@ -883,6 +883,21 @@ export default class Aragon {
   }
 
   /**
+   * Search identities based on a term
+   *
+   * @param  {string} searchTerm
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  searchIdentities (searchTerm) {
+    const providerName = 'local' // TODO - get provider
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.search === 'function') {
+      return provider.search(searchTerm)
+    }
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+  /**
    * Request an identity modification using the highest priority provider.
    *
    * Returns a promise which delegates resolution to the handler
@@ -1119,6 +1134,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
