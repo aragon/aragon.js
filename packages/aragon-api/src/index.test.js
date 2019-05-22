@@ -117,14 +117,15 @@ test('should return the events observable', t => {
   const instanceStub = {
     rpc: {
       sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+        .returns(observable),
+      send: sinon.stub()
     }
   }
   // act
   const result = eventsFn.call(instanceStub)
   // assert
   // the call to sendAndObserveResponse should be defered until we subscribe
-  t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  t.falsy(instanceStub.rpc.send.getCall(0))
   result.subscribe(value => {
     t.deepEqual(value, ['eventA', 'eventB'])
   })

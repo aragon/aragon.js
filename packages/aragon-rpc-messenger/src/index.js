@@ -1,4 +1,5 @@
-import { defer, first, filter, map } from 'rxjs/operators'
+import { first, filter, map } from 'rxjs/operators'
+import { defer } from 'rxjs'
 import jsonrpc from './jsonrpc'
 import MessagePortMessage from './providers/MessagePortMessage'
 import WindowMessage from './providers/WindowMessage'
