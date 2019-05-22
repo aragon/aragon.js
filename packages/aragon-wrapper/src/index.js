@@ -797,16 +797,24 @@ export default class Aragon {
   initForwardedActions () {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
-        (actions = [], {currentApp, actionId, evmScript = '', add = true}) => {
-          if (!add) {
-            return actions.filter(
-              action => action.currentApp !== currentApp || action.actionId !== actionId
-            )
+        (actions, {currentApp, actionId, evmScript = '', state = 0}) => {
+          const updateIndex = actions.findIndex(
+            action => action.currentApp === currentApp && action.actionId === actionId
+          )
+          if (updateIndex === -1) {
+            const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
+            currentApp && actions.push({currentApp, actionId, target, evmScript, state})
+            return actions
+          } else {
+            if (actions[updateIndex].state < state) {
+              actions[updateIndex].state = state
+              if (evmScript !== '')
+                actions[updateIndex].evmScript = evmScript
+            }
+            return actions
           }
-          const path = this.describeTransactionPath(this.decodeTransactionPath(evmScript))
-          const target = path && path[path.length-1]
-          return actions.push({currentApp, actionId, target, path, evmScript})
-        }
+        },
+        [] // actions seed
       ),
       publishReplay(1)
     )
@@ -819,14 +827,14 @@ export default class Aragon {
    * @param {string} address 
    * @param {string} actionId
    * @param {evmScript} string
-   * @param {add} bool
+   * @param {state} integer
    */
-  setAction (currentApp, actionId, evmScript, add) {
+  setAction (currentApp, actionId, evmScript, state) {
     this.forwardedActions.next({
       currentApp,
       actionId,
       evmScript,
-      add,
+      state,
     })
   }
 
@@ -1145,7 +1153,9 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'new_action', handlers.newAction),
+        handlers.createRequestHandler(request$, 'update_action', handlers.updateAction),
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
