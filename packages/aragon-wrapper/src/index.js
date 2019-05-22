@@ -802,12 +802,15 @@ export default class Aragon {
             action => action.currentApp === currentApp && action.actionId === actionId
           )
           if (updateIndex === -1) {
+            // set the last address as the target of the forwarded action
             const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
             currentApp && actions.push({currentApp, actionId, target, evmScript, state})
             return actions
           } else {
+            // only update any state if the state update is the latest
             if (actions[updateIndex].state < state) {
               actions[updateIndex].state = state
+              // only update the evmScript if it's included
               if (evmScript !== '')
                 actions[updateIndex].evmScript = evmScript
             }

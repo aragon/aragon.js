@@ -346,6 +346,37 @@ export class AppProxy {
         pluck('result')
       )
   }
+
+  /**
+   * send a forwarded action's information to the wrapper
+   * 
+   * @param {string} actionId ID assigned to forwarded action in Forwarder
+   * @param {string} evmScript The execution script caught by the Forwarder
+   * @return {void}
+   */
+  newAction (actionId, evmScript) {
+    return this.rpc.send(
+      'new_action',
+      [actionId, evmScript]
+    )
+  }
+
+  /**
+   * update a forwarded action's state the wrapper
+   * 
+   * If the execution completed, state = 1
+   * If the execution failed, state = 2
+   * 
+   * @param {string} actionId ID assigned to forwarded action in Forwarder
+   * @param {string} evmScript The execution script caught by the Forwarder
+   * @return {void}
+   */
+  updateAction (actionId, state, evmScript = '') {
+    return this.rpc.send(
+      'update_action',
+      [actionId, evmScript, state]
+    )
+  }
 }
 
 /**
