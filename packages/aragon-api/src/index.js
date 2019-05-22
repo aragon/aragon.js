@@ -369,14 +369,8 @@ export class AppProxy {
         console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
 
-        const pastState$ = getPastEvents(cachedBlock, pastEventsToBlock).pipe(
+        return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
-          // Prevent multiple subscriptions invoking duplicate calls
-          share()
-        )
-
-        const currentState$ = pastState$.pipe(
-          // Use the last past state as the initial state for reducing current/future states
           last(),
           tap((state) => {
             this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
@@ -397,8 +391,6 @@ export class AppProxy {
             console.debug('- store - reduced state:', state)
           })
         )
-
-        return merge(pastState$, currentState$)
       }),
       publishReplay(1)
     )
