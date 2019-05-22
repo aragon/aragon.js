@@ -1,5 +1,4 @@
-import { fromEvent } from 'rxjs'
-import ContractProxy from '../../core/proxy'
+import { fromEvent, from } from 'rxjs'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
@@ -40,6 +39,7 @@ export function events (request, proxy, wrapper) {
 }
 
 export function pastEvents (request, proxy, wrapper) {
+  const web3 = wrapper.web3
   const eventsOptions = {}
   const [
     address,
@@ -48,16 +48,18 @@ export function pastEvents (request, proxy, wrapper) {
     providedToBlock
   ] = request.params
 
-  // Use the app proxy's initialization block by default
-  const externalProxy = new ContractProxy(address, jsonInterface, wrapper.web3, proxy.initializationBlock)
+  const contract = new web3.eth.Contract(
+    jsonInterface,
+    address
+  )
 
-  if (providedFromBlock) {
-    eventsOptions.fromBlock = providedFromBlock
-  }
+  eventsOptions.fromBlock = providedFromBlock || proxy.initializationBlock
 
   if (providedToBlock) {
     eventsOptions.toBlock = providedToBlock
   }
 
-  return externalProxy.pastEvents(null, eventsOptions)
+  return from(
+    contract.getPastEvents('allEvents', eventsOptions)
+  )
 }
