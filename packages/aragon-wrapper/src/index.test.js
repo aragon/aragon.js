@@ -2,7 +2,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
-import { first, last } from 'rxjs/operators'
+import { first } from 'rxjs/operators'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -1407,7 +1407,7 @@ test.only('should set forwarded actions', async (t) => {
 
   // act
   await instance.initForwardedActions()
-  instance.setAction('0x0','1', script)
+  instance.setForwardedAction('0x0','1', script)
 
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
@@ -1422,7 +1422,7 @@ test.only('should set forwarded actions', async (t) => {
 
   // update existing entry
   // act
-  instance.setAction('0x0', '1','',1)
+  instance.setForwardedAction('0x0', '1','',1)
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value, [{
@@ -1436,8 +1436,8 @@ test.only('should set forwarded actions', async (t) => {
 
   // add multiple entries
   // act
-  instance.setAction('0x0', '2', script)
-  instance.setAction('0x0', '3', script)
+  instance.setForwardedAction('0x0', '2', script)
+  instance.setForwardedAction('0x0', '3', script)
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value, [{

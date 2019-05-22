@@ -354,9 +354,9 @@ export class AppProxy {
    * @param {string} evmScript The execution script caught by the Forwarder
    * @return {void}
    */
-  newAction (actionId, evmScript) {
+  newForwardedAction (actionId, evmScript) {
     return this.rpc.send(
-      'new_action',
+      'update_forwarded_action',
       [actionId, evmScript]
     )
   }
@@ -368,12 +368,13 @@ export class AppProxy {
    * If the execution failed, state = 2
    * 
    * @param {string} actionId ID assigned to forwarded action in Forwarder
-   * @param {string} evmScript The execution script caught by the Forwarder
+   * @param {string} state The current state of the forwarded action within the forwarer
+   * @param {string} [evmScript=''] The optionally updated execution script
    * @return {void}
    */
-  updateAction (actionId, state, evmScript = '') {
+  updateForwardedAction (actionId, state, evmScript = '') {
     return this.rpc.send(
-      'update_action',
+      'update_forwarded_action',
       [actionId, evmScript, state]
     )
   }

@@ -832,7 +832,7 @@ export default class Aragon {
    * @param {evmScript} string
    * @param {state} integer
    */
-  setAction (currentApp, actionId, evmScript, state) {
+  setForwardedAction (currentApp, actionId, evmScript, state) {
     this.forwardedActions.next({
       currentApp,
       actionId,
@@ -1157,8 +1157,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
         handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
-        handlers.createRequestHandler(request$, 'new_action', handlers.newAction),
-        handlers.createRequestHandler(request$, 'update_action', handlers.updateAction),
+        handlers.createRequestHandler(request$, 'update_forwarded_action', handlers.updateForwardedAction),
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )

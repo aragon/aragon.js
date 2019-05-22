@@ -1,5 +1,5 @@
 export default function (request, proxy, wrapper) {
-    wrapper.setAction(
+    wrapper.setForwardedAction(
       proxy.address,
       request.params
     )   
