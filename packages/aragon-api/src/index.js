@@ -342,7 +342,7 @@ export class AppProxy {
         event: SYNC_STATUS_SYNCING,
         returnValues: {
           from: cachedFromBlock,
-          target: toBlock
+          to: toBlock
         }
       }),
       endWith({
