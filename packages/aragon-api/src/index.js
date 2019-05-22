@@ -176,15 +176,13 @@ export class AppProxy {
           )
         )
       },
-      pastEvents: (fromBlock, toBlock) => {
-        console.debug(`- external.pastEvents ${fromBlock} -> ${toBlock}`)
+      pastEvents: (options = {}) => {
         const eventArgs = [
           address,
           jsonInterface.filter(
             (item) => item.type === 'event'
           ),
-          fromBlock,
-          toBlock
+          options
         ]
 
         return defer(
@@ -334,7 +332,7 @@ export class AppProxy {
     // by default they will use the current app's initialization block.
     const getPastEvents = (cachedFromBlock, toBlock) => merge(
       this.pastEvents(cachedFromBlock, toBlock),
-      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents(cachedFromBlock || initializationBlock, toBlock))
+      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock }))
     ).pipe(
       // single emission array of all pastEvents -> flatten to process events
       flatMap(pastEvents => from(pastEvents)),

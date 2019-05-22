@@ -40,24 +40,22 @@ export function events (request, proxy, wrapper) {
 
 export function pastEvents (request, proxy, wrapper) {
   const web3 = wrapper.web3
-  const eventsOptions = {}
   const [
     address,
     jsonInterface,
-    providedFromBlock,
-    providedToBlock
+    options
   ] = request.params
 
   const contract = new web3.eth.Contract(
     jsonInterface,
     address
   )
-
-  eventsOptions.fromBlock = providedFromBlock || proxy.initializationBlock
-
-  if (providedToBlock) {
-    eventsOptions.toBlock = providedToBlock
+  // ensure it's an object
+  const eventsOptions = {
+    ...options
   }
+
+  eventsOptions.fromBlock = eventsOptions.fromBlock || proxy.initializationBlock
 
   return from(
     contract.getPastEvents('allEvents', eventsOptions)
