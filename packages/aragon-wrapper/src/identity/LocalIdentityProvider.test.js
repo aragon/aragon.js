@@ -120,3 +120,40 @@ test.serial('getAll will return all local identities with lowercase address keys
   t.truthy(all[SECOND_ADDRESS].createdAt)
   t.truthy(all[THIRD_ADDRESS.toLowerCase()].createdAt)
 })
+
+test.serial('search should return an array of results of freely matching identities', async t => {
+  // t.plan(7)
+  const provider = t.context.localIdentityProvider
+  const identities = [
+    [ '0x1110000000000000000000000000000000000001', 'James Baldwin' ],
+    [ '0x1120000000000000000000000000000000000001', 'David Deutsch' ],
+    [ '0x3000000000000000000000000000000000000001', 'Isaac Newton' ],
+    [ '0x4000000000000000000000000000000000000001', 'Henry Newton' ],
+    [ '0x6000000000000000000000000000000000000001', 'Marie Curie' ],
+    [ '0x7000000000000000000000000000000000000001', 'Winnie the Pooh' ],
+    [ '0x8900000000088888870000000000000000000001', 'Richard Feynman' ],
+    [ '0x0900000000000000000000000000000000000001', 'Aristotle' ]
+  ]
+  // map of search terms to expected count and names
+  const searchTermToExpectation = {
+    'ne': { names: [] },
+    '0x': { names: [] },
+    'new': { names: [ 'Isaac Newton', 'Henry Newton' ] },
+    'win': { names: [ 'James Baldwin', 'Winnie the Pooh' ] },
+    'jam': { names: [ 'James Baldwin' ] },
+    'ari': { names: [ 'Marie Curie', 'Aristotle' ] },
+    '0x09': { names: [ 'Aristotle' ] },
+    '0x11': { names: [ 'James Baldwin', 'David Deutsch' ] }
+  }
+  // save test identities
+  for (const [address, name] of identities) {
+    await provider.modify(address, { name })
+  }
+
+  for (const [searchTerm, expectedResult] of Object.entries(searchTermToExpectation)) {
+    const results = await provider.search(searchTerm)
+    const resultNames = results.map(({ name }) => name)
+    t.is(results.length, expectedResult.names.length, `Matching the result count when searching for ${searchTerm}`)
+    t.deepEqual(resultNames, expectedResult.names)
+  }
+})
