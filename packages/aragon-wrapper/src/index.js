@@ -198,6 +198,7 @@ export default class Aragon {
     this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
+    this.initForwardedActions()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -789,6 +790,58 @@ export default class Aragon {
   }
 
   /**
+   * Initialize the forwardedActions observable
+   * 
+   * @return {void}
+   */
+  initForwardedActions () {
+    this.forwardedActions = new BehaviorSubject({}).pipe(
+      scan(
+        (actions, {currentApp, actionId, evmScript = '', state = 0}) => {
+          const updateIndex = actions.findIndex(
+            action => action.currentApp === currentApp && action.actionId === actionId
+          )
+          if (updateIndex === -1) {
+            // set the last address as the target of the forwarded action
+            const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
+            currentApp && actions.push({currentApp, actionId, target, evmScript, state})
+            return actions
+          } else {
+            // only update any state if the state update is the latest
+            if (actions[updateIndex].state < state) {
+              actions[updateIndex].state = state
+              // only update the evmScript if it's included
+              if (evmScript !== '')
+                actions[updateIndex].evmScript = evmScript
+            }
+            return actions
+          }
+        },
+        [] // actions seed
+      ),
+      publishReplay(1)
+    )
+    this.forwardedActions.connect()
+  }
+
+  /**
+   * set a forwarded action
+   * 
+   * @param {string} address 
+   * @param {string} actionId
+   * @param {evmScript} string
+   * @param {state} integer
+   */
+  setForwardedAction (currentApp, actionId, evmScript, state) {
+    this.forwardedActions.next({
+      currentApp,
+      actionId,
+      evmScript,
+      state,
+    })
+  }
+
+  /**
    * Set the identifier of an app.
    *
    * @param {string} address The proxy address of the app
@@ -1103,7 +1156,8 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'update_forwarded_action', handlers.updateForwardedAction),
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )

@@ -369,3 +369,46 @@ test('should send a web3Eth function request and observe the response', t => {
     t.deepEqual(value, ['accountA', 'accountB'])
   })
 })
+
+test('should submit a new action', t => {
+  t.plan(2)
+  // arrange
+  const newActionFn = Index.AppProxy.prototype.newForwardedAction
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  newActionFn.call(instanceStub, '0', 'testScript')
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'update_forwarded_action')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0', 'testScript'])
+})
+
+test('should update an action', t => {
+  t.plan(4)
+  // arrange
+  const updateActionFn = Index.AppProxy.prototype.updateForwardedAction
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  const instanceStub2 = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  updateActionFn.call(instanceStub, '1', '0', 'testScript')
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'update_forwarded_action')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['1', 'testScript', '0'])
+
+  // act
+  updateActionFn.call(instanceStub2, '2', '1')
+  // assert
+  t.is(instanceStub2.rpc.send.getCall(0).args[0], 'update_forwarded_action')
+  t.deepEqual(instanceStub2.rpc.send.getCall(0).args[1], ['2', '', '1'])
+})
