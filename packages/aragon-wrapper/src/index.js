@@ -1158,6 +1158,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
         handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
         handlers.createRequestHandler(request$, 'update_forwarded_action', handlers.updateForwardedAction),
+        handlers.createRequestHandler(request$, 'get_forwarded_actions', handlers.getForwardedActions),
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )

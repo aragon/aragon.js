@@ -378,6 +378,17 @@ export class AppProxy {
       [actionId, evmScript, state]
     )
   }
+
+  /**
+   * Listens for forwarded actions that target your app
+   * 
+   * @return @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of forwarded action objects
+   */
+  getForwardedActionns () {
+    return this.rpc.sendAndObserveResponses(
+      'get_forwarded_actions'
+    )
+  }
 }
 
 /**
