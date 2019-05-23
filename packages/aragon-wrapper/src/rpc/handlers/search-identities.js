@@ -2,9 +2,8 @@ export default function (request, proxy, wrapper) {
   const [searchTerm] = request.params
 
   if (searchTerm.length < 3) {
-    return Promise.reject(
-      new Error('Minimum of 3 characters required for search')
-    )
+    // Empty response for requests with less than 3 chars
+    return Promise.resolve([])
   }
 
   return wrapper.searchIdentities(searchTerm)
