@@ -380,14 +380,14 @@ export class AppProxy {
   }
 
   /**
-   * Listens for forwarded actions that target your app
+   * Listens for forwarded actions that target your app and emits them like contract events
    * 
-   * @return @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of forwarded action objects
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of forwarded action objects
    */
-  getForwardedActionns () {
+  getForwardedActions () {
     return this.rpc.sendAndObserveResponses(
       'get_forwarded_actions'
-    )
+    ).pipe(pluck('result'))
   }
 }
 
