@@ -3,21 +3,20 @@ import { map, filter } from 'rxjs/operators'
 export default function (request, proxy, wrapper) {
   // filter out actions that aren't targeted
   // at the subscribed app proxy
-  const proxyActions = actionsArray => (
+  const getProxyActions = actionsArray => (
     actionsArray
-    .filter(action => action.target && (action.target === proxy.address))
+    .filter(action => (action.target === proxy.address))
   )
 
   return wrapper.forwardedActions.pipe(
-    // only emit observables that 
-    // contain relevant data to the calling app
-    filter(actions => proxyActions(actions).length > 0),
     // transform the observable into an event-like object
-    map(
-      actions => ({
-        event: 'forwardedActions', 
-        returnValues: proxyActions(actions)
-      })
-    )
+    // that only contains actions targeting the proxy
+    map(actions => ({
+      event: 'ForwardedActions', 
+      returnValues: getProxyActions(actions)
+    })),
+    // only emit observables that 
+    // contain actions
+    filter(proxyActionEvents => proxyActionEvents.returnValues.length > 0),
   )
 }
