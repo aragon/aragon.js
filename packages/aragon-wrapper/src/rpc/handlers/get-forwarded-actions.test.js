@@ -6,7 +6,7 @@ test('should receive and filter the forwardedActions registry', async (t) =>{
   t.plan(2)
 
   const forwardedActionsObservable = from([
-    [{
+    [{ // first value
       currentApp: '0xbeefbeef',
       actionId: '1',
       target: '0xdeaddead',
@@ -20,14 +20,14 @@ test('should receive and filter the forwardedActions registry', async (t) =>{
       evmScript: '0x00000001xyz',
       state:  2,
     }],
-    [{
+    [{ // second value
       currentApp: '0xbeefbeef',
       actionId: '1',
       target: '0xdeaddead',
       evmScript: '0x00000001abc',
       state:  0,
     },
-    {
+    { // should filter out this entry
       currentApp: '0xbeefbeef',
       actionId: '1',
       target: '0xbeefdead',
@@ -41,16 +41,16 @@ test('should receive and filter the forwardedActions registry', async (t) =>{
       evmScript: '0x00000001xyz',
       state:  2,
     }],
-    [{
+    [{ // should not emit an observable for this value
       currentApp: '0xbeefbeef',
       actionId: '1',
-      target: '0xbeefdead',
+      target: '0xbeefdead', // target address mismatch
       evmScript: '0x00000001abc',
       state:  0,
     },
-    {
+    { // missing a target address
       currentApp: '0xbeefbeef',
-      actionId: '1',
+      actionId: '2',
       evmScript: '0x00000001abc',
       state:  0,
     }]
