@@ -12,6 +12,13 @@ test('should receive and filter the forwardedActions registry', async (t) =>{
       target: '0xdeaddead',
       evmScript: '0x00000001abc',
       state:  0,
+    },
+    {
+      currentApp: '0xfed',
+      actionId: '1',
+      target: '0xdeaddead',
+      evmScript: '0x00000001xyz',
+      state:  2,
     }],
     [{
       currentApp: '0xbeefbeef',
@@ -26,6 +33,13 @@ test('should receive and filter the forwardedActions registry', async (t) =>{
       target: '0xbeefdead',
       evmScript: '0x00000001abc',
       state:  0,
+    },
+    {
+      currentApp: '0xfed',
+      actionId: '1',
+      target: '0xdeaddead',
+      evmScript: '0x00000001xyz',
+      state:  2,
     }],
     [{
       currentApp: '0xbeefbeef',
@@ -54,6 +68,13 @@ test('should receive and filter the forwardedActions registry', async (t) =>{
         target: '0xdeaddead',
         evmScript: '0x00000001abc',
         state:  0,
+      },
+      {
+        currentApp: '0xfed',
+        actionId: '1',
+        target: '0xdeaddead',
+        evmScript: '0x00000001xyz',
+        state:  2,
       }]}
     )
   })
