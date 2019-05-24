@@ -4,8 +4,9 @@ import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const ACCOUNTS_TRIGGER = Symbol('ACCOUNTS_TRIGGER')
 
-export const SYNC_STATUS_SYNCING = Symbol('SYNC_STATUS_SYNCING')
-export const SYNC_STATUS_SYNCED = Symbol('SYNC_STATUS_SYNCED')
+export const SYNC_STATUS_INITIALIZING = 'SYNC_STATUS_INITIALIZING'
+export const SYNC_STATUS_SYNCING = 'SYNC_STATUS_SYNCING'
+export const SYNC_STATUS_SYNCED = 'SYNC_STATUS_SYNCED'
 
 export const AppProxyHandler = {
   get (target, name, receiver) {
