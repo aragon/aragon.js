@@ -364,11 +364,12 @@ export class AppProxy {
   /**
    * update a forwarded action's state the wrapper
    * 
+   * If the execution is pending, state = 0
    * If the execution completed, state = 1
    * If the execution failed, state = 2
    * 
    * @param {string} actionId ID assigned to forwarded action in Forwarder
-   * @param {string} state The current state of the forwarded action within the forwarer
+   * @param {integer} state The current state of the forwarded action within the forwarder
    * @param {string} [evmScript=''] The optionally updated execution script
    * @return {void}
    */

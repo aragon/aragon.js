@@ -827,10 +827,10 @@ export default class Aragon {
   /**
    * set a forwarded action
    * 
-   * @param {string} address 
+   * @param {string} currentApp 
    * @param {string} actionId
-   * @param {evmScript} string
-   * @param {state} integer
+   * @param {string} evmScript
+   * @param {integer} state
    */
   setForwardedAction (currentApp, actionId, evmScript, state) {
     this.forwardedActions.next({
