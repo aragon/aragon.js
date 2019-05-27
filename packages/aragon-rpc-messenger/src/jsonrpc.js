@@ -18,7 +18,7 @@ export const encodeResponse = (id, result = null) => {
 
   if (result instanceof Error) {
     response.error = result.message || 'An error occurred'
-  } else if (result === signals.complete) {
+  } else if (result === signals.COMPLETE) {
     response.completed = true
   } else {
     response.result = result

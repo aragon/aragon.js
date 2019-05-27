@@ -53,7 +53,7 @@ test('should encode the error response and preserve the message', (t) => {
 
 test('should encode the complete response', (t) => {
   // act
-  const encoded = jsonrpc.encodeResponse('1234', signals.complete)
+  const encoded = jsonrpc.encodeResponse('1234', signals.COMPLETE)
   // assert
   t.is(encoded.jsonrpc, '2.0')
   t.is(encoded.id, '1234')

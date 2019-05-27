@@ -4,7 +4,7 @@ import { signals } from '@aragon/rpc-messenger'
 
 export function createResponse ({ request: { id } }, { error, value = null, kind }) {
   if (kind === 'C') {
-    return { id, payload: signals.complete }
+    return { id, payload: signals.COMPLETE }
   }
 
   if (kind === 'E') {

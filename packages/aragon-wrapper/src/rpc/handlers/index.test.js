@@ -75,7 +75,7 @@ test('should create a request handler', async (t) => {
   const completed = new Set()
   result.subscribe({
     next (value) {
-      if (value.payload === signals.complete) {
+      if (value.payload === signals.COMPLETE) {
         if (completed.has(value.id)) {
           t.fail(`request (${value.id}) completed twice`)
         }
