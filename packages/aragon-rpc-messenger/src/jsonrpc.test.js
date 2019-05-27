@@ -1,6 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
+import signals from './signals'
 
 const uuidv4Stub = sinon.stub()
 const jsonrpc = proxyquire('./jsonrpc', {
@@ -48,6 +49,15 @@ test('should encode the error response and preserve the message', (t) => {
   t.is(encoded.jsonrpc, '2.0')
   t.is(encoded.id, '1234')
   t.is(encoded.error, 'no-good')
+})
+
+test('should encode the complete response', (t) => {
+  // act
+  const encoded = jsonrpc.encodeResponse('1234', signals.complete)
+  // assert
+  t.is(encoded.jsonrpc, '2.0')
+  t.is(encoded.id, '1234')
+  t.true(encoded.completed)
 })
 
 test('should return true for valid responses', (t) => {

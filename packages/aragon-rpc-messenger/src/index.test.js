@@ -156,6 +156,33 @@ test('should send and observe responses, even if errors are included', (t) => {
   responsesMock.complete()
 })
 
+test('should end response stream, once notified of its completion', (t) => {
+  t.plan(2)
+
+  // arrange
+  const id = 41
+  const responsesMock = new Subject()
+  const instance = new Messenger(null)
+  sinon.stub(instance, 'send').returns(id)
+  sinon.stub(instance, 'responses').returns(responsesMock)
+  const messages = instance.sendAndObserveResponses('sendEth')
+
+  // assert
+  let completed
+  messages.subscribe({
+    next (value) { t.is(value.data, 'thanks') },
+    complete () { completed = true }
+  })
+
+  // act
+  responsesMock.next({ data: 'thanks', id })
+  responsesMock.next({ completed: true, id })
+  responsesMock.next({ data: 'thanks again', id })
+  responsesMock.complete()
+
+  t.true(completed)
+})
+
 test('should send and observe responses, defaulting parameters to empty array', (t) => {
   t.plan(1)
 
@@ -231,6 +258,33 @@ test('should send and observe only the first error', (t) => {
   responsesMock.next({ error: 'bad first', id })
   responsesMock.next({ data: 'second', id })
   responsesMock.complete()
+})
+
+test('should end response stream immediately on first response', (t) => {
+  t.plan(2)
+
+  // arrange
+  const id = 41
+  const responsesMock = new Subject()
+  const instance = new Messenger(null)
+  sinon.stub(instance, 'send').returns(id)
+  sinon.stub(instance, 'responses').returns(responsesMock)
+  const messages = instance.sendAndObserveResponse('sendEth')
+
+  // assert
+  let completed
+  messages.subscribe({
+    next (value) { t.is(value.data, 'thanks') },
+    complete () { completed = true }
+  })
+
+  // act
+  responsesMock.next({ data: 'thanks', id })
+  responsesMock.next({ data: 'thanks again', id })
+  responsesMock.next({ completed: true, id })
+  responsesMock.complete()
+
+  t.true(completed)
 })
 
 test('should send and observe only the first response, defaulting parameters to empty array', (t) => {

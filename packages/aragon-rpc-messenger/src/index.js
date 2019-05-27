@@ -1,10 +1,11 @@
-import { first, filter, map } from 'rxjs/operators'
+import { filter, first, map, takeWhile } from 'rxjs/operators'
 import { defer } from 'rxjs'
 import jsonrpc from './jsonrpc'
 import MessagePortMessage from './providers/MessagePortMessage'
 import WindowMessage from './providers/WindowMessage'
 import DevMessage from './providers/DevMessage'
 
+export { default as signals } from './signals'
 export const providers = {
   MessagePortMessage,
   WindowMessage,
@@ -95,6 +96,8 @@ export default class Messenger {
 
       return this.responses().pipe(
         filter((message) => message.id === id),
+        // End stream once we've been notified that it's complete
+        takeWhile((response) => !response.completed),
         map((response) => {
           if (response.error) {
             response.error = new Error(response.error)

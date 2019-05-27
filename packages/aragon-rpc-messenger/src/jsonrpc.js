@@ -1,4 +1,5 @@
 import uuidv4 from 'uuid/v4'
+import signals from './signals'
 
 export const encodeRequest = (method, params = []) => {
   return {
@@ -17,6 +18,8 @@ export const encodeResponse = (id, result = null) => {
 
   if (result instanceof Error) {
     response.error = result.message || 'An error occurred'
+  } else if (result === signals.complete) {
+    response.completed = true
   } else {
     response.result = result
   }
@@ -28,7 +31,7 @@ export const isValidResponse = (response) => {
   return !!response &&
     response.jsonrpc === '2.0' &&
     (typeof response.id === 'string') &&
-    (response.result !== undefined || response.error !== undefined)
+    (response.result !== undefined || response.error !== undefined || response.completed !== undefined)
 }
 
 export default {
