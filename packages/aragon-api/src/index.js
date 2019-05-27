@@ -1,4 +1,4 @@
-import { combineLatest, defer, from, merge } from 'rxjs'
+import { combineLatest, from, merge } from 'rxjs'
 import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, endWith, startWith } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -117,13 +117,11 @@ export class AppProxy {
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   events (fromBlock) {
-    return defer(
-      () => this.rpc.sendAndObserveResponses(
-        'events',
-        [fromBlock]
-      ).pipe(
-        pluck('result')
-      )
+    return this.rpc.sendAndObserveResponses(
+      'events',
+      [fromBlock]
+    ).pipe(
+      pluck('result')
     )
   }
 
@@ -135,15 +133,11 @@ export class AppProxy {
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   pastEvents (fromBlock, toBlock) {
-    // Defer allows us to avoid sending an RPC request until the returned observable has a subscriber
-    // This is to avoid missing events
-    return defer(
-      () => this.rpc.sendAndObserveResponse(
-        'past_events',
-        [fromBlock, toBlock]
-      ).pipe(
-        pluck('result')
-      )
+    return this.rpc.sendAndObserveResponse(
+      'past_events',
+      [fromBlock, toBlock]
+    ).pipe(
+      pluck('result')
     )
   }
 
@@ -168,13 +162,11 @@ export class AppProxy {
           eventArgs.push(fromBlock)
         }
 
-        return defer(
-          () => this.rpc.sendAndObserveResponses(
-            'external_events',
-            eventArgs
-          ).pipe(
-            pluck('result')
-          )
+        return this.rpc.sendAndObserveResponses(
+          'external_events',
+          eventArgs
+        ).pipe(
+          pluck('result')
         )
       },
       pastEvents: (options = {}) => {
@@ -186,13 +178,11 @@ export class AppProxy {
           options
         ]
 
-        return defer(
-          () => this.rpc.sendAndObserveResponse(
-            'external_past_events',
-            eventArgs
-          ).pipe(
-            pluck('result')
-          )
+        return this.rpc.sendAndObserveResponse(
+          'external_past_events',
+          eventArgs
+        ).pipe(
+          pluck('result')
         )
       }
     }

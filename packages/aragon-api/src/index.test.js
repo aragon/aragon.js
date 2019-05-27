@@ -1,11 +1,15 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { of, from } from 'rxjs'
+import { defer, from, of } from 'rxjs'
 
 const Index = proxyquire.noCallThru().load('./index', {
   '@aragon/rpc-messenger': {}
 })
+
+function createDeferredStub (observable) {
+  return sinon.stub().returns(defer(() => observable))
+}
 
 test.afterEach.always(() => {
   sinon.restore()
@@ -20,8 +24,8 @@ test('should send intent when the method does not exist in target', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -49,8 +53,8 @@ test('should return the network details as an observable', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
@@ -75,8 +79,8 @@ test('should return the accounts as an observable', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
@@ -107,7 +111,7 @@ test('should send an identify request', t => {
 })
 
 test('should return the events observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const eventsFn = Index.AppProxy.prototype.events
   const observable = of({
@@ -116,15 +120,13 @@ test('should return the events observable', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
   const result = eventsFn.call(instanceStub)
   // assert
-  // the call to sendAndObserveResponse should be defered until we subscribe
-  t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
   result.subscribe(value => {
     t.deepEqual(value, ['eventA', 'eventB'])
   })
@@ -132,14 +134,14 @@ test('should return the events observable', t => {
 })
 
 test('should return an handle for an external contract events', t => {
-  t.plan(7)
+  t.plan(6)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
-  const observableA = of({
+  const observableEvents = of({
     id: 'uuid1',
     result: { name: 'eventA', value: 3000 }
   })
-  const observableB = of({
+  const observableCall = of({
     id: 'uuid4',
     result: 'bob was granted permission for the counter app'
   })
@@ -149,18 +151,14 @@ test('should return an handle for an external contract events', t => {
   ]
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observableA),
-
-      sendAndObserveResponse: sinon.stub()
-        .returns(observableB)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observableEvents),
+      sendAndObserveResponse: createDeferredStub(observableCall)
     }
   }
   // act
   const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
   // assert
-  // the call to sendAndObserveResponse should be defered until we subscribe
-  t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
   // events from block 2
   result.events(2).subscribe(value => {
     t.deepEqual(value, { name: 'eventA', value: 3000 })
@@ -192,8 +190,8 @@ test('should return the state from cache', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
@@ -206,11 +204,11 @@ test('should return the state from cache', t => {
   })
 })
 
-// test('should create a store reducer', t => {
+// test('should create a store reducer', async t => {
 //   t.plan(2)
 //   // arrange
 //   const storeFn = Index.AppProxy.prototype.store
-//   const observableA = from([{
+//   const observableState = from([{
 //     actionHistory: [
 //       { event: 'Add', payload: 5 }
 //     ],
@@ -223,10 +221,18 @@ test('should return the state from cache', t => {
 //     ],
 //     counter: 7
 //   }])
-//   const observableB = from([
+//   const observableEvents = from([
 //     { event: 'Add', payload: 2 },
 //     { event: 'Add', payload: 10 }
 //   ])
+//   const instanceStub = {
+//     // Mimic behaviour of @aragon/rpc-messenger
+//     state: createDeferredStub(observableState),
+//     events: createDeferredStub(observableEvents),
+//     cache: sinon.stub().returnsArg(1) // should return 2nd argument
+//   }
+//   const reducer = (state, action) => {
+//     if (state === null) state = { actionHistory: [], counter: 0 }
 
 //   const accounts$ = from([
 //     ['0x0000000000000000000000000000000000000abc']
@@ -286,8 +292,8 @@ test('should perform a call to the contract and observe the response', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -341,8 +347,8 @@ test('should send a describeScript request and observe the response', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -365,8 +371,8 @@ test('should send a web3Eth function request and observe the response', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
