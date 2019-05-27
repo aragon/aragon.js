@@ -363,6 +363,10 @@ export class AppProxy {
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          tap((state) => {
+            this.cache('state', state)
+            console.debug('- store - reduced state from past event:', state)
+          }),
           last(),
           tap((state) => {
             this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
