@@ -1,5 +1,18 @@
 import { combineLatest, from, merge } from 'rxjs'
-import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, endWith, startWith } from 'rxjs/operators'
+import {
+  debounceTime,
+  endWith,
+  flatMap,
+  filter,
+  map,
+  mergeScan,
+  last,
+  pluck,
+  publishReplay,
+  startWith,
+  switchMap,
+  tap
+} from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const ACCOUNTS_TRIGGER = Symbol('ACCOUNTS_TRIGGER')
