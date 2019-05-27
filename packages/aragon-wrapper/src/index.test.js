@@ -3,6 +3,7 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
+import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -24,7 +25,8 @@ test.beforeEach(t => {
     AsyncRequestCache,
     makeAddressMapProxy: sinon.fake.returns({}),
     makeProxy: sinon.stub(),
-    addressesEqual: Object.is
+    addressesEqual: Object.is,
+    getCacheKey
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
@@ -158,78 +160,79 @@ test('should get the network details from web3', async (t) => {
   })
 })
 
+const aclEvents = from([{
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'add',
+    allowed: true,
+    entity: '0x1'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: true,
+    entity: '0x1'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'add',
+    allowed: true,
+    entity: '0x2'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: true,
+    entity: '0x2'
+  }
+}, {
+  // Simulate real world mixed order of event types
+  event: 'ChangePermissionManager',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    manager: 'manager'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: false,
+    entity: '0x2'
+  }
+}, {
+  // duplicate, should not affect the final result because we use a Set
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: false,
+    entity: '0x2'
+  }
+}])
+
 test('should init the ACL correctly', async (t) => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(1)
-  // arrange
-  const setPermissionEvents = from([{
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'add',
-      allowed: true,
-      entity: '0x1'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: true,
-      entity: '0x1'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'add',
-      allowed: true,
-      entity: '0x2'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: true,
-      entity: '0x2'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: false,
-      entity: '0x2'
-    }
-  }, {
-    // duplicate, should not affect the final result because we use a Set
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: false,
-      entity: '0x2'
-    }
-  }])
-  const changePermissionManagerEvents = of({
-    event: 'ChangePermissionManager',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      manager: 'manager'
-    }
-  })
+
   const instance = new Aragon()
   instance.kernelProxy = {
     call: sinon.stub()
   }
+  instance.cache.get = sinon.stub().returns({})
+
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents)
   }
-  aclProxyStub.events.withArgs('SetPermission').returns(setPermissionEvents)
-  aclProxyStub.events.withArgs('ChangePermissionManager').returns(changePermissionManagerEvents)
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
@@ -260,8 +263,9 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   // arrange
   const defaultAclAddress = '0x321'
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents)
   }
+
   const kernelProxyStub = {
     call: sinon.stub()
       .withArgs('acl').resolves(defaultAclAddress)
@@ -271,6 +275,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
     .withArgs(defaultAclAddress).returns(aclProxyStub)
 
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
 
   // act
   await instance.initAcl()
@@ -287,7 +292,7 @@ test('should init the acl with the provided acl', async (t) => {
   const defaultAclAddress = '0x321'
   const givenAclAddress = '0x123'
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents)
   }
   const kernelProxyStub = {
     call: sinon.stub()
@@ -298,6 +303,7 @@ test('should init the acl with the provided acl', async (t) => {
     .withArgs(givenAclAddress).returns(aclProxyStub)
 
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
 
   // act
   await instance.initAcl({ aclAddress: givenAclAddress })

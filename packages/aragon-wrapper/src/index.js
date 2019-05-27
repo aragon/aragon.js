@@ -1,5 +1,5 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
+import { concat, ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -9,9 +9,9 @@ import {
   map,
   mergeAll,
   mergeMap,
+  pairwise,
   publishReplay,
   scan,
-  skipWhile,
   startWith,
   switchMap,
   tap,
@@ -45,6 +45,7 @@ import {
 } from './radspec'
 import {
   addressesEqual,
+  getCacheKey,
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
@@ -237,20 +238,26 @@ export default class Aragon {
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
-    const aclObservables = [
-      SET_PERMISSION_EVENT,
-      CHANGE_PERMISSION_MANAGER_EVENT
-    ].map(event =>
-      this.aclProxy.events(event)
-    )
+    const ACL_CACHE_KEY = getCacheKey(aclAddress, 'acl')
 
-    // Set up permissions observable
+    const REORG_SAFETY_BLOCK_AGE = 100
+
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
+
+    // Check if we have cached ACL for this address
+    // Cache object for an ACL: { permissions, blockNumber }
+    const cached = await this.cache.get(ACL_CACHE_KEY, {})
+    const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cached
+
+    // When using cache, fetch events from the next block after cache
+    const eventsOptions = cachedPermissions ? { fromBlock: (cachedBlockNumber + 1) } : undefined
+    const events = this.aclProxy.events(null, eventsOptions)
 
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
-    this.permissions = merge(...aclObservables).pipe(
-      // Keep track of all the types of events that have been processed
-      scan(([permissions, eventSet], event) => {
+    // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
+    const fetchedPermissions$ = events.pipe(
+      scan(([permissions], event) => {
         const eventData = event.returnValues
 
         // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
@@ -260,36 +267,48 @@ export default class Aragon {
           const key = `${eventData.role}.allowedEntities`
 
           // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
+          const allowedEntitiesSet = new Set(dotprop.get(appPermissions, key, []))
 
           if (eventData.allowed) {
-            permissionsForRole.add(eventData.entity)
+            allowedEntitiesSet.add(eventData.entity)
           } else {
-            permissionsForRole.delete(eventData.entity)
+            allowedEntitiesSet.delete(eventData.entity)
           }
 
-          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
+          dotprop.set(appPermissions, key, Array.from(allowedEntitiesSet))
         }
 
         if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
+          // We only care about the last one. An app permission can have only one manager
           dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
         }
 
         permissions[eventData.app] = appPermissions
-        return [permissions, eventSet.add(event.event)]
-      }, [makeAddressMapProxy({}), new Set()]),
-      // Skip until we have received events from all event subscriptions
-      // Note that this is safe as the ACL will always have to emit both
-      // ChangePermissionManager and SetPermission events every time a
-      // permission is created
-      skipWhile(([permissions, eventSet]) => eventSet.size < aclObservables.length),
-      map(([permissions]) => permissions),
+        return [
+          permissions,
+          Object.assign({}, permissions), // unique permissions copy for each emission
+          event.blockNumber
+        ]
+      }, [ makeAddressMapProxy(cachedPermissions || {}) ]),
+      // start with an empty emission to allow pairwise to process the first permissions emission
+      startWith([null, null, null]),
+      pairwise(),
+      map(([[, lastPermissionsCache, lastBlockNumber], [currentPermissions,, currentBlockNumber]]) => {
+        if (lastPermissionsCache && lastBlockNumber < currentBlockNumber && lastBlockNumber <= cacheBlockHeight) {
+          this.cache.set(ACL_CACHE_KEY, { permissions: lastPermissionsCache, blockNumber: lastBlockNumber })
+        }
+        return currentPermissions
+      }),
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
       debounceTime(30),
       publishReplay(1)
     )
+    fetchedPermissions$.connect()
+
+    const cachedPermissions$ = cachedPermissions ? of(cachedPermissions) : of()
+    this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
     this.permissions.connect()
   }
 

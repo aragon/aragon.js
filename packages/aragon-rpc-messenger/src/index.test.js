@@ -1,7 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { Subject } from 'rxjs'
+import { empty, of, Subject } from 'rxjs'
 
 const jsonrpcStub = {}
 class MPM {}
@@ -40,32 +40,30 @@ test('should encode and send the response', t => {
   // arrange
   const payload = { id: 2, jsonrpc: '2.0' }
   jsonrpcStub.encodeResponse = sinon.stub().returns(payload)
-  const sendSpy = sinon.spy()
-  const instance = new Messenger({ send: sendSpy })
+  const mockProvider = { send: sinon.spy() }
+  const instance = new Messenger(mockProvider)
   // act
   const id = instance.sendResponse(200, 'success')
   // assert
-  t.is(jsonrpcStub.encodeResponse.getCall(0).args[0], 200)
-  t.is(jsonrpcStub.encodeResponse.getCall(0).args[1], 'success')
+  t.true(jsonrpcStub.encodeResponse.calledOnceWith(200, 'success'))
 
-  t.is(sendSpy.getCall(0).args[0], payload)
   t.is(id, 2)
+  t.is(mockProvider.send.getCall(0).args[0], payload)
 })
 
 test('should encode and send the request', t => {
   // arrange
   const payload = { id: 'uuuuidv4', jsonrpc: '2.0' }
   jsonrpcStub.encodeRequest = sinon.stub().returns(payload)
-  const sendSpy = sinon.spy()
-  const instance = new Messenger({ send: sendSpy })
+  const mockProvider = { send: sinon.spy() }
+  const instance = new Messenger(mockProvider)
   // act
   const id = instance.send('sendEth')
   // assert
-  t.is(jsonrpcStub.encodeRequest.getCall(0).args[0], 'sendEth')
-  t.deepEqual(jsonrpcStub.encodeRequest.getCall(0).args[1], [])
+  t.true(jsonrpcStub.encodeRequest.calledOnceWith('sendEth', []))
 
-  t.is(sendSpy.getCall(0).args[0], payload)
   t.is(id, 'uuuuidv4')
+  t.true(mockProvider.send.calledOnceWith(payload))
 })
 
 test('should filter the incoming messages to responses only', (t) => {
@@ -77,14 +75,15 @@ test('should filter the incoming messages to responses only', (t) => {
   instance.bus = () => busMock
   jsonrpcStub.isValidResponse = sinon.stub().returns(true)
 
-  // act
-  const messages = instance.responses()
-  messages.subscribe(value => {
-    t.is(jsonrpcStub.isValidResponse.getCall(0).args[0], 'response')
+  // assert
+  instance.responses().subscribe(value => {
     t.is(value, 'response')
+    t.is(jsonrpcStub.isValidResponse.getCall(0).args[0], 'response')
   })
 
+  // act
   busMock.next('response')
+  busMock.complete()
 })
 
 test('should filter the incoming messages to requests only', (t) => {
@@ -96,43 +95,48 @@ test('should filter the incoming messages to requests only', (t) => {
   instance.bus = () => busMock
   jsonrpcStub.isValidResponse = sinon.stub().returns(false)
 
-  // act
-  const messages = instance.requests()
-  messages.subscribe(value => {
-    t.is(jsonrpcStub.isValidResponse.getCall(0).args[0], 'request')
+  // assert
+  instance.requests().subscribe(value => {
     t.is(value, 'request')
+    t.is(jsonrpcStub.isValidResponse.getCall(0).args[0], 'request')
   })
 
+  // act
   busMock.next('request')
+  busMock.complete()
 })
 
 test('should send and observe responses', (t) => {
-  t.plan(4)
+  t.plan(3)
 
   // arrange
+  const id = 41
+  const responsesMock = new Subject()
   const instance = new Messenger(null)
-  sinon.stub(instance, 'send').returns(41)
-  sinon.stub(instance, 'responses').returns(new Subject())
-  const messages = instance.sendAndObserveResponses('sendEth')
+  sinon.stub(instance, 'send').returns(id)
+  sinon.stub(instance, 'responses').returns(responsesMock)
+  const messages = instance.sendAndObserveResponses('sendEth', ['params'])
 
   // assert
   messages.subscribe(value => t.is(value.data, 'thanks'))
-  t.is(instance.send.getCall(0).args[0], 'sendEth')
-  t.deepEqual(instance.send.getCall(0).args[1], [])
+  t.true(instance.send.calledOnceWith('sendEth', ['params']))
 
   // act
-  instance.responses().next({ data: 'thanks', id: 41 })
-  instance.responses().next({ data: 'thanks', id: 41 })
+  responsesMock.next({ data: 'thanks', id })
+  responsesMock.next({ data: 'thanks', id })
+  responsesMock.complete()
 })
 
 test('should send and observe responses, even if errors are included', (t) => {
-  t.plan(6)
+  t.plan(5)
 
   // arrange
+  const id = 41
+  const responsesMock = new Subject()
   const instance = new Messenger(null)
-  sinon.stub(instance, 'send').returns(41)
-  sinon.stub(instance, 'responses').returns(new Subject())
-  const messages = instance.sendAndObserveResponses('sendEth')
+  sinon.stub(instance, 'send').returns(id)
+  sinon.stub(instance, 'responses').returns(responsesMock)
+  const messages = instance.sendAndObserveResponses('sendEth', ['params'])
 
   // assert
   messages.subscribe(value => {
@@ -143,41 +147,76 @@ test('should send and observe responses, even if errors are included', (t) => {
       t.is(value.error.message, 'no thanks')
     }
   })
-  t.is(instance.send.getCall(0).args[0], 'sendEth')
-  t.deepEqual(instance.send.getCall(0).args[1], [])
+  t.true(instance.send.calledOnceWith('sendEth', ['params']))
 
   // act
-  instance.responses().next({ data: 'thanks', id: 41 })
-  instance.responses().next({ error: 'no thanks', id: 41 })
-  instance.responses().next({ data: 'thanks', id: 41 })
+  responsesMock.next({ data: 'thanks', id })
+  responsesMock.next({ error: 'no thanks', id })
+  responsesMock.next({ data: 'thanks', id })
+  responsesMock.complete()
+})
+
+test('should send and observe responses, defaulting parameters to empty array', (t) => {
+  t.plan(1)
+
+  // arrange
+  const instance = new Messenger(null)
+  sinon.stub(instance, 'send')
+  sinon.stub(instance, 'responses').returns(empty())
+  const messages = instance.sendAndObserveResponses('sendEth')
+
+  // assert
+  messages.subscribe()
+  t.true(instance.send.calledOnceWith('sendEth', []))
+})
+
+test('should send and observe responses, but delay sending the request after subscribing', (t) => {
+  t.plan(2)
+
+  // arrange
+  const instance = new Messenger(null)
+  sinon.stub(instance, 'send')
+  sinon.stub(instance, 'responses').returns(empty())
+  const messages = instance.sendAndObserveResponses('sendEth', ['params'])
+
+  // assert
+  t.true(instance.send.notCalled) // hasn't sent request before subscribing
+  messages.subscribe()
+  t.true(instance.send.calledOnceWith('sendEth', ['params']))
 })
 
 test('should send and observe only the first response', (t) => {
-  t.plan(3)
+  t.plan(2)
 
   // arrange
+  const id = 41
+  const responsesMock = new Subject()
   const instance = new Messenger(null)
-  sinon.stub(instance, 'sendAndObserveResponses').returns(new Subject())
+  sinon.stub(instance, 'send').returns(41)
+  sinon.stub(instance, 'responses').returns(responsesMock)
 
   // act
-  const messages = instance.sendAndObserveResponse('sendAnt')
+  const messages = instance.sendAndObserveResponse('sendAnt', ['params'])
   // assert
-  messages.subscribe(value => t.is(value, 'first'))
-  t.is(instance.sendAndObserveResponses.getCall(0).args[0], 'sendAnt')
-  t.deepEqual(instance.sendAndObserveResponses.getCall(0).args[1], [])
+  messages.subscribe(value => t.is(value.data, 'first'))
+  t.true(instance.send.calledOnceWith('sendAnt', ['params']))
 
-  instance.sendAndObserveResponses().next('first')
-  instance.sendAndObserveResponses().next('second')
-  instance.sendAndObserveResponses().next('third')
+  responsesMock.next({ data: 'first', id })
+  responsesMock.next({ data: 'second', id })
+  responsesMock.next({ data: 'third', id })
+  responsesMock.complete()
 })
 
 test('should send and observe only the first error', (t) => {
-  t.plan(4)
+  t.plan(3)
 
   // arrange
+  const id = 41
+  const responsesMock = new Subject()
   const instance = new Messenger(null)
-  sinon.stub(instance, 'sendAndObserveResponses').returns(new Subject())
-  const messages = instance.sendAndObserveResponse('sendAnt')
+  sinon.stub(instance, 'send').returns(41)
+  sinon.stub(instance, 'responses').returns(responsesMock)
+  const messages = instance.sendAndObserveResponse('sendAnt', ['params'])
   // assert
   messages.subscribe(
     value => t.fail('should not have emitted any next values'),
@@ -186,10 +225,42 @@ test('should send and observe only the first error', (t) => {
       t.is(error.message, 'bad first')
     }
   )
-  t.is(instance.sendAndObserveResponses.getCall(0).args[0], 'sendAnt')
-  t.deepEqual(instance.sendAndObserveResponses.getCall(0).args[1], [])
+  t.true(instance.send.calledOnceWith('sendAnt', ['params']))
 
   // act
-  instance.sendAndObserveResponses().next({ error: new Error('bad first') })
-  instance.sendAndObserveResponses().next('second')
+  responsesMock.next({ error: 'bad first', id })
+  responsesMock.next({ data: 'second', id })
+  responsesMock.complete()
+})
+
+test('should send and observe only the first response, defaulting parameters to empty array', (t) => {
+  t.plan(1)
+
+  // arrange
+  const id = 41
+  const instance = new Messenger(null)
+  sinon.stub(instance, 'send').returns(id)
+  sinon.stub(instance, 'responses').returns(of({ data: 'response', id })) // must emit at least once
+  const messages = instance.sendAndObserveResponse('sendAnt')
+
+  // assert
+  messages.subscribe()
+  t.true(instance.send.calledOnceWith('sendAnt', []))
+})
+
+test('should send and observe only the first response, but delay sending the request after subscribing', (t) => {
+  t.plan(2)
+
+  // arrange
+  const id = 41
+  const instance = new Messenger(null)
+  sinon.stub(instance, 'send').returns(id)
+  sinon.stub(instance, 'responses').returns(of({ data: 'response', id })) // must emit at least once
+
+  // act
+  const messages = instance.sendAndObserveResponse('sendAnt', ['params'])
+  // assert
+  t.true(instance.send.notCalled) // hasn't sent request before subscribing
+  messages.subscribe()
+  t.true(instance.send.calledOnceWith('sendAnt', ['params']))
 })

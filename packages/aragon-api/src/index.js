@@ -1,4 +1,4 @@
-import { defer, empty, from, merge } from 'rxjs'
+import { empty, from, merge } from 'rxjs'
 import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -110,12 +110,10 @@ export class AppProxy {
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   events () {
-    return defer(
-      () => this.rpc.sendAndObserveResponses(
-        'events'
-      ).pipe(
-        pluck('result')
-      )
+    return this.rpc.sendAndObserveResponses(
+      'events'
+    ).pipe(
+      pluck('result')
     )
   }
 
@@ -140,13 +138,11 @@ export class AppProxy {
           eventArgs.push(fromBlock)
         }
 
-        return defer(
-          () => this.rpc.sendAndObserveResponses(
-            'external_events',
-            eventArgs
-          ).pipe(
-            pluck('result')
-          )
+        return this.rpc.sendAndObserveResponses(
+          'external_events',
+          eventArgs
+        ).pipe(
+          pluck('result')
         )
       }
     }

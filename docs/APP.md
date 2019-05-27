@@ -33,20 +33,17 @@ This class is used to communicate with the wrapper in which the app is run.
 
 Every method in this class sends an RPC message to the wrapper.
 
-The app communicates with the wrapper using a messaging provider.
-The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage),
-but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them).
-You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
+The app communicates with the wrapper using a messaging provider. The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them). You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
 
 To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
 
 For example, to execute the `increment` function in your app's smart contract:
 
 ```js
-const app = new AragonApp()
+const api = new AragonApp()
 
 // Sends an intent to the wrapper that we wish to invoke `increment` on our app's smart contract
-app
+api
   .increment(1)
   .subscribe(
     txHash => console.log(`Success! Incremented in tx ${txHash}`),
@@ -54,12 +51,12 @@ app
   )
 ```
 
-The intent function returns an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the hash of the transaction that was sent.
+The intent function returns an [RxJS observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable) that emits the hash of the transaction that was sent or an error if the user choose not to sign the transaction.
 
 You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
 
 ```js
-app.increment(1, { gas: 200000, gasPrice: 80000000 })
+api.increment(1, { gas: 200000, gasPrice: 80000000 })
 ```
 
 You can include a `token` parameter in this optional object if you need to do a token approval before a transaction. A slightly modified [example](https://github.com/aragon/aragon-apps/blob/master/apps/finance/app/src/App.js#L79) from the Finance app:
@@ -70,7 +67,7 @@ intentParams = {
   gas: 500000
 }
 
-app.deposit(tokenAddress, amount, reference, intentParams)
+api.deposit(tokenAddress, amount, reference, intentParams)
 ```
 
 Some caveats to customizing transaction parameters:
@@ -80,7 +77,7 @@ Some caveats to customizing transaction parameters:
 
 ### Parameters
 
-- `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md). (optional, default `MessagePortMessage`)
+- `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `MessagePortMessage`): A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md).
 
 ### Examples
 
@@ -94,82 +91,64 @@ const backgroundScriptOfApp = new AragonApp()
 const frontendOfApp = new AragonApp(new providers.WindowMessage(window.parent))
 ```
 
+> **Note**<br>
+> Most of the returned observables will propagate errors from `@aragon/wrapper` (e.g. the Aragon client) if an RPC request failed. An example would be trying to use `api.call('nonexistentFunction')`. Multi-emission observables (e.g. `api.accounts()`) will forward the error without stopping the stream, leaving the subscriber to handle the error case.
+
+> **Note**<br>
+> Although many of the API methods return observables, many of them are single-emission observables that you can turn directly into a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise). While this is seen as an "antipattern" by experienced RxJS users, it is highly convenient when you're not working fully in the context of streams and just need a particular async value (e.g. `api.call('getVoteDetails', voteId)`). The Aragon One team recommends this approach when first developing your apps if you are not already experienced with RxJS.
+>
+> You can use the [`.toPromise()`](https://rxjs-dev.firebaseapp.com/api/index/class/Observable#toPromise) method on all single-emission observables safely (e.g. `await api.call('getVoteDetails', voteId).toPromise()`). If you receive a multi-emission observable (e.g. `api.accounts()`) but only care about its current value, you can use the [`first()`](https://rxjs-dev.firebaseapp.com/api/operators/first) operator, e.g. `api.accounts().pipe(first()).toPromise()`.
+
+> **Note**<br>
+> All methods returning observables will only send their RPC requests upon the returned observable being subscribed. For example, calling `api.increment()` will **NOT** send an intent until you have subscribed to the returned observable. This is to ensure that responses cannot be accidentally skipped.
+>
+> If you're not interested in the response, you can either make an "empty" subscription (i.e. `api.increment().subscribe()`), or turn it into a promise and await it (i.e. `await api.increment().toPromise()`).
+
 ### accounts
 
 Get an array of the accounts the user currently controls over time.
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of account addresses every time a change is detected.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an array of account addresses every time a change is detected.
 
 ### network
 
 Get the network the app is connected to over time.
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an object with the connected network's id and type every time the network changes.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an object with the connected network's id and type every time the network changes.
 
-### identify
+### call
 
-Set the app identifier.
-
-This identifier is used to distinguish multiple instances of your app,
-so choose something that provides additional context to the app instance.
-
-Examples include: the name of a token that the app manages,
-the type of content that a TCR is curating, the name of a group etc.
+Perform a read-only call on the app's smart contract.
 
 #### Parameters
 
-- `identifier` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The identifier of the app.
+- `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the method to call
+- `params` **...any**: An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
 
-#### Examples
-
-```javascript
-app.identify('Customer counter')
-// or
-app.identify('Employee counter')
-```
-
-Returns **void**
-
-### resolveAddressIdentity
-
-Resolve an address' identity, using the highest priority provider.
-
-#### Parameters
-
-- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to resolve.
-
-Returns a single-emission observable that emits the resolved identity or null if not found
-
-### requestAddressIdentityModification
-
-Request an address' identity be modified with the highest priority provider.
-The request is typically handled by the aragon client.
-
-#### Parameters
-
-- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to modify.
-
-Returns a single-emission observable that emits if the modification succeeded or was cancelled by the user.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the result of the call.
 
 ### events
 
 Listens for events on your app's smart contract from the last unhandled block.
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification). Note that in the background, an `eth_getLogs` will first be done to retrieve events from the last unhandled block and only afterwards will an `eth_subscribe` be made to subscribe to new events.
 
 ### external
 
-Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token). Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
+Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token).
+
+> **Note**<br>
+> Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
 
 #### Parameters
 
-- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the external contract
-- `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The address of the external contract
+- `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>**: The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract
 
 #### Examples
 
 ```javascript
-const token = app.external(tokenAddress, tokenJsonInterface)
+const token = api.external(tokenAddress, tokenJsonInterface)
 
 // Retrieve the symbol of the token
 token.symbol().subscribe(symbol => console.log(`The token symbol is ${symbol}`))
@@ -180,7 +159,7 @@ token
   .subscribe(balance => console.log(`The balance of the account is ${balance}`))
 ```
 
-Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**: An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable) that emits the value of the call.
 
 ### cache
 
@@ -188,10 +167,10 @@ Set a value in the application cache.
 
 #### Parameters
 
-- `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The cache key to set a value for
-- `value` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The value to persist in the cache
+- `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The cache key for the value
+- `value` **any**: The value to persist in the cache (must conform to the [structured cloning algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm))
 
-Returns **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** This method passes through `value`
+Returns **string**: This method passes through `value`.
 
 ### state
 
@@ -199,7 +178,7 @@ Observe the cached application state over time.
 
 This method is also used to share state between the background script and front-end of your application.
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits the application state every time it changes. The type of the emitted values is application specific.
 
 ### store
 
@@ -215,15 +194,15 @@ Optionally takes an array of other `Observable`s to merge with this app's events
 
 #### Parameters
 
-- `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** A function that reduces events to a state. This can return a Promise that resolves to a new state.
-- `events` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;Observable>?** An optional array of `Observable`s to merge in with the internal events observable (optional, default `[empty()]`)
+- `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)**: A function that reduces events to a state. This can return a Promise that resolves to a new state
+- `events` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;Observable>?** (optional, default `[empty()]`): An optional array of `Observable`s to merge in with the internal events observable
 
 #### Examples
 
 ```javascript
 // A simple reducer for a counter app
 
-const state$ = app.store((state, event) => {
+const state$ = api.store((state, event) => {
   // Initial state is always null
   if (state === null) state = 0
 
@@ -244,9 +223,9 @@ const state$ = app.store((state, event) => {
 ```javascript
 // A reducer that also reduces events from an external smart contract
 
-const token = app.external(tokenAddress, tokenJsonInterface)
+const token = api.external(tokenAddress, tokenJsonInterface)
 
-const state$ = app.store(
+const state$ = api.store(
   (state, event) => {
     // ...
   },
@@ -254,18 +233,59 @@ const state$ = app.store(
 )
 ```
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable  that emits the application state every time it changes. The type of the emitted values is application specific.
 
-### call
+### describeScript
 
-Perform a read-only call on the app's smart contract.
+Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
 
 #### Parameters
 
-- `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the method to call.
-- `params` **...any** An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
+- `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The EVM callscript to describe
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
+
+### identify
+
+Set the app identifier.
+
+This identifier is used to distinguish multiple instances of your app, so choose something that provides additional context to the app instance.
+
+Examples include: the name of a token that the app manages, the type of content that a TCR is curating, the name of a group etc.
+
+#### Parameters
+
+- `identifier` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The identifier of the app
+
+#### Examples
+
+```javascript
+api.identify('Customer counter')
+// or
+api.identify('Employee counter')
+```
+
+Returns **void**.
+
+### resolveAddressIdentity
+
+Resolve an address' identity, using the highest priority provider.
+
+#### Parameters
+
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to resolve
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the resolved identity or null if not found.
+
+### requestAddressIdentityModification
+
+Request an address' identity be modified with the highest priority provider. The request will typically be handled by the Aragon client.
+
+#### Parameters
+
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to modify
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits if the modification succeeded or was cancelled by the user.
 
 ### requestSignMessage
 
@@ -273,14 +293,14 @@ Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1
 
 #### Parameters
 
-- `message` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The message to sign.
+- `message` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The message to sign
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the signature.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the result of the signature. Errors if the user chose not to sign the message.
 
 #### Examples
 
 ```javascript
-  app
+  api
     .requestSignMessage('messageToSign')
     .subscribe(
       signature => {
@@ -292,20 +312,40 @@ Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/O
     )
 ```
 
-### notify
+### web3Eth
 
-**NOTE: This call is not currently handled by the wrapper**
+Request a white-listed [web3.eth](https://web3js.readthedocs.io/en/1.0/web3-eth.html) function call.
 
-Send a notification.
+Currently the white-list includes:
+
+- `estimateGas`,
+- `getAccounts`,
+- `getBalance`,
+- `getBlock`,
+- `getBlockNumber`,
+- `getBlockTransactionCount`,
+- `getCode`,
+- `getCoinbase`,
+- `getCompilers`,
+- `getGasPrice`,
+- `getHashrate`,
+- `getPastLogs`,
+- `getProtocolVersion`,
+- `getStorageAt`,
+- `getTransaction`,
+- `getTransactionCount`,
+- `getTransactionFromBlock`,
+- `getTransactionReceipt`,
+- `getWork`,
+- `getUncle`,
+- `isMining`,
+- `isSyncing`
 
 #### Parameters
 
-- `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The title of the notification.
-- `body` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The body of the notification.
-- `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An optional context that will be sent back to the app if the notification is clicked. (optional, default `{}`)
-- `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** An optional date that specifies when the notification originally occured. (optional, default `newDate()`)
+- `params` **...any**: An optional variadic number of parameters for the function. See the [web3.eth docs](https://web3js.readthedocs.io/en/1.0/web3-eth.html) for more details.
 
-Returns **void**
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable with the result of the call.
 
 ### context
 
@@ -319,7 +359,7 @@ For example, if a notification or a shortcut is clicked, the context attached to
 
 App contexts can be used to display specific views in your app or anything else you might find interesting.
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits app contexts as they are received.-
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits app contexts as they are received.
 
 ### newForwarededAction
 
@@ -358,12 +398,17 @@ Only actions targeting the listening app proxy will be exposed. On each change t
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the current forwarded action registry contents relevant to the calling app. The emitted contents are an array of objects, each containing `actionId`, `currentApp`, `evmScript`, and `state` keys. The `currentApp` address key is the App currently containing the forwarded action. The remaining parameters are described above.
 
-### describeScript
+### notify
 
-Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
+**NOTE: This call is not currently handled by the wrapper.**
+
+Send a notification.
 
 #### Parameters
 
-- `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The EVM callscript to describe
+- `title` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The title of the notification
+- `body` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The body of the notification
+- `context` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): An optional context that will be sent back to the app if the notification is clicked
+- `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** (optional, default `newDate()`): An optional date that specifies when the notification originally occured
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
+Returns **void**.
