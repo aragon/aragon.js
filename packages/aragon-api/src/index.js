@@ -1,5 +1,6 @@
 import { combineLatest, from, merge } from 'rxjs'
 import {
+  catchError,
   debounceTime,
   endWith,
   flatMap,
@@ -297,19 +298,22 @@ export class AppProxy {
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
 
-    // Wrap the reducer in another reducer that
-    // allows us to execute code asynchronously
-    // in our reducer. That's a lot of reducing.
+    // Wrap the reducer in another reducer that allows us to execute code asynchronously
+    // in our reducer (due to the Promise wrapping). That's a lot of reducing.
     //
-    // This is needed for the `mergeScan` operator.
-    // Also, this supports both sync and async code
-    // (because of the `Promise.resolve`).
+    // This is why we need the `mergeScan` operator below.
     const wrappedReducer = (state, event) =>
       from(
-        // Ensure a promise is returned even if the reducer returns an array
-        Promise.resolve(reducer(state, event)).catch(e => console.error(
-          `Error from app reducer:`, e)
-        )
+        // Ensure a promise is returned even if the reducer returns an array or throws
+        new Promise((resolve) => resolve(reducer(state, event)))
+      ).pipe(
+        catchError((err) => {
+          console.error('Error from app reducer on event', err)
+          console.error('Current event', event)
+          console.error('Current state', state)
+          // Re-throw the error to stop the rest of the store() stream
+          throw err
+        })
       )
 
     const getCurrentEvents = (fromBlock) => merge(
