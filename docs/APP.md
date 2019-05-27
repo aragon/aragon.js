@@ -92,12 +92,17 @@ const frontendOfApp = new AragonApp(new providers.WindowMessage(window.parent))
 ```
 
 > **Note**<br>
-> Most of the returned observables will propagate errors from `@aragon/wrapper` (e.g. the Aragon client) if an RPC request failed. An example would be trying to use `api.call('nonexistentFunction')`.
+> Most of the returned observables will propagate errors from `@aragon/wrapper` (e.g. the Aragon client) if an RPC request failed. An example would be trying to use `api.call('nonexistentFunction')`. Multi-emission observables (e.g. `api.accounts()`) will forward the error without stopping the stream, leaving the subscriber to handle the error case.
 
 > **Note**<br>
 > Although many of the API methods return observables, many of them are single-emission observables that you can turn directly into a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise). While this is seen as an "antipattern" by experienced RxJS users, it is highly convenient when you're not working fully in the context of streams and just need a particular async value (e.g. `api.call('getVoteDetails', voteId)`). The Aragon One team recommends this approach when first developing your apps if you are not already experienced with RxJS.
 >
 > You can use the [`.toPromise()`](https://rxjs-dev.firebaseapp.com/api/index/class/Observable#toPromise) method on all single-emission observables safely (e.g. `await api.call('getVoteDetails', voteId).toPromise()`). If you receive a multi-emission observable (e.g. `api.accounts()`) but only care about its current value, you can use the [`first()`](https://rxjs-dev.firebaseapp.com/api/operators/first) operator, e.g. `api.accounts().pipe(first()).toPromise()`.
+
+> **Note**<br>
+> All methods returning observables will only send their RPC requests upon the returned observable being subscribed. For example, calling `api.increment()` will **NOT** send an intent until you have subscribed to the returned observable. This is to ensure that responses cannot be accidentally skipped.
+>
+> If you're not interested in the response, you can either make an "empty" subscription (i.e. `api.increment().subscribe()`), or turn it into a promise and await it (i.e. `await api.increment().toPromise()`).
 
 ### accounts
 
