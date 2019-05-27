@@ -1,6 +1,21 @@
 import { fromEvent, from } from 'rxjs'
 import { filter } from 'rxjs/operators'
 
+function getEventNames (eventNames) {
+  // Get all events
+  if (!eventNames) {
+    eventNames = ['allEvents']
+  }
+
+  // Convert `eventNames` to an array in order to
+  // support `.events(name)` and `.events([a, b])`
+  if (!Array.isArray(eventNames)) {
+    eventNames = [eventNames]
+  }
+
+  return eventNames
+}
+
 export default class Proxy {
   constructor (address, jsonInterface, web3, initializationBlock = 0) {
     this.address = address
@@ -16,46 +31,39 @@ export default class Proxy {
    * Fetches past events for a given block range
    *
    * @param {Array<String>} eventNames events to fetch
-   * @param {Object} options object with fromBlock and toBlock to specify the range
-   * @return {Observable} Single emission observable with the past events
+   * @param {Object} [options] web3.eth.Contract.getPastEvents()' options
+   *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
+   * @return {Observable} Multi-emission observable with each past event as its own emission
    */
-  pastEvents (eventNames, { fromBlock = this.initializationBlock, toBlock = null } = {}) {
-    // Get all events
-    if (!eventNames) {
-      eventNames = ['allEvents']
-    }
-
-    // Convert `eventNames` to an array in order to
-    // support `.events(name)` and `.events([a, b])`
-    if (!Array.isArray(eventNames)) {
-      eventNames = [eventNames]
-    }
+  pastEvents (eventNames, options = {}) {
+    eventNames = getEventNames(eventNames)
+    options.fromBlock = options.fromBlock || this.initializationBlock
 
     if (eventNames.length === 1) {
-      //
+      // Get a specific event
       return from(
-        this.contract.getPastEvents(eventNames[0], { fromBlock, toBlock })
+        this.contract.getPastEvents(eventNames[0], options)
       )
     } else {
       // Get all events in the block range and filter
       return from(
-        this.contract.getPastEvents('allEvents', { fromBlock, toBlock })
+        this.contract.getPastEvents('allEvents', options)
           .then(events => events.filter(event => eventNames.includes(event.event)))
       )
     }
   }
-  // TODO: Make this a hot observable
-  events (eventNames, options = { fromBlock: this.initializationBlock }) {
-    // Get all events
-    if (!eventNames) {
-      eventNames = ['allEvents']
-    }
 
-    // Convert `eventNames` to an array in order to
-    // support `.events(name)` and `.events([a, b])`
-    if (!Array.isArray(eventNames)) {
-      eventNames = [eventNames]
-    }
+  /**
+   * Subscribe to events, fetching old ones if necessary
+   *
+   * @param {Array<String>} eventNames events to fetch
+   * @param {Object} options web3.eth.Contract.events()' options
+   *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
+   * @return {Observable} Multi-emission observable with individual events found
+   */
+  events (eventNames, options = {}) {
+    eventNames = getEventNames(eventNames)
+    options.fromBlock = options.fromBlock || this.initializationBlock
 
     let eventSource
     if (eventNames.length === 1) {

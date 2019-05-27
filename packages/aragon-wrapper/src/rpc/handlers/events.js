@@ -1,8 +1,7 @@
 export default function (request, proxy) {
-  const fromBlock = request.params && request.params[0]
-
-  if (fromBlock) {
-    return proxy.events(null, { fromBlock })
+  const [eventsOptions] = request.params
+  if (eventsOptions != null) {
+    return proxy.events(null, eventsOptions)
   }
   return proxy.events()
 }

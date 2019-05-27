@@ -129,9 +129,23 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 ### events
 
-Listens for events on your app's smart contract from the last unhandled block.
+Listens for events on your app's smart contract.
+
+#### Parameters
+
+- `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional): [web3.eth.Contract.events()' options](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id34). Unless explictly specified, the `fromBlock` is defaulted to the current app's initialization block.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification). Note that in the background, an `eth_getLogs` will first be done to retrieve events from the last unhandled block and only afterwards will an `eth_subscribe` be made to subscribe to new events.
+
+### pastEvents
+
+Emits events from past blocks on your app's smart contract.
+
+#### Parameters
+
+- `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional): [web3.eth.Contract.getPastEvents()' options](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id37). Unless explicity specified, the `fromBlock` is defaulted to the current app's initialization block.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits [Web3 events](https://web3js.readthedocs7io/en/1.0/glossary.html#specification) from past blocks. In the background, only an `eth_getLogs` will be done to retrieve past events.
 
 ### external
 
@@ -159,7 +173,11 @@ token
   .subscribe(balance => console.log(`The balance of the account is ${balance}`))
 ```
 
-Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**: An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable) that emits the value of the call.
+Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**: An external smart contract handle, containing the following methods:
+
+- `events(options)`: returns a multi-emission observable with individual events found, similar to [`events`](#events)
+- `pastEvents(options)`: returns a multi-emission observable with individual events found in past blocks, similar to [`pastEvents`](#pastevents)
+- Calling any other method on the handle will send a call to the smart contract and return an single emission observable with the result.
 
 ### cache
 

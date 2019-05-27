@@ -21,20 +21,24 @@ export function events (request, proxy, wrapper) {
   const [
     address,
     jsonInterface,
-    providedFromBlock
+    options
   ] = request.params
-  // Use the app proxy's initialization block by default
-  const fromBlock = providedFromBlock == null ? proxy.initializationBlock : providedFromBlock
 
   const contract = new web3.eth.Contract(
     jsonInterface,
     address
   )
 
+  // Ensure it's an object
+  const eventsOptions = {
+    ...options
+  }
+  // Use the app proxy's initialization block by default
+  eventsOptions.fromBlock = eventsOptions.fromBlock || proxy.initializationBlock
+
   return fromEvent(
-    contract.events.allEvents({
-      fromBlock
-    }), 'data'
+    contract.events.allEvents(eventsOptions),
+    'data'
   )
 }
 
@@ -50,11 +54,12 @@ export function pastEvents (request, proxy, wrapper) {
     jsonInterface,
     address
   )
-  // ensure it's an object
+
+  // Ensure it's an object
   const eventsOptions = {
     ...options
   }
-
+  // Use the app proxy's initialization block by default
   eventsOptions.fromBlock = eventsOptions.fromBlock || proxy.initializationBlock
 
   return from(

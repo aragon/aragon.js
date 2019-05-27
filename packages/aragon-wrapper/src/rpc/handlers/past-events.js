@@ -1,14 +1,7 @@
 export default function (request, proxy, wrapper) {
-  const eventsOptions = {}
-  const [fromBlock, toBlock] = request.params
-
-  if (fromBlock) {
-    eventsOptions.fromBlock = fromBlock
+  const [eventsOptions] = request.params
+  if (eventsOptions != null) {
+    return proxy.pastEvents(null, eventsOptions)
   }
-
-  if (toBlock) {
-    eventsOptions.toBlock = toBlock
-  }
-
-  return proxy.pastEvents(null, eventsOptions)
+  return proxy.pastEvents()
 }

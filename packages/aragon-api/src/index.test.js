@@ -133,8 +133,31 @@ test('should return the events observable', t => {
   t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'events')
 })
 
+test('should return the pastEvents observable', t => {
+  t.plan(2)
+  // arrange
+  const pastEventsFn = Index.AppProxy.prototype.pastEvents
+  const observable = of({
+    id: 'uuid1',
+    result: ['eventA', 'eventB']
+  })
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = pastEventsFn.call(instanceStub)
+  // assert
+  result.subscribe(value => {
+    t.deepEqual(value, ['eventA', 'eventB'])
+  })
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'past_events')
+})
+
 test('should return an handle for an external contract events', t => {
-  t.plan(6)
+  t.plan(9)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
   const observableEvents = of({
@@ -159,14 +182,26 @@ test('should return an handle for an external contract events', t => {
   // act
   const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
   // assert
-  // events from block 2
-  result.events(2).subscribe(value => {
+  // events from block 2000
+  result.events({ fromBlock: 2000 }).subscribe(value => {
     t.deepEqual(value, { name: 'eventA', value: 3000 })
 
-    t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'external_events')
+    const eventsCall = instanceStub.rpc.sendAndObserveResponses.getCall(0)
+    t.is(eventsCall.args[0], 'external_events')
     t.deepEqual(
-      instanceStub.rpc.sendAndObserveResponses.getCall(0).args[1],
-      ['0xextContract', [jsonInterfaceStub[0]], 2]
+      eventsCall.args[1],
+      ['0xextContract', [jsonInterfaceStub[0]], { fromBlock: 2000 }]
+    )
+  })
+  // past events from block 3000 (just re-use the same events as `events` for simplicity)
+  result.pastEvents({ fromBlock: 3000 }).subscribe(value => {
+    t.deepEqual(value, { name: 'eventA', value: 3000 })
+
+    const pastEventsCall = instanceStub.rpc.sendAndObserveResponses.getCall(1)
+    t.is(pastEventsCall.args[0], 'external_past_events')
+    t.deepEqual(
+      pastEventsCall.args[1],
+      ['0xextContract', [jsonInterfaceStub[0]], { fromBlock: 3000 }]
     )
   })
   result.grantPermission('0xbob', '0xcounter').subscribe(value => {

@@ -113,13 +113,14 @@ export class AppProxy {
   /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
-   * @param  {string} fromBlock block from which to fetch the events
+   * @param  {object} [options] web3.eth.Contract.events()' options
+   *   If not given, defaults fromBlock to this app's initializationBlock
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  events (fromBlock) {
+  events (options) {
     return this.rpc.sendAndObserveResponses(
       'events',
-      [fromBlock]
+      [options]
     ).pipe(
       pluck('result')
     )
@@ -128,14 +129,14 @@ export class AppProxy {
   /**
    * Fetch past events from your app's smart contract for requestsed range
    *
-   * @param  {string} fromBlock block from which to fetch the events
-   * @param  {string} toBlock block up to which to fetch the events
+   * @param  {object} [options] web3.eth.Contract.events()' options
+   *   If not given, defaults fromBlock to this app's initializationBlock
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  pastEvents (fromBlock, toBlock) {
-    return this.rpc.sendAndObserveResponse(
+  pastEvents (options) {
+    return this.rpc.sendAndObserveResponses(
       'past_events',
-      [fromBlock, toBlock]
+      [options]
     ).pipe(
       pluck('result')
     )
@@ -147,29 +148,14 @@ export class AppProxy {
    *
    * @param  {string} address The address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object}  An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+   * @return {Object}  An external smart contract handle, containing the following methods:
+   *   - `events(options)`: returns a multi-emission observable with individual events found
+   *   - `pastEvents(options)`: returns a multi-emission observable with individual events found in past blocks
+   *   - Calling any other method on the handle will send a call to the smart contract and return an single emission observable with the result.
    */
   external (address, jsonInterface) {
     const contract = {
-      events: (fromBlock) => {
-        const eventArgs = [
-          address,
-          jsonInterface.filter(
-            (item) => item.type === 'event'
-          )
-        ]
-        if (typeof fromBlock === 'number') {
-          eventArgs.push(fromBlock)
-        }
-
-        return this.rpc.sendAndObserveResponses(
-          'external_events',
-          eventArgs
-        ).pipe(
-          pluck('result')
-        )
-      },
-      pastEvents: (options = {}) => {
+      events: (options) => {
         const eventArgs = [
           address,
           jsonInterface.filter(
@@ -178,7 +164,23 @@ export class AppProxy {
           options
         ]
 
-        return this.rpc.sendAndObserveResponse(
+        return this.rpc.sendAndObserveResponses(
+          'external_events',
+          eventArgs
+        ).pipe(
+          pluck('result')
+        )
+      },
+      pastEvents: (options) => {
+        const eventArgs = [
+          address,
+          jsonInterface.filter(
+            (item) => item.type === 'event'
+          ),
+          options
+        ]
+
+        return this.rpc.sendAndObserveResponses(
           'external_past_events',
           eventArgs
         ).pipe(
@@ -314,16 +316,19 @@ export class AppProxy {
       )
 
     const getCurrentEvents = (fromBlock) => merge(
-      this.events(fromBlock),
-      ...externals.map(({ contract }) => contract.events(fromBlock))
+      this.events({ fromBlock }),
+      ...externals.map(({ contract }) => contract.events({ fromBlock }))
     )
 
     // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
     // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty,
     // by default they will use the current app's initialization block.
     const getPastEvents = (cachedFromBlock, toBlock) => merge(
-      this.pastEvents(cachedFromBlock, toBlock),
-      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock }))
+      this.pastEvents({ fromBlock: cachedFromBlock, toBlock }),
+      ...externals.map(
+        ({ contract, initializationBlock }) =>
+          contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock })
+      )
     ).pipe(
       // single emission array of all pastEvents -> flatten to process events
       flatMap(pastEvents => from(pastEvents)),

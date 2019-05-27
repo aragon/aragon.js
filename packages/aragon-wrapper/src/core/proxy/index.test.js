@@ -245,7 +245,7 @@ test('should filter past events correctly when more than one eventName is passed
   // act
   const events = instance.pastEvents(['Orange', 'Pear'])
   // assert
-  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: 0, toBlock: null }))
+  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: 0 }))
 
   events.subscribe(events => {
     t.is(events.length, 2)
