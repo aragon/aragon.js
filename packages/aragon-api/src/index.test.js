@@ -412,3 +412,35 @@ test('should update an action', t => {
   t.is(instanceStub2.rpc.send.getCall(0).args[0], 'update_forwarded_action')
   t.deepEqual(instanceStub2.rpc.send.getCall(0).args[1], ['2', '', '1'])
 })
+
+test.only('should return the forwardedActions observable', t => {
+  t.plan(3)
+  // arrange
+  const getFwdActionsFn = Index.AppProxy.prototype.getForwardedActions
+  const observable = of({
+    event: 'uuid1',
+    result: {
+        event: 'ForwardedActions',
+        returnValues: ['forwardedAction1','forwardedAction2']
+    },
+  })
+  const instanceStub = {
+    rpc: {
+      sendAndObserveResponses: sinon.stub()
+        .returns(observable)
+    }
+  }
+  // act
+  const result = getFwdActionsFn.call(instanceStub)
+  // assert
+  // the call to sendAndObserveResponse should not be defered until we subscribe,
+  // since we are working with a BehaviorSubject and just want the latest and greatest
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  result.subscribe(value => {
+    t.deepEqual(value, {
+      event: 'ForwardedActions',
+      returnValues: ['forwardedAction1','forwardedAction2']
+  })
+  })
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'get_forwarded_actions')
+})
