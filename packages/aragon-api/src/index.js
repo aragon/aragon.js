@@ -147,7 +147,7 @@ export class AppProxy {
    *
    * @param  {string} address The address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object}  An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
    */
   external (address, jsonInterface) {
     const contract = {
@@ -208,9 +208,9 @@ export class AppProxy {
   /**
    * Set a value in the application cache.
    *
-   * @param  {string} key   The cache key to set a value for
+   * @param  {string} key The cache key to set a value for
    * @param  {string} value The value to persist in the cache
-   * @return {string}       This method passes through `value`
+   * @return {string} This method passes through `value`
    */
   cache (key, value) {
     this.rpc.send(
@@ -224,7 +224,7 @@ export class AppProxy {
   /**
    * Get a value from the application cache.
    *
-   * @param  {string} key   The cache key to get a value for
+   * @param  {string} key The cache key to get a value for
    * @return {Observable} A single emission RxJS observable with the value for the specified cache key
    */
   getCache (key) {
