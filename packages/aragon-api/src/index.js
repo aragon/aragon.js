@@ -1,5 +1,19 @@
 import { forkJoin, from, merge } from 'rxjs'
-import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, endWith, startWith } from 'rxjs/operators'
+import {
+  catchError,
+  endWith,
+  flatMap,
+  filter,
+  map,
+  mergeScan,
+  last,
+  pluck,
+  publishReplay,
+  sampleTime,
+  startWith,
+  switchMap,
+  tap
+} from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
 export const ACCOUNTS_TRIGGER = Symbol('ACCOUNTS_TRIGGER')
@@ -147,7 +161,7 @@ export class AppProxy {
    *
    * @param  {string} address The address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object}  An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
    */
   external (address, jsonInterface) {
     const contract = {
@@ -208,9 +222,9 @@ export class AppProxy {
   /**
    * Set a value in the application cache.
    *
-   * @param  {string} key   The cache key to set a value for
+   * @param  {string} key The cache key to set a value for
    * @param  {string} value The value to persist in the cache
-   * @return {string}       This method passes through `value`
+   * @return {string} This method passes through `value`
    */
   cache (key, value) {
     this.rpc.send(
@@ -224,7 +238,7 @@ export class AppProxy {
   /**
    * Get a value from the application cache.
    *
-   * @param  {string} key   The cache key to get a value for
+   * @param  {string} key The cache key to get a value for
    * @return {Observable} A single emission RxJS observable with the value for the specified cache key
    */
   getCache (key) {
@@ -283,19 +297,22 @@ export class AppProxy {
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
 
-    // Wrap the reducer in another reducer that
-    // allows us to execute code asynchronously
-    // in our reducer. That's a lot of reducing.
+    // Wrap the reducer in another reducer that allows us to execute code asynchronously
+    // in our reducer (due to the Promise wrapping). That's a lot of reducing.
     //
-    // This is needed for the `mergeScan` operator.
-    // Also, this supports both sync and async code
-    // (because of the `Promise.resolve`).
+    // This is why we need the `mergeScan` operator below.
     const wrappedReducer = (state, event) =>
       from(
-        // Ensure a promise is returned even if the reducer returns an array
-        Promise.resolve(reducer(state, event)).catch(e => console.error(
-          `Error from app reducer:`, e)
-        )
+        // Ensure a promise is returned even if the reducer returns an array or throws
+        new Promise((resolve) => resolve(reducer(state, event)))
+      ).pipe(
+        catchError((err) => {
+          console.error('Error from app reducer on event', err)
+          console.error('Current event', event)
+          console.error('Current state', state)
+          // Re-throw the error to stop the rest of the store() stream
+          throw err
+        })
       )
 
     const getCurrentEvents = (fromBlock) => merge(
@@ -347,6 +364,12 @@ export class AppProxy {
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          // throttle to reduce rendering and caching overthead
+          sampleTime(200),
+          tap((state) => {
+            this.cache('state', state)
+            console.debug('- store - reduced state from past event:', state)
+          }),
           last(),
           tap((state) => {
             console.debug('caching state:', state)
@@ -373,8 +396,8 @@ export class AppProxy {
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
-          // debounce to reduce rendering and caching overthead
-          debounceTime(200),
+          // throttle updates into 200ms chunks to reduce rendering and caching overthead
+          sampleTime(200),
           tap((state) => {
             this.cache('state', state)
             console.debug('- store - reduced state:', state)
