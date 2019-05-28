@@ -283,20 +283,6 @@ export class AppProxy {
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
 
-    // Hot observable which emits an web3.js event-like object with the address of the active account.
-    const accounts$ = this.accounts().pipe(
-      map(accounts => {
-        return {
-          event: ACCOUNTS_TRIGGER,
-          returnValues: {
-            account: accounts[0]
-          }
-        }
-      }),
-      publishReplay(1)
-    )
-    accounts$.connect()
-
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
     // in our reducer. That's a lot of reducing.
@@ -370,6 +356,17 @@ export class AppProxy {
             })
           }),
           switchMap(pastState => {
+            // observable which emits an web3.js event-like object with the address of the active account.
+            const accounts$ = this.accounts().pipe(
+              map(accounts => {
+                return {
+                  event: ACCOUNTS_TRIGGER,
+                  returnValues: {
+                    account: accounts[0]
+                  }
+                }
+              })
+            )
             const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
             return merge(currentEvents$, accounts$).pipe(
