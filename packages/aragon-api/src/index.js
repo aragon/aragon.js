@@ -1,4 +1,4 @@
-import { combineLatest, from, merge } from 'rxjs'
+import { forkJoin, from, merge } from 'rxjs'
 import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, endWith, startWith } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -345,7 +345,7 @@ export class AppProxy {
     // init the app state with the cached state
     const initState$ = init ? cachedState$.pipe(switchMap(cachedState => from(init(cachedState)))) : from([null])
 
-    const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
+    const store$ = forkJoin(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
       switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
         console.debug('- store - initState', initState)
         console.debug('- store - cachedState', cachedState)
