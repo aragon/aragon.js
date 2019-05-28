@@ -419,9 +419,9 @@ test.only('should return the forwardedActions observable', t => {
   const observable = of({
     event: 'uuid1',
     result: {
-        event: 'ForwardedActions',
-        returnValues: ['forwardedAction1','forwardedAction2']
-    },
+      event: 'ForwardedActions',
+      returnValues: ['forwardedAction1', 'forwardedAction2']
+    }
   })
   const instanceStub = {
     rpc: {
@@ -438,8 +438,8 @@ test.only('should return the forwardedActions observable', t => {
   result.subscribe(value => {
     t.deepEqual(value, {
       event: 'ForwardedActions',
-      returnValues: ['forwardedAction1','forwardedAction2']
-  })
+      returnValues: ['forwardedAction1', 'forwardedAction2']
+    })
   })
   t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'get_forwarded_actions')
 })

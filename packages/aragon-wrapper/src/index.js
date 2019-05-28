@@ -810,28 +810,27 @@ export default class Aragon {
 
   /**
    * Initialize the forwardedActions observable
-   * 
+   *
    * @return {void}
    */
   initForwardedActions () {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
-        (actions, {currentApp, actionId, evmScript = '', state = 0}) => {
+        (actions, { currentApp, actionId, evmScript = '', state = 0 }) => {
           const updateIndex = actions.findIndex(
             action => action.currentApp === currentApp && action.actionId === actionId
           )
           if (updateIndex === -1) {
             // set the last address as the target of the forwarded action
             const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
-            currentApp && actions.push({currentApp, actionId, target, evmScript, state})
+            currentApp && actions.push({ currentApp, actionId, target, evmScript, state })
             return actions
           } else {
             // only update any state if the state update is the latest
             if (actions[updateIndex].state < state) {
               actions[updateIndex].state = state
               // only update the evmScript if it's included
-              if (evmScript !== '')
-                actions[updateIndex].evmScript = evmScript
+              if (evmScript !== '') actions[updateIndex].evmScript = evmScript
             }
             return actions
           }
@@ -845,8 +844,8 @@ export default class Aragon {
 
   /**
    * set a forwarded action
-   * 
-   * @param {string} currentApp 
+   *
+   * @param {string} currentApp
    * @param {string} actionId
    * @param {string} evmScript
    * @param {integer} state
@@ -856,7 +855,7 @@ export default class Aragon {
       currentApp,
       actionId,
       evmScript,
-      state,
+      state
     })
   }
 
@@ -1177,7 +1176,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
         handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
         handlers.createRequestHandler(request$, 'update_forwarded_action', handlers.updateForwardedAction),
-        handlers.createRequestHandler(request$, 'get_forwarded_actions', handlers.getForwardedActions),
+        handlers.createRequestHandler(request$, 'get_forwarded_actions', handlers.getForwardedActions)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
