@@ -1,4 +1,4 @@
-import { combineLatest, from, merge } from 'rxjs'
+import { forkJoin, from, merge } from 'rxjs'
 import { map, filter, last, pluck, flatMap, switchMap, debounceTime, mergeScan, publishReplay, tap, endWith, startWith } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -282,23 +282,8 @@ export class AppProxy {
    * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   store (reducer, { externals = [], init } = {}) {
-    const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
-
-    // Hot observable which emits an web3.js event-like object with the address of the active account.
-    const accounts$ = this.accounts().pipe(
-      map(accounts => {
-        return {
-          event: ACCOUNTS_TRIGGER,
-          returnValues: {
-            account: accounts[0]
-          }
-        }
-      }),
-      publishReplay(1)
-    )
-    accounts$.connect()
 
     // Wrap the reducer in another reducer that
     // allows us to execute code asynchronously
@@ -344,14 +329,16 @@ export class AppProxy {
         returnValues: {}
       })
     )
-    const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
-    const cachedState$ = this.getCache(CACHED_STATE_KEY)
+    const cacheValue$ = this.getCache(CACHED_STATE_KEY).pipe(
+      // ensure we always get at least an empty object instead of falsy
+      map(v => v || {}))
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
-    const initState$ = init ? cachedState$.pipe(switchMap(cachedState => from(init(cachedState)))) : from([null])
+    const initState$ = init ? cacheValue$.pipe(switchMap(({ state }) => from(init(state)))) : from([null])
 
-    const store$ = combineLatest(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
-      switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
+    const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
+      switchMap(([cacheValue, initState, latestBlock]) => {
+        const { state: cachedState, block: cachedBlock } = cacheValue
         console.debug('- store - initState', initState)
         console.debug('- store - cachedState', cachedState)
         console.debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
@@ -367,11 +354,24 @@ export class AppProxy {
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           last(),
           tap((state) => {
-            this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
             console.debug('caching state:', state)
-            this.cache(CACHED_STATE_KEY, state)
+            this.cache(CACHED_STATE_KEY, {
+              block: pastEventsToBlock,
+              state
+            })
           }),
           switchMap(pastState => {
+            // observable which emits an web3.js event-like object with the address of the active account.
+            const accounts$ = this.accounts().pipe(
+              map(accounts => {
+                return {
+                  event: ACCOUNTS_TRIGGER,
+                  returnValues: {
+                    account: accounts[0]
+                  }
+                }
+              })
+            )
             const currentEvents$ = getCurrentEvents(pastEventsToBlock)
 
             return merge(currentEvents$, accounts$).pipe(
