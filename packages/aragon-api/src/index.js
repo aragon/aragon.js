@@ -338,7 +338,9 @@ export class AppProxy {
         returnValues: {}
       })
     )
-    const cacheValue$ = this.getCache(CACHED_STATE_KEY)
+    const cacheValue$ = this.getCache(CACHED_STATE_KEY).pipe(
+      // ensure we always get at least an empty object instead of falsy
+      map(v => v || {}))
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
     const initState$ = init ? cacheValue$.pipe(switchMap(({ state }) => from(init(state)))) : from([null])
