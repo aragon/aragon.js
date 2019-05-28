@@ -1,7 +1,6 @@
 import { forkJoin, from, merge } from 'rxjs'
 import {
   catchError,
-  debounceTime,
   endWith,
   flatMap,
   filter,
@@ -10,6 +9,7 @@ import {
   last,
   pluck,
   publishReplay,
+  sampleTime,
   startWith,
   switchMap,
   tap
@@ -363,8 +363,9 @@ export class AppProxy {
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
-          // throttle to reduce rendering and caching overthead
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          // throttle to reduce rendering and caching overthead
+          sampleTime(200),
           tap((state) => {
             this.cache('state', state)
             console.debug('- store - reduced state from past event:', state)
@@ -395,8 +396,8 @@ export class AppProxy {
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
-          // debounce to reduce rendering and caching overthead
-          debounceTime(200),
+          // throttle updates into 200ms chunks to reduce rendering and caching overthead
+          sampleTime(200),
           tap((state) => {
             this.cache('state', state)
             console.debug('- store - reduced state:', state)
