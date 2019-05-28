@@ -1,18 +1,19 @@
-import { forkJoin, from, merge } from 'rxjs'
+import { asyncScheduler, forkJoin, from, merge } from 'rxjs'
 import {
   catchError,
+  concat,
+  defer,
   endWith,
   flatMap,
   filter,
   map,
   mergeScan,
-  last,
   pluck,
   publishReplay,
-  sampleTime,
   startWith,
   switchMap,
-  tap
+  tap,
+  throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -297,24 +298,7 @@ export class AppProxy {
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
 
-    // Wrap the reducer in another reducer that allows us to execute code asynchronously
-    // in our reducer (due to the Promise wrapping). That's a lot of reducing.
-    //
-    // This is why we need the `mergeScan` operator below.
-    const wrappedReducer = (state, event) =>
-      from(
-        // Ensure a promise is returned even if the reducer returns an array or throws
-        new Promise((resolve) => resolve(reducer(state, event)))
-      ).pipe(
-        catchError((err) => {
-          console.error('Error from app reducer on event', err)
-          console.error('Current event', event)
-          console.error('Current state', state)
-          // Re-throw the error to stop the rest of the store() stream
-          throw err
-        })
-      )
-
+    // Event streams fetchers
     const getCurrentEvents = (fromBlock) => merge(
       this.events(fromBlock),
       ...externals.map(({ contract }) => contract.events(fromBlock))
@@ -341,9 +325,44 @@ export class AppProxy {
         returnValues: {}
       })
     )
+
+    const getAccountEvents = () =>
+      this.accounts().pipe(
+        map(accounts => {
+          return {
+            event: ACCOUNTS_TRIGGER,
+            returnValues: {
+              account: accounts[0]
+            }
+          }
+        })
+      )
+
+    // Wrap the reducer in another reducer that allows us to execute code asynchronously
+    // in our reducer (due to the Promise wrapping). That's a lot of reducing.
+    //
+    // This is why we need the `mergeScan` operator below.
+    const wrappedReducer = ({ state }, event) => {
+      console.log('new event', event, state)
+      return from(
+        // Ensure a promise is returned even if the reducer returns an array or throws
+        new Promise((resolve) => resolve(reducer(state, event)))
+      ).pipe(
+        map((newState) => ({ lastEvent: event, state: newState })),
+        catchError((err) => {
+          console.error('Error from app reducer on event', err)
+          console.error('Current event', event)
+          console.error('Current state', state)
+          // Re-throw the error to stop the rest of the store() stream
+          throw err
+        })
+      )
+    }
+
     const cacheValue$ = this.getCache(CACHED_STATE_KEY).pipe(
       // ensure we always get at least an empty object instead of falsy
-      map(v => v || {}))
+      map(v => v || {})
+    )
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
     const initState$ = init ? cacheValue$.pipe(switchMap(({ state }) => from(init(state)))) : from([null])
@@ -362,45 +381,30 @@ export class AppProxy {
         console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
         console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
 
-        return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
-          mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
-          // throttle to reduce rendering and caching overthead
-          sampleTime(200),
-          tap((state) => {
-            this.cache('state', state)
-            console.debug('- store - reduced state from past event:', state)
-          }),
-          last(),
-          tap((state) => {
-            console.debug('caching state:', state)
-            this.cache(CACHED_STATE_KEY, {
-              block: pastEventsToBlock,
-              state
-            })
-          }),
-          switchMap(pastState => {
-            // observable which emits an web3.js event-like object with the address of the active account.
-            const accounts$ = this.accounts().pipe(
-              map(accounts => {
-                return {
-                  event: ACCOUNTS_TRIGGER,
-                  returnValues: {
-                    account: accounts[0]
-                  }
-                }
-              })
-            )
-            const currentEvents$ = getCurrentEvents(pastEventsToBlock)
+        const pastEvents$ = getPastEvents(cachedBlock, pastEventsToBlock)
+        const currentEvents$ = getCurrentEvents(pastEventsToBlock)
+        // observable which emits an web3.js event-like object with the address of the active account.
+        const accountEvents$ = getAccountEvents()
 
-            return merge(currentEvents$, accounts$).pipe(
-              mergeScan(wrappedReducer, pastState, 1)
-            )
+        // return concat(pastEvents$, defer(() => currentEvents$, accountEvents$)).pipe(
+        return pastEvents$.pipe(
+          mergeScan(wrappedReducer, { state: { ...initState } }, 1),
+          map(({ lastEvent, state }) => {
+            if (lastEvent.event === SYNC_STATUS_SYNCED) {
+              console.debug('caching state:', state)
+              this.cache(CACHED_STATE_KEY, {
+                block: pastEventsToBlock,
+                state
+              })
+            }
+            return state
           }),
-          // throttle updates into 200ms chunks to reduce rendering and caching overthead
-          sampleTime(200),
+          // Throttle updates into 200ms chunks to reduce rendering and caching overhead
+          // Use trailing value to ensure we don't drop the latest update
+          throttleTime(200, asyncScheduler, { leading: false, trailing: true }),
           tap((state) => {
             this.cache('state', state)
-            console.debug('- store - reduced state:', state)
+            console.debug('- store - reduced state:', state, Date.now())
           })
         )
       }),
