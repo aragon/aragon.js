@@ -11,6 +11,7 @@ import {
   mergeMap,
   pairwise,
   publishReplay,
+  sampleTime,
   scan,
   startWith,
   switchMap,
@@ -770,7 +771,7 @@ export default class Aragon {
           return nextRepos
         }
       }, []),
-      debounceTime(100),
+      sampleTime(500),
       publishReplay(1)
     )
     this.installedRepos.connect()
