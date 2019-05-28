@@ -280,7 +280,6 @@ export class AppProxy {
    * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   store (reducer, { externals = [], init } = {}) {
-    const CACHED_BLOCK_KEY = 'CACHED_BLOCK_KEY'
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
     const BLOCK_REORG_MARGIN = 100
 
@@ -339,14 +338,14 @@ export class AppProxy {
         returnValues: {}
       })
     )
-    const cachedBlock$ = this.getCache(CACHED_BLOCK_KEY)
-    const cachedState$ = this.getCache(CACHED_STATE_KEY)
+    const cacheValue$ = this.getCache(CACHED_STATE_KEY)
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
-    const initState$ = init ? cachedState$.pipe(switchMap(cachedState => from(init(cachedState)))) : from([null])
+    const initState$ = init ? cacheValue$.pipe(switchMap(({ state }) => from(init(state)))) : from([null])
 
-    const store$ = forkJoin(cachedState$, initState$, cachedBlock$, latestBlock$).pipe(
-      switchMap(([cachedState, initState, cachedBlock, latestBlock]) => {
+    const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
+      switchMap(([cacheValue, initState, latestBlock]) => {
+        const { state: cachedState, block: cachedBlock } = cacheValue
         console.debug('- store - initState', initState)
         console.debug('- store - cachedState', cachedState)
         console.debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
@@ -362,9 +361,11 @@ export class AppProxy {
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           last(),
           tap((state) => {
-            this.cache(CACHED_BLOCK_KEY, pastEventsToBlock)
             console.debug('caching state:', state)
-            this.cache(CACHED_STATE_KEY, state)
+            this.cache(CACHED_STATE_KEY, {
+              block: pastEventsToBlock,
+              state
+            })
           }),
           switchMap(pastState => {
             const currentEvents$ = getCurrentEvents(pastEventsToBlock)
