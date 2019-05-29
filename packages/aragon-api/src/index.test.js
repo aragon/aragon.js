@@ -197,7 +197,7 @@ test('should return an handle for an external contract events', t => {
   result.pastEvents({ fromBlock: 3000 }).subscribe(value => {
     t.deepEqual(value, { name: 'eventA', value: 3000 })
 
-    const pastEventsCall = instanceStub.rpc.sendAndObserveResponses.getCall(1)
+    const pastEventsCall = instanceStub.rpc.sendAndObserveResponse.getCall(1)
     t.is(pastEventsCall.args[0], 'external_past_events')
     t.deepEqual(
       pastEventsCall.args[1],
