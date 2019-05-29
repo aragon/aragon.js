@@ -1,6 +1,7 @@
 import { forkJoin, from, merge } from 'rxjs'
 import {
   catchError,
+  delayWhen,
   endWith,
   flatMap,
   filter,
@@ -11,8 +12,7 @@ import {
   publishReplay,
   sampleTime,
   startWith,
-  switchMap,
-  tap
+  switchMap
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -224,15 +224,15 @@ export class AppProxy {
    *
    * @param  {string} key The cache key to set a value for
    * @param  {string} value The value to persist in the cache
-   * @return {string} This method passes through `value`
+   * @return {string} A single emission RxJS observable that emits when the cache operation has been committed
    */
   cache (key, value) {
-    this.rpc.send(
+    return this.rpc.sendAndObserveResponse(
       'cache',
       ['set', key, value]
+    ).pipe(
+      pluck('result')
     )
-
-    return value
   }
 
   /**
@@ -374,14 +374,14 @@ export class AppProxy {
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           // throttle to reduce rendering and caching overthead
           sampleTime(200),
-          tap((state) => {
-            this.cache('state', state)
+          delayWhen((state) => {
             console.debug('- store - reduced state from past event:', state)
+            return this.cache('state', state)
           }),
           last(),
-          tap((state) => {
+          delayWhen((state) => {
             console.debug('caching state:', state)
-            this.cache(CACHED_STATE_KEY, {
+            return this.cache(CACHED_STATE_KEY, {
               block: pastEventsToBlock,
               state
             })
@@ -407,9 +407,9 @@ export class AppProxy {
           }),
           // throttle updates into 200ms chunks to reduce rendering and caching overthead
           sampleTime(200),
-          tap((state) => {
-            this.cache('state', state)
+          delayWhen((state) => {
             console.debug('- store - reduced state:', state)
+            return this.cache('state', state)
           })
         )
       }),
