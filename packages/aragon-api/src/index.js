@@ -16,11 +16,11 @@ import {
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
-export const ACCOUNTS_TRIGGER = Symbol('ACCOUNTS_TRIGGER')
-
-export const SYNC_STATUS_INITIALIZING = 'SYNC_STATUS_INITIALIZING'
-export const SYNC_STATUS_SYNCING = 'SYNC_STATUS_SYNCING'
-export const SYNC_STATUS_SYNCED = 'SYNC_STATUS_SYNCED'
+export const events = {
+  ACCOUNTS_TRIGGER: 'ACCOUNTS_TRIGGER',
+  SYNC_STATUS_SYNCING: 'SYNC_STATUS_SYNCING',
+  SYNC_STATUS_SYNCED: 'SYNC_STATUS_SYNCED'
+}
 
 export const AppProxyHandler = {
   get (target, name, receiver) {
@@ -330,14 +330,14 @@ export class AppProxy {
       // single emission array of all pastEvents -> flatten to process events
       flatMap(pastEvents => from(pastEvents)),
       startWith({
-        event: SYNC_STATUS_SYNCING,
+        event: events.SYNC_STATUS_SYNCING,
         returnValues: {
           from: cachedFromBlock,
           to: toBlock
         }
       }),
       endWith({
-        event: SYNC_STATUS_SYNCED,
+        event: events.SYNC_STATUS_SYNCED,
         returnValues: {}
       })
     )
@@ -392,7 +392,7 @@ export class AppProxy {
             const accounts$ = this.accounts().pipe(
               map(accounts => {
                 return {
-                  event: ACCOUNTS_TRIGGER,
+                  event: events.ACCOUNTS_TRIGGER,
                   returnValues: {
                     account: accounts[0]
                   }
