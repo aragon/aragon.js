@@ -144,7 +144,7 @@ test('should return the pastEvents observable', t => {
   const instanceStub = {
     rpc: {
       // Mimic behaviour of @aragon/rpc-messenger
-      sendAndObserveResponses: createDeferredStub(observable)
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
