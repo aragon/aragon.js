@@ -153,7 +153,7 @@ test('should return the pastEvents observable', t => {
   result.subscribe(value => {
     t.deepEqual(value, ['eventA', 'eventB'])
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'past_events')
+  t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'past_events')
 })
 
 test('should return an handle for an external contract events', t => {
