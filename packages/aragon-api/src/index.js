@@ -398,7 +398,8 @@ export class AppProxy {
                 }
               })
             )
-            const currentEvents$ = getCurrentEvents(pastEventsToBlock)
+            // fetch current events from block after cached block
+            const currentEvents$ = getCurrentEvents(pastEventsToBlock + 1)
 
             return merge(currentEvents$, accounts$).pipe(
               mergeScan(wrappedReducer, pastState, 1)
