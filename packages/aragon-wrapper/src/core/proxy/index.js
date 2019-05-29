@@ -4,7 +4,7 @@ import { filter } from 'rxjs/operators'
 function getEventNames (eventNames) {
   // Get all events
   if (!eventNames) {
-    eventNames = ['allEvents']
+    return ['allEvents']
   }
 
   // Convert `eventNames` to an array in order to
