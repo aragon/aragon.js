@@ -346,7 +346,15 @@ export class AppProxy {
       map(v => v || {}))
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
-    const initState$ = init ? cacheValue$.pipe(switchMap(({ state }) => from(init(state)))) : from([null])
+    const initState$ = init
+      ? cacheValue$.pipe(
+        switchMap(({ state }) => from(init(state))),
+        delayWhen((initState) => {
+          console.debug('- store - init state:', initState)
+          return this.cache('state', initState)
+        })
+      )
+      : from([null])
 
     const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
       switchMap(([cacheValue, initState, latestBlock]) => {
