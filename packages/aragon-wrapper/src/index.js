@@ -1,5 +1,5 @@
 // Externals
-import { concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
+import { asyncScheduler, concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -15,6 +15,7 @@ import {
   startWith,
   switchMap,
   tap,
+  throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
@@ -789,7 +790,8 @@ export default class Aragon {
           return nextRepos
         }
       }, []),
-      debounceTime(100),
+      // Throttle updates, but must keep trailing to ensure we don't drop any updates
+      throttleTime(500, asyncScheduler, { leading: false, trailing: true }),
       publishReplay(1)
     )
     this.installedRepos.connect()
