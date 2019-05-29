@@ -147,7 +147,7 @@ test.serial('search should return an array of results of freely matching identit
     '0x09': { names: [ 'Aristotle' ] },
     '0x11': { names: [ 'James Baldwin', 'David Deutsch' ] },
     '0x3b': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] },
-    'who': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] },
+    'who': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] }
   }
   // save test identities
   for (const [address, name] of identities) {
