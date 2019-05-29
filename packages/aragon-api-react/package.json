@@ -18,7 +18,8 @@
   },
   "scripts": {
     "build": "babel src --out-dir dist --source-maps",
-    "build:dev": "npm run build -- --watch"
+    "build:dev": "npm run build -- --watch",
+    "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "peerDependencies": {
     "@aragon/api": "^2.0.0-beta.1",
