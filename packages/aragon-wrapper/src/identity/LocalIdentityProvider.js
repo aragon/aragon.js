@@ -53,26 +53,20 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   async search (searchTerm = '') {
     const isAddressSearch = searchTerm.substring(0, 2).toLowerCase() === '0x'
 
-    // Preconditions for searching a minimum of 4 chars for addresses
-    if (isAddressSearch && searchTerm.length < 4) {
-      return []
-    }
-    // Preconditions for searching a minimum of 4 chars for names
-    if (!isAddressSearch && searchTerm.length < 3) {
+    if (searchTerm.length < 3) {
       return []
     }
 
     const identities = await this.identityCache.getAll()
-    const searchRegex = RegExp(searchTerm, 'i')
-    const results = []
-
-    for (const [address, { name }] of Object.entries(identities)) {
-      if (isAddressSearch) {
-        searchRegex.test(address) && results.push({ name, address })
-      } else {
-        searchRegex.test(name) && results.push({ name, address })
-      }
-    }
+    const results = Object.entries(identities)
+      .filter(
+        ([address, { name }]) =>
+          (isAddressSearch &&
+            searchTerm.length > 3 &&
+            address.toLowerCase().indexOf(searchTerm.toLowerCase()) === 0) ||
+          name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
+      )
+      .map(([address, { name }]) => ({ name, address }))
 
     return results
   }

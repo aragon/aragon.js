@@ -132,7 +132,9 @@ test.serial('search should return an array of results of freely matching identit
     [ '0x6000000000000000000000000000000000000001', 'Marie Curie' ],
     [ '0x7000000000000000000000000000000000000001', 'Winnie the Pooh' ],
     [ '0x8900000000088888870000000000000000000001', 'Richard Feynman' ],
-    [ '0x0900000000000000000000000000000000000001', 'Aristotle' ]
+    [ '0x0900000000000000000000000000000000000001', 'Aristotle' ],
+    [ '0xa000000000000000000000000000000000000002', '0x3b The Who' ],
+    [ '0x3b00000000000000000000000000000000000002', 'The man who sold the world? (Nirvana not $Bowie)' ]
   ]
   // map of search terms to expected count and names
   const searchTermToExpectation = {
@@ -143,7 +145,9 @@ test.serial('search should return an array of results of freely matching identit
     'jam': { names: [ 'James Baldwin' ] },
     'ari': { names: [ 'Marie Curie', 'Aristotle' ] },
     '0x09': { names: [ 'Aristotle' ] },
-    '0x11': { names: [ 'James Baldwin', 'David Deutsch' ] }
+    '0x11': { names: [ 'James Baldwin', 'David Deutsch' ] },
+    '0x3b': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] },
+    'who': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] }
   }
   // save test identities
   for (const [address, name] of identities) {
