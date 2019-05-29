@@ -15,6 +15,7 @@ import {
   throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
+import { debug } from './utils'
 
 export const events = {
   ACCOUNTS_TRIGGER: 'ACCOUNTS_TRIGGER',
@@ -350,7 +351,7 @@ export class AppProxy {
       ? cacheValue$.pipe(
         switchMap(({ state }) => from(init(state))),
         delayWhen((initState) => {
-          console.debug('- store - init state:', initState)
+          debug('- store - init state:', initState)
           return this.cache('state', initState)
         })
       )
@@ -359,16 +360,16 @@ export class AppProxy {
     const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
       switchMap(([cacheValue, initState, latestBlock]) => {
         const { state: cachedState, block: cachedBlock } = cacheValue
-        console.debug('- store - initState', initState)
-        console.debug('- store - cachedState', cachedState)
-        console.debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
+        debug('- store - initState', initState)
+        debug('- store - cachedState', cachedState)
+        debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
 
         // The block up to which to fetch past events.
         // The reduced state up to this point will be cached on every load
         const pastEventsToBlock = Math.max(0, latestBlock - BLOCK_REORG_MARGIN)
 
-        console.debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
-        console.debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
+        debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+        debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
@@ -376,12 +377,12 @@ export class AppProxy {
           // must keep trailing to avoid discarded events
           throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
           delayWhen((state) => {
-            console.debug('- store - reduced state from past event:', state)
+            debug('- store - reduced state from past event:', state)
             return this.cache('state', state)
           }),
           last(),
           delayWhen((state) => {
-            console.debug('caching state:', state)
+            debug('caching state:', state)
             return this.cache(CACHED_STATE_KEY, {
               block: pastEventsToBlock,
               state
@@ -410,7 +411,7 @@ export class AppProxy {
           // must keep trailing to avoid discarded events
           throttleTime(250, asyncScheduler, { leading: false, trailing: true }),
           delayWhen((state) => {
-            console.debug('- store - reduced state:', state)
+            debug('- store - reduced state:', state)
             return this.cache('state', state)
           })
         )
