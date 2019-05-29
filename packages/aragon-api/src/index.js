@@ -134,7 +134,7 @@ export class AppProxy {
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   pastEvents (options) {
-    return this.rpc.sendAndObserveResponses(
+    return this.rpc.sendAndObserveResponse(
       'past_events',
       [options]
     ).pipe(
