@@ -1,4 +1,4 @@
-import { forkJoin, from, merge } from 'rxjs'
+import { asyncScheduler, forkJoin, from, merge } from 'rxjs'
 import {
   catchError,
   delayWhen,
@@ -10,9 +10,9 @@ import {
   last,
   pluck,
   publishReplay,
-  sampleTime,
   startWith,
-  switchMap
+  switchMap,
+  throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -373,7 +373,8 @@ export class AppProxy {
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           // throttle to reduce rendering and caching overthead
-          sampleTime(200),
+          // must keep trailing to avoid discarded events
+          throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
           delayWhen((state) => {
             console.debug('- store - reduced state from past event:', state)
             return this.cache('state', state)
@@ -405,8 +406,9 @@ export class AppProxy {
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
-          // throttle updates into 200ms chunks to reduce rendering and caching overthead
-          sampleTime(200),
+          // throttle to reduce rendering and caching overthead
+          // must keep trailing to avoid discarded events
+          throttleTime(250, asyncScheduler, { leading: false, trailing: true }),
           delayWhen((state) => {
             console.debug('- store - reduced state:', state)
             return this.cache('state', state)
