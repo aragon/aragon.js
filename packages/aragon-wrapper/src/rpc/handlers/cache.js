@@ -7,8 +7,7 @@ export default function (request, proxy, wrapper) {
   }
 
   if (request.params[0] === 'set') {
-    wrapper.cache.set(cacheKey, request.params[2])
-    return Promise.resolve()
+    return wrapper.cache.set(cacheKey, request.params[2])
   }
 
   return Promise.reject(
