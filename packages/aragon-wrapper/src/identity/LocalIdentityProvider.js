@@ -58,7 +58,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     }
 
     const identities = await this.identityCache.getAll()
-    const results = Array.from(Object.entries(identities))
+    const results = Object.entries(identities)
       .filter(
         ([address, { name }]) =>
           (isAddressSearch &&
