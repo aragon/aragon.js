@@ -180,7 +180,7 @@ export class AppProxy {
           options
         ]
 
-        return this.rpc.sendAndObserveResponses(
+        return this.rpc.sendAndObserveResponse(
           'external_past_events',
           eventArgs
         ).pipe(
