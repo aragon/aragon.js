@@ -1,6 +1,7 @@
-import { forkJoin, from, merge } from 'rxjs'
+import { asyncScheduler, forkJoin, from, merge } from 'rxjs'
 import {
   catchError,
+  delayWhen,
   endWith,
   flatMap,
   filter,
@@ -9,10 +10,9 @@ import {
   last,
   pluck,
   publishReplay,
-  sampleTime,
   startWith,
   switchMap,
-  tap
+  throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 
@@ -224,15 +224,15 @@ export class AppProxy {
    *
    * @param  {string} key The cache key to set a value for
    * @param  {string} value The value to persist in the cache
-   * @return {string} This method passes through `value`
+   * @return {string} A single emission RxJS observable that emits when the cache operation has been committed
    */
   cache (key, value) {
-    this.rpc.send(
+    return this.rpc.sendAndObserveResponse(
       'cache',
       ['set', key, value]
+    ).pipe(
+      pluck('result')
     )
-
-    return value
   }
 
   /**
@@ -346,7 +346,15 @@ export class AppProxy {
       map(v => v || {}))
     const latestBlock$ = this.web3Eth('getBlockNumber')
     // init the app state with the cached state
-    const initState$ = init ? cacheValue$.pipe(switchMap(({ state }) => from(init(state)))) : from([null])
+    const initState$ = init
+      ? cacheValue$.pipe(
+        switchMap(({ state }) => from(init(state))),
+        delayWhen((initState) => {
+          console.debug('- store - init state:', initState)
+          return this.cache('state', initState)
+        })
+      )
+      : from([null])
 
     const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
       switchMap(([cacheValue, initState, latestBlock]) => {
@@ -365,15 +373,16 @@ export class AppProxy {
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
           // throttle to reduce rendering and caching overthead
-          sampleTime(200),
-          tap((state) => {
-            this.cache('state', state)
+          // must keep trailing to avoid discarded events
+          throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
+          delayWhen((state) => {
             console.debug('- store - reduced state from past event:', state)
+            return this.cache('state', state)
           }),
           last(),
-          tap((state) => {
+          delayWhen((state) => {
             console.debug('caching state:', state)
-            this.cache(CACHED_STATE_KEY, {
+            return this.cache(CACHED_STATE_KEY, {
               block: pastEventsToBlock,
               state
             })
@@ -390,17 +399,19 @@ export class AppProxy {
                 }
               })
             )
-            const currentEvents$ = getCurrentEvents(pastEventsToBlock)
+            // fetch current events from block after cached block
+            const currentEvents$ = getCurrentEvents(pastEventsToBlock + 1)
 
             return merge(currentEvents$, accounts$).pipe(
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
-          // throttle updates into 200ms chunks to reduce rendering and caching overthead
-          sampleTime(200),
-          tap((state) => {
-            this.cache('state', state)
+          // throttle to reduce rendering and caching overthead
+          // must keep trailing to avoid discarded events
+          throttleTime(250, asyncScheduler, { leading: false, trailing: true }),
+          delayWhen((state) => {
             console.debug('- store - reduced state:', state)
+            return this.cache('state', state)
           })
         )
       }),
