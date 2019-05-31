@@ -167,3 +167,91 @@ test('should use the correct options for requested events', (t) => {
 
   eventEmitter.emit('data', { foo: 'bar' })
 })
+
+test('should use the correct options for requested past events with fromBlock and toBlock ', (t) => {
+  t.plan(4)
+  // arrange
+  const fromBlock = 10
+  const toBlock = 5
+
+  const pastEventsStub = sinon.stub().resolves([{ one: 1 }, { two: 2 }])
+
+  const contract = {
+    getPastEvents: pastEventsStub
+  }
+
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+  const instance = new Proxy(null, null, web3Stub)
+  // act
+  const events = instance.pastEvents(null, { fromBlock, toBlock })
+  // assert
+  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock, toBlock }))
+
+  events.subscribe(events => {
+    t.is(events.length, 2)
+    t.deepEqual(events[0], { one: 1 })
+    t.deepEqual(events[1], { two: 2 })
+  })
+  return events // return observable for ava to wait for its completion
+})
+
+test('should use the correct options for requested past events with toBlock and initializationBlock set ', (t) => {
+  t.plan(1)
+  // arrange
+  const toBlock = 500
+  const initializationBlock = 20
+
+  const pastEventsStub = sinon.stub().resolves([{ one: 1 }, { two: 2 }])
+
+  const contract = {
+    getPastEvents: pastEventsStub
+  }
+
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+  const instance = new Proxy(null, null, web3Stub, initializationBlock)
+  // act
+  instance.pastEvents(null, { toBlock })
+  // assert
+  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: initializationBlock, toBlock }))
+})
+
+test('should filter past events correctly when more than one eventName is passed', (t) => {
+  t.plan(4)
+  // arrange
+  const pastEventsStub = sinon.stub().resolves([
+    { event: 'Orange', amount: 16 },
+    { event: 'Apple', amount: 10 },
+    { event: 'Pear', amount: 5 }
+  ])
+
+  const contract = {
+    getPastEvents: pastEventsStub
+  }
+
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+  const instance = new Proxy(null, null, web3Stub)
+  // act
+  const events = instance.pastEvents(['Orange', 'Pear'])
+  // assert
+  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: 0, toBlock: null }))
+
+  events.subscribe(events => {
+    t.is(events.length, 2)
+    t.deepEqual(events[0], { event: 'Orange', amount: 16 })
+    t.deepEqual(events[1], { event: 'Pear', amount: 5 })
+  })
+
+  return events // return observable for ava to wait for its completion
+})
