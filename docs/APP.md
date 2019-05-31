@@ -321,6 +321,21 @@ App contexts can be used to display specific views in your app or anything else 
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits app contexts as they are received.-
 
+### registerAppMetadata
+
+Register data for consumption by an external app.
+
+This function simply sends a blob of data from `from` application, containing `actionId` and `cid` (internal and external unique identificators) along with optional `to` list of addresses of target applications allowed to access the data.
+
+#### Parameters
+
+- `from` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The ID of the originating app (address, most likely)
+- `to` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;String>?** (optional, default `[empty()]`): An optional array of `String`s - addresses/ids of the applications allowed to access the data
+- `dataId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The internal unique ID assigned to the forwarded data in the originating app
+- `cid` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The external unique identificator target applications can use to access data with - e.g., an IPFS hash.
+
+Returns **void**
+
 ### describeScript
 
 Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
