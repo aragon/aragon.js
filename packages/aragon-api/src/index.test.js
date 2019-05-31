@@ -369,3 +369,19 @@ test('should send a web3Eth function request and observe the response', t => {
     t.deepEqual(value, ['accountA', 'accountB'])
   })
 })
+
+test('should return the registerAppMetadata observable', t => {
+  t.plan(2)
+  // arrange
+  const registerAppMetadataFn = Index.AppProxy.prototype.registerAppMetadata
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+    registerAppMetadataFn.call(instanceStub, '0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk')
+    // assert
+    t.is(instanceStub.rpc.send.getCall(0).args[0], 'register_app_metadata')
+    t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk'])
+  })
