@@ -402,7 +402,7 @@ Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/O
 
 Register data for consumption by an external app.
 
-This function simply sends a blob of data from `from` application, containing `actionId` and `cid` (internal and external unique identificators) along with optional `to` list of addresses of target applications allowed to access the data.
+This function simply sends a blob of data from `from` application, containing `dataId` and `cid` (internal and external unique identificators) along with optional `to` list of addresses of target applications allowed to access the data.
 
 #### Parameters
 
