@@ -1372,3 +1372,18 @@ test('should be able to decode an evm call script with multiple transactions', a
     }
   ])
 })
+
+test('should init the appMetadata correctly', async (t) => {
+  t.plan(1)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  // act
+  await instance.initAppMetadata()
+  // assert
+  instance.appMetadata.subscribe(value => {
+    console.log('value: ', value)
+    t.deepEqual(value, {})
+  })
+})
+

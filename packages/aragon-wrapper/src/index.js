@@ -789,6 +789,16 @@ export default class Aragon {
   }
 
   /**
+   * Initialize the appMetadata observable
+   */
+  initAppMetadata () {
+    this.appMetadata = new BehaviorSubject({}).pipe(
+      publishReplay(1)
+    )
+    this.appMetadata.connect()
+
+  }
+  /**
    * Set the identifier of an app.
    *
    * @param {string} address The proxy address of the app
@@ -1103,7 +1113,8 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'register_app_metadata', handlers.registerAppMetadata)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
