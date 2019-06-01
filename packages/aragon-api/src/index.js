@@ -403,6 +403,14 @@ export class AppProxy {
     )
   }
 
+  /**
+   * Gets data 
+   */
+  getAppMetadata() {
+    return this.rpc.sendAndObserveResponses(
+      'get_app_metadata'
+    ).pipe(pluck('result'))
+  }
 }
 
 /**
