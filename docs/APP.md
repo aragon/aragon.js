@@ -398,6 +398,21 @@ Only actions targeting the listening app proxy will be exposed. On each change t
 
 Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the current forwarded action registry contents relevant to the calling app. The emitted contents are an array of objects, each containing `actionId`, `currentApp`, `evmScript`, and `state` keys. The `currentApp` address key is the App currently containing the forwarded action. The remaining parameters are described above.
 
+### registerAppMetadata
+
+Register data for consumption by an external app.
+
+This function simply sends a blob of data from `from` application, containing `dataId` and `cid` (internal and external unique identificators) along with optional `to` list of addresses of target applications allowed to access the data.
+
+#### Parameters
+
+- `from` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The ID of the originating app (address, most likely)
+- `to` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;String>?** (optional, default `[empty()]`): An optional array of `String`s - addresses/ids of the applications allowed to access the data
+- `dataId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The internal unique ID assigned to the forwarded data in the originating app
+- `cid` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The external unique identificator target applications can use to access data with - e.g., an IPFS hash.
+
+Returns **void**
+
 ### notify
 
 **NOTE: This call is not currently handled by the wrapper.**
