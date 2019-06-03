@@ -1,4 +1,7 @@
 export default function (request, proxy, wrapper) {
-  console.log('--', request, proxy)
-  return 'reg test'
+  wrapper.registerAppMetadata(
+    proxy.address,
+    request.params
+  )
+  return Promise.resolve()
 }

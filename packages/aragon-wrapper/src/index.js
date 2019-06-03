@@ -867,8 +867,24 @@ export default class Aragon {
       publishReplay(1)
     )
     this.appMetadata.connect()
-
   }
+  
+  /**
+   * registers new app metadata item
+   *
+   * @param {string} from
+   * @param {string} dataId
+   * @param {string} cid
+   */
+  registerAppMetadata (from, dataId, cid) {
+    this.registerMetadata.next({
+      from,
+      to: ['*'],
+      dataId,
+      cid
+    })
+  }
+
   /**
    * Set the identifier of an app.
    *
