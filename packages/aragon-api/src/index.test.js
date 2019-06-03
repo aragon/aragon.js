@@ -380,8 +380,46 @@ test('should return the registerAppMetadata observable', t => {
     }
   }
   // act
-    registerAppMetadataFn.call(instanceStub, '0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk')
-    // assert
-    t.is(instanceStub.rpc.send.getCall(0).args[0], 'register_app_metadata')
-    t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk'])
+  registerAppMetadataFn.call(instanceStub, '0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk')
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'register_app_metadata')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk'])
+})
+
+test('should return appMetadata observable', t => {
+  t.plan(3)
+
+  // arrange
+  const getAppMetadataFn = Index.AppProxy.prototype.getAppMetadata
+
+  const observable = from([{
+    event: 'AppMetadata',
+    result: {
+      from: '0xfed',
+      to: ['0xcafe','0xdeaddead' ],
+      dataId: 'u2',
+      cid: 'Qmrandomhash'
+    }
+  }])
+  const instanceStub = {
+    rpc: {
+      sendAndObserveResponses: sinon.stub()
+        .returns(observable)
+      }
+  }
+  // act
+  const result = getAppMetadataFn.call(instanceStub)
+  // assert
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+
+  result.subscribe(value => {
+    t.deepEqual(value, {
+        from: '0xfed',
+        to: ['0xcafe','0xdeaddead' ],
+        dataId: 'u2',
+        cid: 'Qmrandomhash'
+    })
   })
+
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'get_app_metadata')
+})
