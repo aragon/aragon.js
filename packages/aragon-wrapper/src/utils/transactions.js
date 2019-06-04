@@ -40,7 +40,7 @@ export async function createDirectTransaction (sender, app, methodName, params, 
   }
 
   if (transactionOptions.token) {
-    const { address: tokenAddress, value: tokenValue } = transactionOptions.token
+    const { address: tokenAddress, value: tokenValue, approveSpender } = transactionOptions.token
 
     const erc20ABI = getAbi('standard/ERC20')
     const tokenContract = new web3.eth.Contract(erc20ABI, tokenAddress)
@@ -62,11 +62,13 @@ export async function createDirectTransaction (sender, app, methodName, params, 
         console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
       }
 
+      // Aprrove the app unless an approveSpender is passed to approve a different contract
+      const spender = approveSpender || destination
       const tokenApproveTransaction = {
         // TODO: should we include transaction options?
         from: sender,
         to: tokenAddress,
-        data: tokenContract.methods.approve(destination, tokenValue).encodeABI()
+        data: tokenContract.methods.approve(spender, tokenValue).encodeABI()
       }
 
       directTransaction.pretransaction = tokenApproveTransaction
