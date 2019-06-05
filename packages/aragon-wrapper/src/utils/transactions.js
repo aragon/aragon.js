@@ -62,7 +62,7 @@ export async function createDirectTransaction (sender, app, methodName, params, 
         console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
       }
 
-      // Aprrove the app (destination) unless an spender is passed to approve a different contract
+      // Approve the app (destination) unless an spender is passed to approve a different contract
       const approveSpender = spender || destination
       const tokenApproveTransaction = {
         // TODO: should we include transaction options?
