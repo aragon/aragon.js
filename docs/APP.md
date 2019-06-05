@@ -59,11 +59,22 @@ You can also pass an optional object after all the required function arguments t
 api.increment(1, { gas: 200000, gasPrice: 80000000 })
 ```
 
-You can include a `token` parameter in this optional object if you need to do a token approval before a transaction. A slightly modified [example](https://github.com/aragon/aragon-apps/blob/master/apps/finance/app/src/App.js#L79) from the Finance app:
+You can include a `token` parameter in this optional object if you need to grant the app token allowance approval before a transaction. A slightly modified [example](https://github.com/aragon/aragon-apps/blob/7d61235044509095db09cf354f38422f0778d4bb/apps/finance/app/src/App.js#L58) from the Finance app:
 
 ```js
 intentParams = {
   token: { address: tokenAddress, value: amount }
+  gas: 500000
+}
+
+api.deposit(tokenAddress, amount, reference, intentParams)
+```
+
+If you want to grant the token allowance approval to a contract different to the app, you can pass along a `spender` paramater in the `token` object as follows:
+
+```js
+intentParams = {
+  token: { address: tokenAddress, value: amount, spender: otherContractAddress }
   gas: 500000
 }
 
