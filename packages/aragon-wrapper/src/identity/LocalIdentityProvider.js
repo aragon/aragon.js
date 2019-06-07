@@ -52,11 +52,6 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
 
   async search (searchTerm = '') {
     const isAddressSearch = searchTerm.substring(0, 2).toLowerCase() === '0x'
-
-    if (searchTerm.length < 3) {
-      return []
-    }
-
     const identities = await this.identityCache.getAll()
     const results = Object.entries(identities)
       .filter(
@@ -67,7 +62,6 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
           name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
       )
       .map(([address, { name }]) => ({ name, address }))
-
     return results
   }
 

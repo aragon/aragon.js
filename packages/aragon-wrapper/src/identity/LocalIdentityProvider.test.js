@@ -138,8 +138,10 @@ test.serial('search should return an array of results of freely matching identit
   ]
   // map of search terms to expected count and names
   const searchTermToExpectation = {
-    'ne': { names: [] },
-    '0x': { names: [] },
+    'D': { names: ['James Baldwin', 'David Deutsch', 'Richard Feynman', 'The man who sold the world? (Nirvana not $Bowie)'] },
+    'xn': { names: [] },
+    '0a': { names: [] },
+    'eu': { names: ['David Deutsch'] },
     'new': { names: [ 'Isaac Newton', 'Henry Newton' ] },
     'win': { names: [ 'James Baldwin', 'Winnie the Pooh' ] },
     'jam': { names: [ 'James Baldwin' ] },
