@@ -396,16 +396,15 @@ test('should return appMetadata observable', t => {
     event: 'AppMetadata',
     result: {
       from: '0xfed',
-      to: ['0xcafe','0xdeaddead' ],
+      to: [ '0xcafe', '0xdeaddead' ],
       dataId: 'u2',
       cid: 'Qmrandomhash'
     }
   }])
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
-      }
+      sendAndObserveResponses: sinon.stub().returns(observable)
+    }
   }
   // act
   const result = getAppMetadataFn.call(instanceStub)
@@ -414,10 +413,10 @@ test('should return appMetadata observable', t => {
 
   result.subscribe(value => {
     t.deepEqual(value, {
-        from: '0xfed',
-        to: ['0xcafe','0xdeaddead' ],
-        dataId: 'u2',
-        cid: 'Qmrandomhash'
+      from: '0xfed',
+      to: [ '0xcafe', '0xdeaddead' ],
+      dataId: 'u2',
+      cid: 'Qmrandomhash'
     })
   })
 
