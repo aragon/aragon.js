@@ -1482,4 +1482,3 @@ test.only('should init the appMetadata correctly', async (t) => {
     t.deepEqual(value, {})
   })
 })
-

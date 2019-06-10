@@ -868,7 +868,7 @@ export default class Aragon {
     )
     this.appMetadata.connect()
   }
-  
+
   /**
    * registers new app metadata item
    *

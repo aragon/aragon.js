@@ -14,10 +14,10 @@ test.only('should receive and filter the app metadata registry', async (t) => {
     },
     {
       from: '0xfed',
-      to: ['0xcafe','0xdeaddead' ],
+      to: [ '0xcafe', '0xdeaddead' ],
       dataId: 'u2',
       cid: 'Qmrandomhash'
-    }],
+    }]
   ])
 
   const mockProxy = { address: '0xdeaddead' }
@@ -28,9 +28,9 @@ test.only('should receive and filter the app metadata registry', async (t) => {
       event: 'AppMetadata',
       returnValues: [{
         from: '0xfed',
-        to: ['0xcafe','0xdeaddead' ],
+        to: [ '0xcafe', '0xdeaddead' ],
         dataId: 'u2',
-        cid: 'Qmrandomhash'  
+        cid: 'Qmrandomhash'
       }]
     })
   })
