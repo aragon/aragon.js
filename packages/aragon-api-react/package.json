@@ -1,6 +1,6 @@
 {
   "name": "@aragon/api-react",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.4",
   "description": "Aragon app API for React",
   "main": "dist/index.js",
   "repository": {
@@ -22,7 +22,7 @@
     "prepublishOnly": "env NODE_ENV=production npm run build"
   },
   "peerDependencies": {
-    "@aragon/api": "^2.0.0-beta.1",
+    "@aragon/api": "^2.0.0-beta.4",
     "react": "^16.8.0"
   },
   "devDependencies": {
