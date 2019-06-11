@@ -229,9 +229,11 @@ test('should init the ACL correctly', async (t) => {
     call: sinon.stub()
   }
   instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   const aclProxyStub = {
-    events: sinon.stub().returns(aclEvents)
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
@@ -263,7 +265,8 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   // arrange
   const defaultAclAddress = '0x321'
   const aclProxyStub = {
-    events: sinon.stub().returns(aclEvents)
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
 
   const kernelProxyStub = {
@@ -276,6 +279,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
 
   const instance = new Aragon()
   instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl()
@@ -292,7 +296,8 @@ test('should init the acl with the provided acl', async (t) => {
   const defaultAclAddress = '0x321'
   const givenAclAddress = '0x123'
   const aclProxyStub = {
-    events: sinon.stub().returns(aclEvents)
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
   const kernelProxyStub = {
     call: sinon.stub()
@@ -304,6 +309,7 @@ test('should init the acl with the provided acl', async (t) => {
 
   const instance = new Aragon()
   instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl({ aclAddress: givenAclAddress })
@@ -828,7 +834,7 @@ test('should init the notifications correctly', async (t) => {
         title: 'receive'
       }
     ])
-  instance.cache.set = sinon.stub()
+  instance.cache.set = sinon.stub().resolves()
   // act
   await instance.initNotifications()
   // assert
