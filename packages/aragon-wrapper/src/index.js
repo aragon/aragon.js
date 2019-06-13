@@ -935,8 +935,24 @@ export default class Aragon {
    *
    * @return {Promise<void>}
    */
+  
   clearLocalIdentities () {
     return this.identityProviderRegistrar.get('local').clear()
+  }
+  
+  
+  /**
+   * Clear selected local identities
+   *
+   * @return {Promise<Object>}
+   */
+  
+  removeSelectedLocalIdentities (selectedAddresses) {
+    let self = this;
+    selectedAddresses.forEach(function(address){
+      self.identityProviderRegistrar.get('local').remove(address);
+    });
+    return this.identityProviderRegistrar.get('local').getAll()
   }
 
   /**
