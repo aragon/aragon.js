@@ -68,7 +68,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     await this.identityCache.clear()
   }
   
-  async remove (key) {
-    await this.identityCache.remove(key)
+  async remove (address) {
+    await this.identityCache.remove(address.toLowerCase())
   }
 }
