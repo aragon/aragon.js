@@ -948,11 +948,10 @@ export default class Aragon {
    */
   
   removeSelectedLocalIdentities (selectedAddresses) {
-    let self = this;
-    selectedAddresses.forEach(function(address){
-      self.identityProviderRegistrar.get('local').remove(address);
-    });
-    return this.identityProviderRegistrar.get('local').getAll()
+    for(const address of selectedAddresses) {
+      await this.identityProviderRegistrar.get('local').remove(address)
+    }
+    return
   }
 
   /**
