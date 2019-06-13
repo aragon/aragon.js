@@ -951,7 +951,6 @@ export default class Aragon {
     for(const address of selectedAddresses) {
       await this.identityProviderRegistrar.get('local').remove(address)
     }
-    return
   }
 
   /**
