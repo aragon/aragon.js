@@ -938,15 +938,14 @@ export default class Aragon {
   clearLocalIdentities () {
     return this.identityProviderRegistrar.get('local').clear()
   }
-  
-  
+
   /**
    * Clear selected local identities
    *
    * @return {Promise<Object>}
    */
-    async removeSelectedLocalIdentities (selectedAddresses) {
-    for(const address of selectedAddresses) {
+  async removeSelectedLocalIdentities (selectedAddresses) {
+    for (const address of selectedAddresses) {
       await this.identityProviderRegistrar.get('local').remove(address)
     }
   }
