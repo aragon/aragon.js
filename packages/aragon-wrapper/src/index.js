@@ -942,10 +942,10 @@ export default class Aragon {
   /**
    * Clear selected local identities
    *
+   * @param {Array<Address>} selectedAddresses The addresses to be removed from the local identity provider
    * @return {Promise}
-   * @param {array} selectedAddresses The addresses to be removed from the local identity provider
    */
-  async removeSelectedLocalIdentities (selectedAddresses) {
+  async removeLocalIdentities (selectedAddresses) {
     for (const address of selectedAddresses) {
       await this.identityProviderRegistrar.get('local').remove(address)
     }
