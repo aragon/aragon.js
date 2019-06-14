@@ -89,7 +89,7 @@ test.serial('should always have createAt in metadata', async t => {
 })
 
 test.serial('clear clears the local cache', async t => {
-  t.plan(3)
+  t.plan(6)
   const provider = t.context.localIdentityProvider
   const name = 'vitalik'
   await provider.modify(ADDRESS_MIXED_CASE, { name })
@@ -99,6 +99,31 @@ test.serial('clear clears the local cache', async t => {
   t.truthy(await provider.resolve(ADDRESS_MIXED_CASE))
   t.truthy(await provider.resolve(SECOND_ADDRESS))
   t.truthy(await provider.resolve(THIRD_ADDRESS))
+
+  await provider.clear()
+
+  t.falsy(await provider.resolve(ADDRESS_MIXED_CASE))
+  t.falsy(await provider.resolve(SECOND_ADDRESS))
+  t.falsy(await provider.resolve(THIRD_ADDRESS))
+})
+
+test.serial('remove removes selected local identities', async t => {
+  t.plan(4)
+  const provider = t.context.localIdentityProvider
+  const name = 'vitalik'
+  await provider.modify(ADDRESS_MIXED_CASE, { name })
+  await provider.modify(SECOND_ADDRESS, { name })
+
+  const { name: name1 } = await provider.resolve(ADDRESS_MIXED_CASE)
+  t.is(name1, name)
+  const { name: name2 } = await provider.resolve(SECOND_ADDRESS)
+  t.is(name2, name)
+
+  await provider.remove(ADDRESS_MIXED_CASE)
+
+  t.falsy(await provider.resolve(ADDRESS_MIXED_CASE))
+  const { name: name4 } = await provider.resolve(SECOND_ADDRESS)
+  t.is(name4, name)
 })
 
 test.serial('getAll will return all local identities with lowercase address keys', async t => {
