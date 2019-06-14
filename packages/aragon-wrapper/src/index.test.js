@@ -1379,7 +1379,7 @@ test('should be able to decode an evm call script with multiple transactions', a
   ])
 })
 
-test.only('should init the forwarded actions correctly', async (t) => {
+test('should init the forwarded actions correctly', async (t) => {
   t.plan(1)
   // arrange
   const { Aragon } = t.context
@@ -1393,7 +1393,7 @@ test.only('should init the forwarded actions correctly', async (t) => {
   })
 })
 
-test.only('should set forwarded actions', async (t) => {
+test('should set forwarded actions', async (t) => {
   t.plan(3)
 
   // arrange
@@ -1469,7 +1469,7 @@ test.only('should set forwarded actions', async (t) => {
   })
 })
 
-test.only('should init the appMetadata correctly', async (t) => {
+test('should init the appMetadata correctly', async (t) => {
   t.plan(1)
   // arrange
   const { Aragon } = t.context

@@ -2,7 +2,7 @@ import test from 'ava'
 import getAppMetadata from './get-app-metadata'
 import { from } from 'rxjs'
 
-test.only('should receive and filter the app metadata registry', async (t) => {
+test('should receive and filter the app metadata registry', async (t) => {
   t.plan(1)
 
   const getAppMetadataObservable = from([
