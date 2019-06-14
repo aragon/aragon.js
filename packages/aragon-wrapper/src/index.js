@@ -801,16 +801,17 @@ export default class Aragon {
   /**
    * registers new app metadata item
    *
-   * @param {string} from
-   * @param {string} dataId
-   * @param {string} cid
+   * @param {string} from Address of the application generating the data
+   * @param {string} dataId internal ID assigned to the data by the originator
+   * @param {string} cid external identifier (e.g., IPFS hash)
+   * @param {<Array>string} to Optional list of addresses of the applications allowed access to the data, defaults to '*'
    */
-  registerAppMetadata (from, dataId, cid) {
-    this.registerMetadata.next({
+  registerAppMetadata (from, dataId, cid, to = ['*']) {
+    this.appMetadata.next({
       from,
-      to: ['*'],
       dataId,
-      cid
+      cid,
+      to
     })
   }
 

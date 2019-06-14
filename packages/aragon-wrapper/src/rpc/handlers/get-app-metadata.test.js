@@ -8,7 +8,7 @@ test.only('should receive and filter the app metadata registry', async (t) => {
   const getAppMetadataObservable = from([
     [{
       from: '0x73a',
-      to: ['0xdeadcafe'],
+      to: [ '0xdeadcafe' ],
       dataId: 'u1',
       cid: 'Qmrandomhash'
     },
@@ -17,6 +17,12 @@ test.only('should receive and filter the app metadata registry', async (t) => {
       to: [ '0xcafe', '0xdeaddead' ],
       dataId: 'u2',
       cid: 'Qmrandomhash'
+    },
+    {
+      from: '0xfed1',
+      to: ['*'],
+      dataId: 'u32',
+      cid: 'Qmrandomhash2'
     }]
   ])
 
@@ -31,6 +37,12 @@ test.only('should receive and filter the app metadata registry', async (t) => {
         to: [ '0xcafe', '0xdeaddead' ],
         dataId: 'u2',
         cid: 'Qmrandomhash'
+      },
+      {
+        from: '0xfed1',
+        to: ['*'],
+        dataId: 'u32',
+        cid: 'Qmrandomhash2'
       }]
     })
   })
