@@ -4,7 +4,7 @@ export default function (request, proxy, wrapper) {
   // filter out data items not meant to be viewable by the caller
   const getAppMetadata = returnValues => (
     returnValues
-      .filter(action => action.to.includes(proxy.address))
+      .filter(action => action.to.includes('*') || action.to.includes(proxy.address))
   )
 
   return wrapper.appMetadata.pipe(

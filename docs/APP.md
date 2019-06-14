@@ -408,9 +408,9 @@ This function simply sends a blob of data from `from` application, containing `d
 #### Parameters
 
 - `from` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The ID of the originating app (address, most likely)
-- `to` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;String>?** (optional, default `[empty()]`): An optional array of `String`s - addresses/ids of the applications allowed to access the data
 - `dataId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The internal unique ID assigned to the forwarded data in the originating app
 - `cid` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The external unique identificator target applications can use to access data with - e.g., an IPFS hash.
+- `to` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;String>?** (optional, default `['*']`): An optional array of `String`s - addresses/ids of the applications allowed to access the data
 
 Returns **void**
 

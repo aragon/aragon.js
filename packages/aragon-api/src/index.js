@@ -396,10 +396,10 @@ export class AppProxy {
    * @param {string} cid external identifier (e.g., IPFS hash)
    * @return {void}
    */
-  registerAppMetadata (from, to = ['*'], dataId, cid) {
+  registerAppMetadata (from, dataId, cid, to = ['*']) {
     return this.rpc.send(
       'register_app_metadata',
-      [from, to, dataId, cid]
+      [from, dataId, cid, to]
     )
   }
 
