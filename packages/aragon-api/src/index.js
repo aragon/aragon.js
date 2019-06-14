@@ -83,9 +83,11 @@ export class AppProxy {
    * @return {void}
    */
   isMember (address) {
-    this.rpc.send(
-      'isMember',
+    return this.rpc.sendAndObserveResponse(
+      'is_member',
       [address]
+    ).pipe(
+      pluck('result')
     )
   }
 

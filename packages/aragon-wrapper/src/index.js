@@ -796,9 +796,10 @@ export default class Aragon {
    * @return {void}
    */
   initTokenManagers () {
+    const tokenManagerID = "0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f"
     this.tokenManagers = this.apps.pipe(
       map(
-        (apps) => apps.filter((app) => app.appId === "0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f")
+        (apps) => apps.filter((app) => app.appId === tokenManagerID)
       ),
       publishReplay(1)
     )
@@ -822,10 +823,10 @@ export default class Aragon {
   }
 
   /**
-   * Set the identifier of an app.
+   * Set membership for a specific user.
    *
-   * @param {string} address The proxy address of the app
-   * @param {string} identifier The identifier of the app
+   * @param {string} address The address of the user
+   * @param {string} isMember Whether the address is a member
    * @return {void}
    */
   setMembership (address, isMember) {
@@ -1166,7 +1167,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
-        handlers.createRequestHandler(request$, 'isMember', handlers.memberChecker),
+        handlers.createRequestHandler(request$, 'is_member', handlers.memberChecker),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),

@@ -816,7 +816,7 @@ test('should init the Token Manager correctly', async (t) => {
     {
       appId: 'counterApp'
     }, {
-      appId: 'tokenManagerApp'
+      appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f'
     }
   ])
   // act
@@ -825,7 +825,7 @@ test('should init the Token Manager correctly', async (t) => {
   instance.tokenManagers.subscribe(value => {
     t.deepEqual(value, [
       {
-        appId: 'tokenManagerApp'
+        appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f'
       }
     ])
   })
@@ -837,13 +837,13 @@ test('should check membership correctly', async (t) => {
   // arrange
   const instance = new Aragon()
   let memberCheckerStub = sinon.stub();
-  memberCheckerStub.withArgs('balanceOf', '0x123').returns(1)
-  memberCheckerStub.withArgs('balanceOf', '0x432').returns(0)
+  memberCheckerStub.withArgs('balanceOf', '0x123').returns(0)
+  memberCheckerStub.withArgs('balanceOf', '0x432').returns(1)
   instance.apps = of([
     {
       appId: 'counterApp'
     }, {
-      appId: 'tokenManagerApp',
+      appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f',
       call: function(method, param) { return memberCheckerStub(method, param) }
     }
   ])
@@ -860,7 +860,7 @@ test('should check membership correctly', async (t) => {
   )
   instance.members.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
-      '0x123': true,
+      '0x123': false,
     })
   })
   instance.setMembership(
@@ -869,8 +869,8 @@ test('should check membership correctly', async (t) => {
   )
   instance.members.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
-      '0x123': true,
-      '0x432': false,
+      '0x123': false,
+      '0x432': true,
     })
   })
 })

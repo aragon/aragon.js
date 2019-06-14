@@ -107,19 +107,27 @@ test('should send an identify request', t => {
 })
 
 test('should send a member check request', t => {
-  t.plan(2)
+  t.plan(3)
   // arrange
   const isMemberFn = Index.AppProxy.prototype.isMember
+  const observable = of({
+    id: 'uuid1',
+    result: true
+  })
   const instanceStub = {
     rpc: {
-      send: sinon.stub()
+      sendAndObserveResponse: sinon.stub()
+        .returns(observable)
     }
   }
   // act
-  isMemberFn.call(instanceStub, '0xb4124cEB3451635DAcedd11767f004d8a28c6eE7')
+  const result = isMemberFn.call(instanceStub, '0xdead')
   // assert
-  t.is(instanceStub.rpc.send.getCall(0).args[0], 'isMember')
-  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xb4124cEB3451635DAcedd11767f004d8a28c6eE7'])
+  t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'is_member')
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['0xdead'])
+  result.subscribe(value => {
+    t.deepEqual(value, true)
+  })
 })
 
 test('should return the events observable', t => {
