@@ -193,3 +193,9 @@ Request an identity modification using the highest priority provider.
 
 Request an identity modification using the highest priority provider.
 Returns a promise which delegates resolution to the handler which listens and handles `this.identityIntents`
+
+### removeLocalIdentities
+
+Remove specific local identities.
+
+`removeLocalIdentities (addresses: Array<String>) : Promise`
