@@ -126,6 +126,23 @@ export class AppProxy {
   }
 
   /**
+   * Request an address' identity be modified with the highest priority provider.
+   *
+   * The request is typically handled by the aragon client.
+   *
+   * @param  {string} searchTerm what to search
+   * @return {Observable} Single-emission observable that emits if the modification succeeded or cancelled by the user
+   */
+  searchIdentities (searchTerm) {
+    return this.rpc.sendAndObserveResponse(
+      'search_identities',
+      [searchTerm]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
    * @param  {string} fromBlock block from which to fetch the events

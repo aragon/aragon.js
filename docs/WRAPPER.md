@@ -199,3 +199,11 @@ Returns a promise which delegates resolution to the handler which listens and ha
 Remove specific local identities.
 
 `removeLocalIdentities (addresses: Array<String>) : Promise`
+
+### searchIdentities
+
+Search identites using the highest priority provider.
+
+`searchIdentities (searchTerm: string) : Promise<Array<String>>`
+
+Returns a promise which resolves with the found identities or an empty array.
