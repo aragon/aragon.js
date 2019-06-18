@@ -3,6 +3,7 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first, take } from 'rxjs/operators'
+import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 
@@ -24,7 +25,8 @@ test.beforeEach(t => {
     AsyncRequestCache,
     makeAddressMapProxy: sinon.fake.returns({}),
     makeProxy: sinon.stub(),
-    addressesEqual: Object.is
+    addressesEqual: Object.is,
+    getCacheKey
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
@@ -158,78 +160,81 @@ test('should get the network details from web3', async (t) => {
   })
 })
 
+const aclEvents = from([{
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'add',
+    allowed: true,
+    entity: '0x1'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: true,
+    entity: '0x1'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'add',
+    allowed: true,
+    entity: '0x2'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: true,
+    entity: '0x2'
+  }
+}, {
+  // Simulate real world mixed order of event types
+  event: 'ChangePermissionManager',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    manager: 'manager'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: false,
+    entity: '0x2'
+  }
+}, {
+  // duplicate, should not affect the final result because we use a Set
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: false,
+    entity: '0x2'
+  }
+}])
+
 test('should init the ACL correctly', async (t) => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(1)
-  // arrange
-  const setPermissionEvents = from([{
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'add',
-      allowed: true,
-      entity: '0x1'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: true,
-      entity: '0x1'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'add',
-      allowed: true,
-      entity: '0x2'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: true,
-      entity: '0x2'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: false,
-      entity: '0x2'
-    }
-  }, {
-    // duplicate, should not affect the final result because we use a Set
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: false,
-      entity: '0x2'
-    }
-  }])
-  const changePermissionManagerEvents = of({
-    event: 'ChangePermissionManager',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      manager: 'manager'
-    }
-  })
+
   const instance = new Aragon()
   instance.kernelProxy = {
     call: sinon.stub()
   }
+  instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
+
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
-  aclProxyStub.events.withArgs('SetPermission').returns(setPermissionEvents)
-  aclProxyStub.events.withArgs('ChangePermissionManager').returns(changePermissionManagerEvents)
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
@@ -260,8 +265,10 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   // arrange
   const defaultAclAddress = '0x321'
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
+
   const kernelProxyStub = {
     call: sinon.stub()
       .withArgs('acl').resolves(defaultAclAddress)
@@ -271,6 +278,8 @@ test('should init the acl with the default acl fetched from the kernel by defaul
     .withArgs(defaultAclAddress).returns(aclProxyStub)
 
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl()
@@ -287,7 +296,8 @@ test('should init the acl with the provided acl', async (t) => {
   const defaultAclAddress = '0x321'
   const givenAclAddress = '0x123'
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
   const kernelProxyStub = {
     call: sinon.stub()
@@ -298,6 +308,8 @@ test('should init the acl with the provided acl', async (t) => {
     .withArgs(givenAclAddress).returns(aclProxyStub)
 
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl({ aclAddress: givenAclAddress })
@@ -891,7 +903,7 @@ test('should init the notifications correctly', async (t) => {
         title: 'receive'
       }
     ])
-  instance.cache.set = sinon.stub()
+  instance.cache.set = sinon.stub().resolves()
   // act
   await instance.initNotifications()
   // assert
@@ -1440,4 +1452,94 @@ test('should be able to decode an evm call script with multiple transactions', a
       data: '0x'
     }
   ])
+})
+
+test.only('should init the forwarded actions correctly', async (t) => {
+  t.plan(1)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  // act
+  await instance.initForwardedActions()
+  // assert
+  instance.forwardedActions.subscribe(value => {
+    console.log('value: ', value)
+    t.deepEqual(value, [])
+  })
+})
+
+test.only('should set forwarded actions', async (t) => {
+  t.plan(3)
+
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  const script = encodeCallScript([{
+    to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+    data: '0xcafe25'
+  }, {
+    to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0xbeef'
+  }, {
+    to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0x'
+  }])
+
+  // act
+  await instance.initForwardedActions()
+  instance.setForwardedAction('0x0', '1', script)
+
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value, [{
+      currentApp: '0x0',
+      actionId: '1',
+      evmScript: script,
+      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      state: 0
+    }])
+  })
+
+  // update existing entry
+  // act
+  instance.setForwardedAction('0x0', '1', '', 1)
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value, [{
+      currentApp: '0x0',
+      actionId: '1',
+      evmScript: script,
+      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      state: 1
+    }])
+  })
+
+  // add multiple entries
+  // act
+  instance.setForwardedAction('0x0', '2', script)
+  instance.setForwardedAction('0x0', '3', script)
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value, [{
+      currentApp: '0x0',
+      actionId: '1',
+      evmScript: script,
+      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      state: 1
+    },
+    {
+      currentApp: '0x0',
+      actionId: '2',
+      evmScript: script,
+      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      state: 0
+    },
+    {
+      currentApp: '0x0',
+      actionId: '3',
+      evmScript: script,
+      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      state: 0
+    }])
+  })
 })

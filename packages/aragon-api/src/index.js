@@ -1,6 +1,27 @@
-import { defer, empty, from, merge } from 'rxjs'
-import { first, map, filter, pluck, switchMap, mergeScan, publishReplay } from 'rxjs/operators'
+import { asyncScheduler, forkJoin, from, merge } from 'rxjs'
+import {
+  catchError,
+  delayWhen,
+  endWith,
+  flatMap,
+  filter,
+  map,
+  mergeScan,
+  last,
+  pluck,
+  publishReplay,
+  startWith,
+  switchMap,
+  throttleTime
+} from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
+import { debug } from './utils'
+
+export const events = {
+  ACCOUNTS_TRIGGER: 'ACCOUNTS_TRIGGER',
+  SYNC_STATUS_SYNCING: 'SYNC_STATUS_SYNCING',
+  SYNC_STATUS_SYNCED: 'SYNC_STATUS_SYNCED'
+}
 
 export const AppProxyHandler = {
   get (target, name, receiver) {
@@ -124,17 +145,50 @@ export class AppProxy {
   }
 
   /**
+   * Request an address' identity be modified with the highest priority provider.
+   *
+   * The request is typically handled by the aragon client.
+   *
+   * @param  {string} searchTerm what to search
+   * @return {Observable} Single-emission observable that emits if the modification succeeded or cancelled by the user
+   */
+  searchIdentities (searchTerm) {
+    return this.rpc.sendAndObserveResponse(
+      'search_identities',
+      [searchTerm]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
+   * @param  {string} fromBlock block from which to fetch the events
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  events () {
-    return defer(
-      () => this.rpc.sendAndObserveResponses(
-        'events'
-      ).pipe(
-        pluck('result')
-      )
+  events (fromBlock) {
+    return this.rpc.sendAndObserveResponses(
+      'events',
+      [fromBlock]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Fetch past events from your app's smart contract for requestsed range
+   *
+   * @param  {string} fromBlock block from which to fetch the events
+   * @param  {string} toBlock block up to which to fetch the events
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
+   */
+  pastEvents (fromBlock, toBlock) {
+    return this.rpc.sendAndObserveResponse(
+      'past_events',
+      [fromBlock, toBlock]
+    ).pipe(
+      pluck('result')
     )
   }
 
@@ -144,7 +198,7 @@ export class AppProxy {
    *
    * @param  {string} address The address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object}  An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
    */
   external (address, jsonInterface) {
     const contract = {
@@ -159,13 +213,27 @@ export class AppProxy {
           eventArgs.push(fromBlock)
         }
 
-        return defer(
-          () => this.rpc.sendAndObserveResponses(
-            'external_events',
-            eventArgs
-          ).pipe(
-            pluck('result')
-          )
+        return this.rpc.sendAndObserveResponses(
+          'external_events',
+          eventArgs
+        ).pipe(
+          pluck('result')
+        )
+      },
+      pastEvents: (options = {}) => {
+        const eventArgs = [
+          address,
+          jsonInterface.filter(
+            (item) => item.type === 'event'
+          ),
+          options
+        ]
+
+        return this.rpc.sendAndObserveResponse(
+          'external_past_events',
+          eventArgs
+        ).pipe(
+          pluck('result')
         )
       }
     }
@@ -191,17 +259,32 @@ export class AppProxy {
   /**
    * Set a value in the application cache.
    *
-   * @param  {string} key   The cache key to set a value for
+   * @param  {string} key The cache key to set a value for
    * @param  {string} value The value to persist in the cache
-   * @return {string}       This method passes through `value`
+   * @return {string} A single emission RxJS observable that emits when the cache operation has been committed
    */
   cache (key, value) {
-    this.rpc.send(
+    return this.rpc.sendAndObserveResponse(
       'cache',
       ['set', key, value]
+    ).pipe(
+      pluck('result')
     )
+  }
 
-    return value
+  /**
+   * Get a value from the application cache.
+   *
+   * @param  {string} key The cache key to get a value for
+   * @return {Observable} A single emission RxJS observable with the value for the specified cache key
+   */
+  getCache (key) {
+    return this.rpc.sendAndObserveResponse(
+      'cache',
+      ['get', key]
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -221,45 +304,154 @@ export class AppProxy {
   }
 
   /**
+   * Application store constructor to be used in app script
    * Listens for events, passes them through `reducer`, caches the resulting state and re-emits that state for easy chaining.
+   * Caches results to the `state` key to emit the new state for `api.state()` subscribers (e.g. a frontend).
    *
-   * This is in fact sugar on top of [`state`](#state), [`events`](#events) and [`cache`](#cache).
+   * For caching purposes the event fetching is split into two steps:
+   *  - Fetching past events with `pastEvents`
+   *  - Subscribing to new events
    *
-   * The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event.
+   * The reducer takes the signature `(state, event)` and should return either:
+   *  - a promise that resolves to state, even if it is unaltered by the event.
+   *  - a new state object
    *
    * Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
    *
-   * Optionally takes an array of other `Observable`s to merge with this app's events; for example you might use an external contract's Web3 events.
+   * Optionally takes an options object with:
+   *   - `externals`: an array of external contracts to merge with this app's events,
+   *     for example you might use an external contract's Web3 events
+   *   - `init`: an initialization function run before events are passed through to the reducer,
+   *     useful for refreshing stale state from the contract (e.g. token balances)
    *
-   * @param  {Function} reducer A function that reduces events to a state. This can return a Promise that resolves to a new state.
-   * @param  {Observable[]} [events] An optional array of `Observable`s to merge in with the internal events observable
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
+   * @param  {Function} reducer A function that reduces events to state. Can return a Promise that resolves to a new state.
+   * @param  {Object} [options] An optional options object
+   * @param  {Array.<{contract: Object, initializationBlock: String}>} [options.externals] An optional array of objects containing `contract` (as returned from `api.external`) and an optional `initializationBlock` from which to fetch events
+   * @param  {Function} [options.init] An optional initialization function for the state. Should return a promise that resolves to the init state.
+   * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
-  store (reducer, events = [empty()]) {
-    const initialState = this.state().pipe(first())
+  store (reducer, { externals = [], init } = {}) {
+    const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
+    const BLOCK_REORG_MARGIN = 100
 
-    // Wrap the reducer in another reducer that
-    // allows us to execute code asynchronously
-    // in our reducer. That's a lot of reducing.
+    // Wrap the reducer in another reducer that allows us to execute code asynchronously
+    // in our reducer (due to the Promise wrapping). That's a lot of reducing.
     //
-    // This is needed for the `mergeScan` operator.
-    // Also, this supports both sync and async code
-    // (because of the `Promise.resolve`).
+    // This is why we need the `mergeScan` operator below.
     const wrappedReducer = (state, event) =>
       from(
-        Promise.resolve(reducer(state, event))
+        // Ensure a promise is returned even if the reducer returns an array or throws
+        new Promise((resolve) => resolve(reducer(state, event)))
+      ).pipe(
+        catchError((err) => {
+          console.error('Error from app reducer on event', err)
+          console.error('Current event', event)
+          console.error('Current state', state)
+          // Re-throw the error to stop the rest of the store() stream
+          throw err
+        })
       )
 
-    const store$ = initialState.pipe(
-      switchMap((initialState) =>
-        merge(
-          this.events(),
-          ...events
-        ).pipe(
-          mergeScan(wrappedReducer, initialState, 1),
-          map((state) => this.cache('state', state))
+    const getCurrentEvents = (fromBlock) => merge(
+      this.events(fromBlock),
+      ...externals.map(({ contract }) => contract.events(fromBlock))
+    )
+
+    // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
+    // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty,
+    // by default they will use the current app's initialization block.
+    const getPastEvents = (cachedFromBlock, toBlock) => merge(
+      this.pastEvents(cachedFromBlock, toBlock),
+      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock }))
+    ).pipe(
+      // single emission array of all pastEvents -> flatten to process events
+      flatMap(pastEvents => from(pastEvents)),
+      startWith({
+        event: events.SYNC_STATUS_SYNCING,
+        returnValues: {
+          from: cachedFromBlock,
+          to: toBlock
+        }
+      }),
+      endWith({
+        event: events.SYNC_STATUS_SYNCED,
+        returnValues: {}
+      })
+    )
+    const cacheValue$ = this.getCache(CACHED_STATE_KEY).pipe(
+      // ensure we always get at least an empty object instead of falsy
+      map(v => v || {}))
+    const latestBlock$ = this.web3Eth('getBlockNumber')
+    // init the app state with the cached state
+    const initState$ = init
+      ? cacheValue$.pipe(
+        switchMap(({ state }) => from(init(state))),
+        delayWhen((initState) => {
+          debug('- store - init state:', initState)
+          return this.cache('state', initState)
+        })
+      )
+      : from([null])
+
+    const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
+      switchMap(([cacheValue, initState, latestBlock]) => {
+        const { state: cachedState, block: cachedBlock } = cacheValue
+        debug('- store - initState', initState)
+        debug('- store - cachedState', cachedState)
+        debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
+
+        // The block up to which to fetch past events.
+        // The reduced state up to this point will be cached on every load
+        const pastEventsToBlock = Math.max(0, latestBlock - BLOCK_REORG_MARGIN)
+
+        debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+        debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
+
+        return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
+          mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          // throttle to reduce rendering and caching overthead
+          // must keep trailing to avoid discarded events
+          throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
+          delayWhen((state) => {
+            debug('- store - reduced state from past event:', state)
+            return this.cache('state', state)
+          }),
+          last(),
+          delayWhen((state) => {
+            debug('caching state:', state)
+            return this.cache(CACHED_STATE_KEY, {
+              block: pastEventsToBlock,
+              state
+            })
+          }),
+          switchMap(pastState => {
+            // observable which emits an web3.js event-like object with the address of the active account.
+            const accounts$ = this.accounts().pipe(
+              map(accounts => {
+                return {
+                  event: events.ACCOUNTS_TRIGGER,
+                  returnValues: {
+                    account: accounts[0]
+                  }
+                }
+              })
+            )
+            // fetch current events from block after cached block
+            const currentEvents$ = getCurrentEvents(pastEventsToBlock + 1)
+
+            return merge(currentEvents$, accounts$).pipe(
+              mergeScan(wrappedReducer, pastState, 1)
+            )
+          }),
+          // throttle to reduce rendering and caching overthead
+          // must keep trailing to avoid discarded events
+          throttleTime(250, asyncScheduler, { leading: false, trailing: true }),
+          delayWhen((state) => {
+            debug('- store - reduced state:', state)
+            return this.cache('state', state)
+          })
         )
-      ),
+      }),
       publishReplay(1)
     )
     store$.connect()
@@ -365,6 +557,67 @@ export class AppProxy {
         pluck('result')
       )
   }
+
+  /**
+   * send a forwarded action's information to the wrapper
+   *
+   * @param {string} actionId ID assigned to forwarded action in Forwarder
+   * @param {string} evmScript The execution script caught by the Forwarder
+   * @return {void}
+   */
+  newForwardedAction (actionId, evmScript) {
+    return this.rpc.send(
+      'update_forwarded_action',
+      [actionId, evmScript]
+    )
+  }
+
+  /**
+   * update a forwarded action's state the wrapper
+   *
+   * If the execution is pending, state = 0
+   * If the execution completed, state = 1
+   * If the execution failed, state = 2
+   *
+   * @param {string} actionId ID assigned to forwarded action in Forwarder
+   * @param {integer} state The current state of the forwarded action within the forwarder
+   * @param {string} [evmScript=''] The optionally updated execution script
+   * @return {void}
+   */
+  updateForwardedAction (actionId, state, evmScript = '') {
+    return this.rpc.send(
+      'update_forwarded_action',
+      [actionId, evmScript, state]
+    )
+  }
+
+  /**
+   * Listens for forwarded actions that target your app and emits them like contract events
+   *
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of forwarded action objects
+   */
+  getForwardedActions () {
+    return this.rpc.sendAndObserveResponses(
+      'get_forwarded_actions'
+    ).pipe(pluck('result'))
+  }
+
+  /**
+   * Register data for external apps
+   *
+   * @param {string} from Address of the application generating the data
+   * @param {<Array>string} to Address of the applications allowed access to the data
+   * @param {string} dataId internal ID assigned to the data by the originator
+   * @param {string} cid external identifier (e.g., IPFS hash)
+   * @return {void}
+   */
+  registerAppMetadata (from, to, dataId, cid) {
+    return this.rpc.send(
+      'register_app_metadata',
+      [from, to, dataId, cid]
+    )
+  }
+
 }
 
 /**

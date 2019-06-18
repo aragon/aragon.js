@@ -1,4 +1,4 @@
-import { fromEvent } from 'rxjs'
+import { fromEvent, from } from 'rxjs'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
@@ -35,5 +35,29 @@ export function events (request, proxy, wrapper) {
     contract.events.allEvents({
       fromBlock
     }), 'data'
+  )
+}
+
+export function pastEvents (request, proxy, wrapper) {
+  const web3 = wrapper.web3
+  const [
+    address,
+    jsonInterface,
+    options
+  ] = request.params
+
+  const contract = new web3.eth.Contract(
+    jsonInterface,
+    address
+  )
+  // ensure it's an object
+  const eventsOptions = {
+    ...options
+  }
+
+  eventsOptions.fromBlock = eventsOptions.fromBlock || proxy.initializationBlock
+
+  return from(
+    contract.getPastEvents('allEvents', eventsOptions)
   )
 }

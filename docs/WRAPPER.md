@@ -193,3 +193,23 @@ Request an identity modification using the highest priority provider.
 
 Request an identity modification using the highest priority provider.
 Returns a promise which delegates resolution to the handler which listens and handles `this.identityIntents`
+
+### initForwardedActions
+
+Initializes the forwardedActions Observable
+
+Returns **void**
+
+### searchIdentities
+
+Search identites using the highest priority provider.
+
+`searchIdentities (searchTerm: string) : Promise<Array<String>>`
+
+Returns a promise which resolves with the found identities or an empty array.
+
+### setForwardedActions
+
+Either create a new entry or update an existing entry in the actions array emitted by the forwardedActions Observable. If an array with keys matching `currentApp` and `actionId` exists, it is updated with the values that are passed. Otherwise, a new entry is created.
+
+Returns **void**

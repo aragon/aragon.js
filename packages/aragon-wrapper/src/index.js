@@ -1,9 +1,10 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
+import { asyncScheduler, concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
 import {
   concatMap,
   debounceTime,
   distinctUntilChanged,
+  endWith,
   filter,
   first,
   map,
@@ -11,10 +12,10 @@ import {
   mergeMap,
   publishReplay,
   scan,
-  skipWhile,
   startWith,
   switchMap,
   tap,
+  throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
@@ -45,6 +46,7 @@ import {
 } from './radspec'
 import {
   addressesEqual,
+  getCacheKey,
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
@@ -200,6 +202,7 @@ export default class Aragon {
     this.initMembers()
     this.initNetwork()
     this.initNotifications()
+    this.initForwardedActions()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -238,59 +241,96 @@ export default class Aragon {
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
-    const aclObservables = [
-      SET_PERMISSION_EVENT,
-      CHANGE_PERMISSION_MANAGER_EVENT
-    ].map(event =>
-      this.aclProxy.events(event)
+    const ACL_CACHE_KEY = getCacheKey(aclAddress, 'acl')
+
+    const REORG_SAFETY_BLOCK_AGE = 100
+
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
+
+    // Check if we have cached ACL for this address
+    // Cache object for an ACL: { permissions, blockNumber }
+    const cachedAclState = await this.cache.get(ACL_CACHE_KEY, {})
+    const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cachedAclState
+
+    const pastEventsOptions = {
+      toBlock: cacheBlockHeight,
+      // When using cache, fetch events from the next block after cache
+      fromBlock: cachedPermissions ? cachedBlockNumber + 1 : undefined
+    }
+    const pastEvents$ = this.aclProxy.pastEvents(null, pastEventsOptions).pipe(
+      mergeMap((pastEvents) => from(pastEvents)),
+      // Custom cache event
+      endWith({
+        event: ACL_CACHE_KEY,
+        returnValues: {}
+      })
+    )
+    const currentEvents$ = this.aclProxy.events(null, { fromBlock: cacheBlockHeight + 1 }).pipe(
+      startWith({
+        event: 'starting current events',
+        returnValues: {}
+      })
     )
 
-    // Set up permissions observable
-
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
-    this.permissions = merge(...aclObservables).pipe(
-      // Keep track of all the types of events that have been processed
-      scan(([permissions, eventSet], event) => {
+    // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
+    const fetchedPermissions$ = concat(pastEvents$, currentEvents$).pipe(
+      scan(([permissions], event) => {
         const eventData = event.returnValues
 
-        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
-        const appPermissions = permissions[eventData.app] || {}
+        if (eventData.app) {
+          // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+          const appPermissions = permissions[eventData.app] || {}
 
-        if (event.event === SET_PERMISSION_EVENT) {
-          const key = `${eventData.role}.allowedEntities`
+          if (event.event === SET_PERMISSION_EVENT) {
+            const key = `${eventData.role}.allowedEntities`
 
-          // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
+            // Converts to and from a set to avoid duplicated entities
+            const allowedEntitiesSet = new Set(dotprop.get(appPermissions, key, []))
 
-          if (eventData.allowed) {
-            permissionsForRole.add(eventData.entity)
-          } else {
-            permissionsForRole.delete(eventData.entity)
+            if (eventData.allowed) {
+              allowedEntitiesSet.add(eventData.entity)
+            } else {
+              allowedEntitiesSet.delete(eventData.entity)
+            }
+
+            dotprop.set(appPermissions, key, Array.from(allowedEntitiesSet))
           }
 
-          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
+          if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
+            // We only care about the last one. An app permission can have only one manager
+            dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
+          }
+
+          permissions[eventData.app] = appPermissions
         }
 
-        if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
-          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
-        }
+        return [permissions, event]
+      }, [ makeAddressMapProxy(cachedPermissions || {}) ]),
 
-        permissions[eventData.app] = appPermissions
-        return [permissions, eventSet.add(event.event)]
-      }, [makeAddressMapProxy({}), new Set()]),
-      // Skip until we have received events from all event subscriptions
-      // Note that this is safe as the ACL will always have to emit both
-      // ChangePermissionManager and SetPermission events every time a
-      // permission is created
-      skipWhile(([permissions, eventSet]) => eventSet.size < aclObservables.length),
-      map(([permissions]) => permissions),
+      // Cache if we're finished syncing up to cache block height
+      map(([permissions, event]) => {
+        if (event.event === ACL_CACHE_KEY) {
+          this.cache.set(
+            ACL_CACHE_KEY,
+            // Make copy for cache
+            { permissions: Object.assign({}, permissions), blockNumber: cacheBlockHeight }
+          )
+        }
+        return permissions
+      }),
+
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
       debounceTime(30),
       publishReplay(1)
     )
+    fetchedPermissions$.connect()
+
+    const cachedPermissions$ = cachedPermissions ? of(makeAddressMapProxy(cachedPermissions)) : of()
+    this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
     this.permissions.connect()
   }
 
@@ -753,7 +793,8 @@ export default class Aragon {
           return nextRepos
         }
       }, []),
-      debounceTime(100),
+      // Throttle updates, but must keep trailing to ensure we don't drop any updates
+      throttleTime(500, asyncScheduler, { leading: false, trailing: true }),
       publishReplay(1)
     )
     this.installedRepos.connect()
@@ -837,6 +878,57 @@ export default class Aragon {
   }
 
     /**
+   * Initialize the forwardedActions observable
+   *
+   * @return {void}
+   */
+  initForwardedActions () {
+    this.forwardedActions = new BehaviorSubject({}).pipe(
+      scan(
+        (actions, { currentApp, actionId, evmScript = '', state = 0 }) => {
+          const updateIndex = actions.findIndex(
+            action => action.currentApp === currentApp && action.actionId === actionId
+          )
+          if (updateIndex === -1) {
+            // set the last address as the target of the forwarded action
+            const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
+            currentApp && actions.push({ currentApp, actionId, target, evmScript, state })
+            return actions
+          } else {
+            // only update any state if the state update is the latest
+            if (actions[updateIndex].state < state) {
+              actions[updateIndex].state = state
+              // only update the evmScript if it's included
+              if (evmScript !== '') actions[updateIndex].evmScript = evmScript
+            }
+            return actions
+          }
+        },
+        [] // actions seed
+      ),
+      publishReplay(1)
+    )
+    this.forwardedActions.connect()
+  }
+
+  /**
+   * set a forwarded action
+   *
+   * @param {string} currentApp
+   * @param {string} actionId
+   * @param {string} evmScript
+   * @param {integer} state
+   */
+  setForwardedAction (currentApp, actionId, evmScript, state) {
+    this.forwardedActions.next({
+      currentApp,
+      actionId,
+      evmScript,
+      state
+    })
+  }
+
+  /**
    * Set the identifier of an app.
    *
    * @param {string} address The proxy address of the app
@@ -929,6 +1021,21 @@ export default class Aragon {
       (err) => Promise.reject(new Error(`Manager (${manager}) is not configured correctly`))
     )
     return isMember
+  }
+
+  /**
+   * Search identities based on a term
+   *
+   * @param  {string} searchTerm
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  searchIdentities (searchTerm) {
+    const providerName = 'local' // TODO - get provider
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.search === 'function') {
+      return provider.search(searchTerm)
+    }
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
   }
 
   /**
@@ -1160,19 +1267,24 @@ export default class Aragon {
       const handlerSubscription = handlers.combineRequestHandlers(
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
         handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
         handlers.createRequestHandler(request$, 'network', handlers.network),
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'is_member', handlers.memberChecker),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'update_forwarded_action', handlers.updateForwardedAction),
+        handlers.createRequestHandler(request$, 'get_forwarded_actions', handlers.getForwardedActions)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -1188,15 +1300,16 @@ export default class Aragon {
       const shutdownAndClearCache = async () => {
         shutdown()
 
-        return Promise.all(
-          Object
-            .keys(await this.cache.getAll())
-            .map(cacheKey =>
+        // Remove all cache keys related to this app one by one
+        return Object
+          .keys(await this.cache.getAll())
+          .reduce((promise, cacheKey) => {
+            return promise.then(() =>
               cacheKey.startsWith(proxyAddress)
                 ? this.cache.remove(cacheKey)
                 : Promise.resolve()
             )
-        )
+          }, Promise.resolve())
       }
 
       return {

@@ -1,11 +1,15 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { of, from } from 'rxjs'
+import { defer, from, of } from 'rxjs'
 
 const Index = proxyquire.noCallThru().load('./index', {
   '@aragon/rpc-messenger': {}
 })
+
+function createDeferredStub (observable) {
+  return sinon.stub().returns(defer(() => observable))
+}
 
 test.afterEach.always(() => {
   sinon.restore()
@@ -20,8 +24,8 @@ test('should send intent when the method does not exist in target', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -49,8 +53,8 @@ test('should return the network details as an observable', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
@@ -75,8 +79,8 @@ test('should return the accounts as an observable', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
@@ -131,7 +135,7 @@ test('should send a member check request', t => {
 })
 
 test('should return the events observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const eventsFn = Index.AppProxy.prototype.events
   const observable = of({
@@ -140,15 +144,13 @@ test('should return the events observable', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
   const result = eventsFn.call(instanceStub)
   // assert
-  // the call to sendAndObserveResponse should be defered until we subscribe
-  t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
   result.subscribe(value => {
     t.deepEqual(value, ['eventA', 'eventB'])
   })
@@ -156,14 +158,14 @@ test('should return the events observable', t => {
 })
 
 test('should return an handle for an external contract events', t => {
-  t.plan(7)
+  t.plan(6)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
-  const observableA = of({
+  const observableEvents = of({
     id: 'uuid1',
     result: { name: 'eventA', value: 3000 }
   })
-  const observableB = of({
+  const observableCall = of({
     id: 'uuid4',
     result: 'bob was granted permission for the counter app'
   })
@@ -173,18 +175,14 @@ test('should return an handle for an external contract events', t => {
   ]
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observableA),
-
-      sendAndObserveResponse: sinon.stub()
-        .returns(observableB)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observableEvents),
+      sendAndObserveResponse: createDeferredStub(observableCall)
     }
   }
   // act
   const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
   // assert
-  // the call to sendAndObserveResponse should be defered until we subscribe
-  t.falsy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
   // events from block 2
   result.events(2).subscribe(value => {
     t.deepEqual(value, { name: 'eventA', value: 3000 })
@@ -216,8 +214,8 @@ test('should return the state from cache', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponses: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
     }
   }
   // act
@@ -230,66 +228,83 @@ test('should return the state from cache', t => {
   })
 })
 
-test('should create a store reducer', async t => {
-  t.plan(2)
-  // arrange
-  const storeFn = Index.AppProxy.prototype.store
-  const observableA = from([{
-    actionHistory: [
-      { event: 'Add', payload: 5 }
-    ],
-    counter: 5
-  }, {
-    // this will be ignored, but recalculated correctly because we still have the event
-    actionHistory: [
-      { event: 'Add', payload: 5 },
-      { event: 'Add', payload: 2 }
-    ],
-    counter: 7
-  }])
-  const observableB = from([
-    { event: 'Add', payload: 2 },
-    { event: 'Add', payload: 10 }
-  ])
-  const instanceStub = {
-    state: () => observableA,
-    events: () => observableB,
-    cache: sinon.stub().returnsArg(1) // should return 2nd argument
-  }
-  const reducer = (state, action) => {
-    if (state === null) state = { actionHistory: [], counter: 0 }
+// test('should create a store reducer', async t => {
+//   t.plan(2)
+//   // arrange
+//   const storeFn = Index.AppProxy.prototype.store
+//   const observableState = from([{
+//     actionHistory: [
+//       { event: 'Add', payload: 5 }
+//     ],
+//     counter: 5
+//   }, {
+//     // this will be ignored, but recalculated correctly because we still have the event
+//     actionHistory: [
+//       { event: 'Add', payload: 5 },
+//       { event: 'Add', payload: 2 }
+//     ],
+//     counter: 7
+//   }])
+//   const observableEvents = from([
+//     { event: 'Add', payload: 2 },
+//     { event: 'Add', payload: 10 }
+//   ])
+//   const instanceStub = {
+//     // Mimic behaviour of @aragon/rpc-messenger
+//     state: createDeferredStub(observableState),
+//     events: createDeferredStub(observableEvents),
+//     cache: sinon.stub().returnsArg(1) // should return 2nd argument
+//   }
+//   const reducer = (state, action) => {
+//     if (state === null) state = { actionHistory: [], counter: 0 }
 
-    switch (action.event) {
-      case 'Add':
-        state.actionHistory.push(action)
-        state.counter += action.payload
-        return state
-      case 'Subtract':
-        state.actionHistory.push(action)
-        state.counter -= action.payload
-        return state
-    }
-    return state
-  }
-  // act
-  const result = storeFn.call(instanceStub, reducer)
-  // assert
-  result.subscribe(value => {
-    if (value.counter === 7) {
-      t.deepEqual(value.actionHistory, [
-        { event: 'Add', payload: 5 },
-        { event: 'Add', payload: 2 }
-      ])
-    }
-    if (value.counter === 17) {
-      t.deepEqual(value.actionHistory, [
-        { event: 'Add', payload: 5 },
-        { event: 'Add', payload: 2 },
-        { event: 'Add', payload: 10 }
-      ])
-    }
-  })
-})
+//   const accounts$ = from([
+//     ['0x0000000000000000000000000000000000000abc']
+//   ])
+
+//   const instanceStub = {
+//     accounts: () => accounts$,
+//     cache: sinon.stub().returnsArg(1), // should return 2nd argument
+//     events: () => observableB,
+//     getCache: () => from([null]),
+//     pastEvents: () => from([null]),
+//     state: () => observableA,
+//     web3Eth: () => from(['4385398'])
+//   }
+//   const reducer = (state, action) => {
+//     if (state === null) state = { actionHistory: [], counter: 0 }
+
+//     switch (action.event) {
+//       case 'Add':
+//         state.actionHistory.push(action)
+//         state.counter += action.payload
+//         return state
+//       case 'Subtract':
+//         state.actionHistory.push(action)
+//         state.counter -= action.payload
+//         return state
+//     }
+//     return state
+//   }
+//   // act
+//   const result = storeFn.call(instanceStub, reducer)
+//   // assert
+//   result.subscribe(value => {
+//     if (value.counter === 7) {
+//       t.deepEqual(value.actionHistory, [
+//         { event: 'Add', payload: 5 },
+//         { event: 'Add', payload: 2 }
+//       ])
+//     }
+//     if (value.counter === 17) {
+//       t.deepEqual(value.actionHistory, [
+//         { event: 'Add', payload: 5 },
+//         { event: 'Add', payload: 2 },
+//         { event: 'Add', payload: 10 }
+//       ])
+//     }
+//   })
+// })
 
 test('should perform a call to the contract and observe the response', t => {
   t.plan(3)
@@ -301,8 +316,8 @@ test('should perform a call to the contract and observe the response', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -356,8 +371,8 @@ test('should send a describeScript request and observe the response', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -380,8 +395,8 @@ test('should send a web3Eth function request and observe the response', t => {
   })
   const instanceStub = {
     rpc: {
-      sendAndObserveResponse: sinon.stub()
-        .returns(observable)
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
     }
   }
   // act
@@ -393,3 +408,94 @@ test('should send a web3Eth function request and observe the response', t => {
     t.deepEqual(value, ['accountA', 'accountB'])
   })
 })
+
+test('should submit a new action', t => {
+  t.plan(2)
+  // arrange
+  const newActionFn = Index.AppProxy.prototype.newForwardedAction
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  newActionFn.call(instanceStub, '0', 'testScript')
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'update_forwarded_action')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0', 'testScript'])
+})
+
+test('should update an action', t => {
+  t.plan(4)
+  // arrange
+  const updateActionFn = Index.AppProxy.prototype.updateForwardedAction
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  const instanceStub2 = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  updateActionFn.call(instanceStub, '1', '0', 'testScript')
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'update_forwarded_action')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['1', 'testScript', '0'])
+
+  // act
+  updateActionFn.call(instanceStub2, '2', '1')
+  // assert
+  t.is(instanceStub2.rpc.send.getCall(0).args[0], 'update_forwarded_action')
+  t.deepEqual(instanceStub2.rpc.send.getCall(0).args[1], ['2', '', '1'])
+})
+
+test('should return the forwardedActions observable', t => {
+  t.plan(3)
+  // arrange
+  const getFwdActionsFn = Index.AppProxy.prototype.getForwardedActions
+  const observable = of({
+    event: 'uuid1',
+    result: {
+      event: 'ForwardedActions',
+      returnValues: ['forwardedAction1', 'forwardedAction2']
+    }
+  })
+  const instanceStub = {
+    rpc: {
+      sendAndObserveResponses: sinon.stub()
+        .returns(observable)
+    }
+  }
+  // act
+  const result = getFwdActionsFn.call(instanceStub)
+  // assert
+  // the call to sendAndObserveResponse should not be defered until we subscribe,
+  // since we are working with a BehaviorSubject and just want the latest and greatest
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  result.subscribe(value => {
+    t.deepEqual(value, {
+      event: 'ForwardedActions',
+      returnValues: ['forwardedAction1', 'forwardedAction2']
+    })
+  })
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'get_forwarded_actions')
+})
+
+test('should return the registerAppMetadata observable', t => {
+  t.plan(2)
+  // arrange
+  const registerAppMetadataFn = Index.AppProxy.prototype.registerAppMetadata
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+    registerAppMetadataFn.call(instanceStub, '0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk')
+    // assert
+    t.is(instanceStub.rpc.send.getCall(0).args[0], 'register_app_metadata')
+    t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xbeef', ['0xcafe'], 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk'])
+  })
