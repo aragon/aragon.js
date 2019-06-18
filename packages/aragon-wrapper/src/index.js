@@ -198,6 +198,8 @@ export default class Aragon {
     this.initApps()
     this.initForwarders()
     this.initAppIdentifiers()
+    this.initTokenManagers()
+    this.initMembers()
     this.initNetwork()
     this.initNotifications()
     this.initForwardedActions()
@@ -830,6 +832,52 @@ export default class Aragon {
   }
 
   /**
+   * Initialise token manager observable.
+   *
+   * @return {void}
+   */
+  initTokenManagers () {
+    const tokenManagerID = "0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f"
+    this.tokenManagers = this.apps.pipe(
+      map(
+        (apps) => apps.filter((app) => app.appId === tokenManagerID)
+      ),
+      publishReplay(1)
+    )
+    this.tokenManagers.connect()
+  }
+
+  /**
+   * Initialise members observable.
+   *
+   * @return {void}
+   */
+  initMembers () {
+    this.members = new BehaviorSubject({}).pipe(
+      scan(
+        (membersInfo, { address, isMember }) =>
+          Object.assign(membersInfo, { [address]: isMember })
+      ),
+      publishReplay(1)
+    )
+    this.members.connect()
+  }
+
+  /**
+   * Set membership for a specific user.
+   *
+   * @param {string} address The address of the user
+   * @param {string} isMember Whether the address is a member
+   * @return {void}
+   */
+  setMembership (address, isMember) {
+    this.members.next({
+      address,
+      isMember
+    })
+  }
+
+    /**
    * Initialize the forwardedActions observable
    *
    * @return {void}
@@ -953,6 +1001,26 @@ export default class Aragon {
       return provider.resolve(address)
     }
     return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+    /**
+   * Resolve the identity metadata for an address using the highest priority provider.
+   *
+   * @param  {string} address Address to resolve
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  checkMember (address) {
+    let tokenManagers = this.tokenManagers
+    let isMember = false
+    tokenManagers.subscribe( 
+      managers => {
+        managers.forEach(manager => {
+          if(manager.call('balanceOf', address) > 0) isMember = true
+        })
+      },
+      (err) => Promise.reject(new Error(`Manager (${manager}) is not configured correctly`))
+    )
+    return isMember
   }
 
   /**
@@ -1208,6 +1276,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
+        handlers.createRequestHandler(request$, 'is_member', handlers.memberChecker),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
