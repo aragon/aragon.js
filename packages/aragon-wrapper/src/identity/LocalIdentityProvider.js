@@ -50,6 +50,21 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
     return Promise.resolve({ address, metadata })
   }
 
+  async search (searchTerm = '') {
+    const isAddressSearch = searchTerm.substring(0, 2).toLowerCase() === '0x'
+    const identities = await this.identityCache.getAll()
+    const results = Object.entries(identities)
+      .filter(
+        ([address, { name }]) =>
+          (isAddressSearch &&
+            searchTerm.length > 3 &&
+            address.toLowerCase().indexOf(searchTerm.toLowerCase()) === 0) ||
+          name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
+      )
+      .map(([address, { name }]) => ({ name, address }))
+    return results
+  }
+
   /**
    * Get all local identities
    *
@@ -66,5 +81,9 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    */
   async clear () {
     await this.identityCache.clear()
+  }
+
+  async remove (address) {
+    await this.identityCache.remove(address.toLowerCase())
   }
 }

@@ -1,4 +1,5 @@
 {
+  "appName": "kernel.aragonpm.eth",
   "roles": [
     {
       "name": "Manage apps",

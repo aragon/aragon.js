@@ -2,9 +2,6 @@ import { isAddress } from 'web3-utils'
 import ContractProxy from '../core/proxy'
 import { getAbi } from '../interfaces'
 
-const DEFAULT_GAS_FUZZ_FACTOR = 1.5
-const PREVIOUS_BLOCK_GAS_LIMIT_FACTOR = 0.95
-
 export const ANY_ENTITY = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF'
 
 // Check address equality without checksums
@@ -19,8 +16,14 @@ export function includesAddress (arr, address) {
   return arr.some(a => addressesEqual(a, address))
 }
 
-export function makeAddressMapProxy (target) {
-  return new Proxy(target, {
+// Address map that ensures consistent non-checksummed interpretations of addresses
+export function makeAddressMapProxy (target = {}) {
+  const targetLowerCaseKeys = {}
+  Object.entries(target).forEach(([address, val]) => {
+    targetLowerCaseKeys[address.toLowerCase()] = val
+  })
+
+  return new Proxy(targetLowerCaseKeys, {
     get (target, property, receiver) {
       if (property in target) {
         return target[property]
@@ -42,6 +45,16 @@ export function makeAddressMapProxy (target) {
   })
 }
 
+/**
+ * Get a standard cache key
+ *
+ * @param {string} address
+ * @param {string} location
+ */
+export function getCacheKey (address, location) {
+  return `${address}.${location}`
+}
+
 export function makeProxy (address, interfaceName, web3, initializationBlock) {
   const abi = getAbi(`aragon/${interfaceName}`)
   return makeProxyFromABI(address, abi, web3, initializationBlock)
@@ -49,23 +62,6 @@ export function makeProxy (address, interfaceName, web3, initializationBlock) {
 
 export function makeProxyFromABI (address, abi, web3, initializationBlock) {
   return new ContractProxy(address, abi, web3, initializationBlock)
-}
-
-export async function getRecommendedGasLimit (web3, estimatedGasLimit, { gasFuzzFactor = DEFAULT_GAS_FUZZ_FACTOR } = {}) {
-  const latestBlock = await web3.eth.getBlock('latest')
-  const latestBlockGasLimit = latestBlock.gasLimit
-
-  const upperGasLimit = Math.round(latestBlockGasLimit * PREVIOUS_BLOCK_GAS_LIMIT_FACTOR)
-  const bufferedGasLimit = Math.round(estimatedGasLimit * gasFuzzFactor)
-
-  if (estimatedGasLimit > upperGasLimit) {
-    // TODO: Consider whether we should throw an error rather than returning with a high gas limit
-    return estimatedGasLimit
-  } else if (bufferedGasLimit < upperGasLimit) {
-    return bufferedGasLimit
-  } else {
-    return upperGasLimit
-  }
 }
 
 export { default as AsyncRequestCache } from './AsyncRequestCache'

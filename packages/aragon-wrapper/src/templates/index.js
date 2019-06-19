@@ -1,5 +1,5 @@
 import { resolve as ensResolve } from '../ens'
-import { getRecommendedGasLimit } from '../utils'
+import { getRecommendedGasLimit } from '../utils/transactions'
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 
