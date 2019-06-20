@@ -93,6 +93,37 @@ function App() {
 }
 ```
 
+#### `path` / `requestPath()`
+
+Example:
+
+```jsx
+function App() {
+  const { path, requestPath } = useAragonApi()
+
+  // “Hello World” screen
+  if (path === '/hello-world') {
+    return (
+      <div>
+        <h1>Hello World</h1>
+        <button onClick={() => requestPath('/')}>
+          Back
+        </button>
+      </div>
+    )
+  }
+
+  // Home
+  return (
+    <div>
+      <button onClick={() => requestPath('/hello-world')}>
+        Click
+      </button>
+    </div>
+  )
+}
+```
+
 #### `appState`
 
 The app state, after having passed the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html) state through the `reducer` prop of `AragonApi`.
