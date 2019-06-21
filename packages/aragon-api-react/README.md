@@ -108,6 +108,26 @@ function App() {
 }
 ```
 
+#### `apps`
+
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
+the list of apps are loaded.
+
+Example:
+
+```jsx
+function App() {
+  const { apps } = useAragonApi()
+  return (
+    <div>
+      {apps.map(app => (
+        <div>{app.name}</div>
+      ))}
+    </div>
+  )
+}
+```
+
 #### `connectedAccount`
 
 The connected Ethereum account. Its value is `""` (empty string) when there is no account connected.
@@ -146,15 +166,19 @@ Call this function to display the Aragon menu, when hidden automatically. This s
 
 ### useApi()
 
-This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
+
+### useApps()
+
+This Hook returns the same data as the `apps` entry from the `useAragonApi()` hook.
 
 ### useAppState()
 
-This Hook returns the same data than the `appState` entry from the `useAppState()` hook.
+This Hook returns the same data as the `appState` entry from the `useAppState()` hook.
 
 ### useConnectedAccount()
 
-This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
 
 ### useMenuButton()
 
@@ -162,4 +186,4 @@ This Hook returns an array containing the `displayMenuButton` and the `requestMe
 
 ### useNetwork()
 
-This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
