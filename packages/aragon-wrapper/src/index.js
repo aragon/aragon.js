@@ -1,20 +1,21 @@
 // Externals
-import { concat, ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
+import { asyncScheduler, concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
 import {
   concatMap,
   debounceTime,
   distinctUntilChanged,
+  endWith,
   filter,
   first,
   map,
   mergeAll,
   mergeMap,
-  pairwise,
   publishReplay,
   scan,
   startWith,
   switchMap,
   tap,
+  throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
@@ -197,6 +198,8 @@ export default class Aragon {
     this.initApps()
     this.initForwarders()
     this.initAppIdentifiers()
+    this.initTokenManagers()
+    this.initMembers()
     this.initNetwork()
     this.initNotifications()
     this.initForwardedActions()
@@ -247,58 +250,77 @@ export default class Aragon {
 
     // Check if we have cached ACL for this address
     // Cache object for an ACL: { permissions, blockNumber }
-    const cached = await this.cache.get(ACL_CACHE_KEY, {})
-    const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cached
+    const cachedAclState = await this.cache.get(ACL_CACHE_KEY, {})
+    const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cachedAclState
 
-    // When using cache, fetch events from the next block after cache
-    const eventsOptions = cachedPermissions ? { fromBlock: (cachedBlockNumber + 1) } : undefined
-    const events = this.aclProxy.events(null, eventsOptions)
+    const pastEventsOptions = {
+      toBlock: cacheBlockHeight,
+      // When using cache, fetch events from the next block after cache
+      fromBlock: cachedPermissions ? cachedBlockNumber + 1 : undefined
+    }
+    const pastEvents$ = this.aclProxy.pastEvents(null, pastEventsOptions).pipe(
+      mergeMap((pastEvents) => from(pastEvents)),
+      // Custom cache event
+      endWith({
+        event: ACL_CACHE_KEY,
+        returnValues: {}
+      })
+    )
+    const currentEvents$ = this.aclProxy.events(null, { fromBlock: cacheBlockHeight + 1 }).pipe(
+      startWith({
+        event: 'starting current events',
+        returnValues: {}
+      })
+    )
 
     // Permissions Object:
     // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
-    const fetchedPermissions$ = events.pipe(
+    const fetchedPermissions$ = concat(pastEvents$, currentEvents$).pipe(
       scan(([permissions], event) => {
         const eventData = event.returnValues
 
-        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
-        const appPermissions = permissions[eventData.app] || {}
+        if (eventData.app) {
+          // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+          const appPermissions = permissions[eventData.app] || {}
 
-        if (event.event === SET_PERMISSION_EVENT) {
-          const key = `${eventData.role}.allowedEntities`
+          if (event.event === SET_PERMISSION_EVENT) {
+            const key = `${eventData.role}.allowedEntities`
 
-          // Converts to and from a set to avoid duplicated entities
-          const allowedEntitiesSet = new Set(dotprop.get(appPermissions, key, []))
+            // Converts to and from a set to avoid duplicated entities
+            const allowedEntitiesSet = new Set(dotprop.get(appPermissions, key, []))
 
-          if (eventData.allowed) {
-            allowedEntitiesSet.add(eventData.entity)
-          } else {
-            allowedEntitiesSet.delete(eventData.entity)
+            if (eventData.allowed) {
+              allowedEntitiesSet.add(eventData.entity)
+            } else {
+              allowedEntitiesSet.delete(eventData.entity)
+            }
+
+            dotprop.set(appPermissions, key, Array.from(allowedEntitiesSet))
           }
 
-          dotprop.set(appPermissions, key, Array.from(allowedEntitiesSet))
+          if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
+            // We only care about the last one. An app permission can have only one manager
+            dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
+          }
+
+          permissions[eventData.app] = appPermissions
         }
 
-        if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
-          // We only care about the last one. An app permission can have only one manager
-          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
-        }
-
-        permissions[eventData.app] = appPermissions
-        return [
-          permissions,
-          Object.assign({}, permissions), // unique permissions copy for each emission
-          event.blockNumber
-        ]
+        return [permissions, event]
       }, [ makeAddressMapProxy(cachedPermissions || {}) ]),
-      // start with an empty emission to allow pairwise to process the first permissions emission
-      startWith([null, null, null]),
-      pairwise(),
-      map(([[, lastPermissionsCache, lastBlockNumber], [currentPermissions,, currentBlockNumber]]) => {
-        if (lastPermissionsCache && lastBlockNumber < currentBlockNumber && lastBlockNumber <= cacheBlockHeight) {
-          this.cache.set(ACL_CACHE_KEY, { permissions: lastPermissionsCache, blockNumber: lastBlockNumber })
+
+      // Cache if we're finished syncing up to cache block height
+      map(([permissions, event]) => {
+        if (event.event === ACL_CACHE_KEY) {
+          this.cache.set(
+            ACL_CACHE_KEY,
+            // Make copy for cache
+            { permissions: Object.assign({}, permissions), blockNumber: cacheBlockHeight }
+          )
         }
-        return currentPermissions
+        return permissions
       }),
+
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
@@ -307,7 +329,7 @@ export default class Aragon {
     )
     fetchedPermissions$.connect()
 
-    const cachedPermissions$ = cachedPermissions ? of(cachedPermissions) : of()
+    const cachedPermissions$ = cachedPermissions ? of(makeAddressMapProxy(cachedPermissions)) : of()
     this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
     this.permissions.connect()
   }
@@ -771,7 +793,8 @@ export default class Aragon {
           return nextRepos
         }
       }, []),
-      debounceTime(100),
+      // Throttle updates, but must keep trailing to ensure we don't drop any updates
+      throttleTime(500, asyncScheduler, { leading: false, trailing: true }),
       publishReplay(1)
     )
     this.installedRepos.connect()
@@ -809,6 +832,52 @@ export default class Aragon {
   }
 
   /**
+   * Initialise token manager observable.
+   *
+   * @return {void}
+   */
+  initTokenManagers () {
+    const tokenManagerID = "0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f"
+    this.tokenManagers = this.apps.pipe(
+      map(
+        (apps) => apps.filter((app) => app.appId === tokenManagerID)
+      ),
+      publishReplay(1)
+    )
+    this.tokenManagers.connect()
+  }
+
+  /**
+   * Initialise members observable.
+   *
+   * @return {void}
+   */
+  initMembers () {
+    this.members = new BehaviorSubject({}).pipe(
+      scan(
+        (membersInfo, { address, isMember }) =>
+          Object.assign(membersInfo, { [address]: isMember })
+      ),
+      publishReplay(1)
+    )
+    this.members.connect()
+  }
+
+  /**
+   * Set membership for a specific user.
+   *
+   * @param {string} address The address of the user
+   * @param {string} isMember Whether the address is a member
+   * @return {void}
+   */
+  setMembership (address, isMember) {
+    this.members.next({
+      address,
+      isMember
+    })
+  }
+
+    /**
    * Initialize the forwardedActions observable
    *
    * @return {void}
@@ -957,6 +1026,41 @@ export default class Aragon {
     const provider = this.identityProviderRegistrar.get(providerName)
     if (provider && typeof provider.resolve === 'function') {
       return provider.resolve(address)
+    }
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+    /**
+   * Resolve the identity metadata for an address using the highest priority provider.
+   *
+   * @param  {string} address Address to resolve
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  checkMember (address) {
+    let tokenManagers = this.tokenManagers
+    let isMember = false
+    tokenManagers.subscribe( 
+      managers => {
+        managers.forEach(manager => {
+          if(manager.call('balanceOf', address) > 0) isMember = true
+        })
+      },
+      (err) => Promise.reject(new Error(`Manager (${manager}) is not configured correctly`))
+    )
+    return isMember
+  }
+
+  /**
+   * Search identities based on a term
+   *
+   * @param  {string} searchTerm
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  searchIdentities (searchTerm) {
+    const providerName = 'local' // TODO - get provider
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.search === 'function') {
+      return provider.search(searchTerm)
     }
     return Promise.reject(new Error(`Provider (${providerName}) not installed`))
   }
@@ -1190,14 +1294,18 @@ export default class Aragon {
       const handlerSubscription = handlers.combineRequestHandlers(
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
         handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
         handlers.createRequestHandler(request$, 'network', handlers.network),
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
+        handlers.createRequestHandler(request$, 'is_member', handlers.memberChecker),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
@@ -1220,15 +1328,16 @@ export default class Aragon {
       const shutdownAndClearCache = async () => {
         shutdown()
 
-        return Promise.all(
-          Object
-            .keys(await this.cache.getAll())
-            .map(cacheKey =>
+        // Remove all cache keys related to this app one by one
+        return Object
+          .keys(await this.cache.getAll())
+          .reduce((promise, cacheKey) => {
+            return promise.then(() =>
               cacheKey.startsWith(proxyAddress)
                 ? this.cache.remove(cacheKey)
                 : Promise.resolve()
             )
-        )
+          }, Promise.resolve())
       }
 
       return {

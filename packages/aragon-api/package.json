@@ -1,6 +1,6 @@
 {
   "name": "@aragon/api",
-  "version": "1.1.0",
+  "version": "2.0.0-beta.4",
   "description": "Aragon app API",
   "main": "dist/index.js",
   "scripts": {
@@ -68,8 +68,8 @@
     "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
   },
   "dependencies": {
-    "rxjs": "^6.2.1",
-    "@aragon/rpc-messenger": "^1.1.0",
+    "rxjs": "^6.5.2",
+    "@aragon/rpc-messenger": "^2.0.0-beta.1",
     "@babel/runtime": "^7.1.2"
   }
 }

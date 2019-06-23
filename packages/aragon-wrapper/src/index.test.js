@@ -2,7 +2,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
-import { first } from 'rxjs/operators'
+import { first, take } from 'rxjs/operators'
 import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
@@ -229,9 +229,11 @@ test('should init the ACL correctly', async (t) => {
     call: sinon.stub()
   }
   instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   const aclProxyStub = {
-    events: sinon.stub().returns(aclEvents)
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
@@ -263,7 +265,8 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   // arrange
   const defaultAclAddress = '0x321'
   const aclProxyStub = {
-    events: sinon.stub().returns(aclEvents)
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
 
   const kernelProxyStub = {
@@ -276,6 +279,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
 
   const instance = new Aragon()
   instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl()
@@ -292,7 +296,8 @@ test('should init the acl with the provided acl', async (t) => {
   const defaultAclAddress = '0x321'
   const givenAclAddress = '0x123'
   const aclProxyStub = {
-    events: sinon.stub().returns(aclEvents)
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
   const kernelProxyStub = {
     call: sinon.stub()
@@ -304,6 +309,7 @@ test('should init the acl with the provided acl', async (t) => {
 
   const instance = new Aragon()
   instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl({ aclAddress: givenAclAddress })
@@ -812,6 +818,75 @@ test('should init the forwarders correctly', async (t) => {
   })
 })
 
+test('should init the Token Manager correctly', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.apps = of([
+    {
+      appId: 'counterApp'
+    }, {
+      appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f'
+    }
+  ])
+  // act
+  await instance.initTokenManagers()
+  // assert
+  instance.tokenManagers.subscribe(value => {
+    t.deepEqual(value, [
+      {
+        appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f'
+      }
+    ])
+  })
+})
+
+test('should check membership correctly', async (t) => {
+  const { Aragon } = t.context
+
+  // arrange
+  const instance = new Aragon()
+  let memberCheckerStub = sinon.stub();
+  memberCheckerStub.withArgs('balanceOf', '0x123').returns(0)
+  memberCheckerStub.withArgs('balanceOf', '0x432').returns(1)
+  instance.apps = of([
+    {
+      appId: 'counterApp'
+    }, {
+      appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f',
+      call: function(method, param) { return memberCheckerStub(method, param) }
+    }
+  ])
+
+  console.log("check stub", memberCheckerStub('balanceOf', '0x432'))
+  await instance.initTokenManagers()
+  await instance.initMembers()
+  // act
+  const isMemberOne = await instance.checkMember('0x123')
+  const isMemberTwo = await instance.checkMember('0x432')
+  instance.setMembership(
+    '0x123',
+    isMemberOne
+  )
+  instance.members.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': false,
+    })
+  })
+  instance.setMembership(
+    '0x432',
+    isMemberTwo
+  )
+  instance.members.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      '0x123': false,
+      '0x432': true,
+    })
+  })
+})
+
 test('should init the notifications correctly', async (t) => {
   const { Aragon } = t.context
 
@@ -828,7 +903,7 @@ test('should init the notifications correctly', async (t) => {
         title: 'receive'
       }
     ])
-  instance.cache.set = sinon.stub()
+  instance.cache.set = sinon.stub().resolves()
   // act
   await instance.initNotifications()
   // assert
