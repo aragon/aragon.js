@@ -1492,11 +1492,11 @@ test.only('should add metadata items', async (t) => {
 
   // act
   await instance.initAppMetadata()
-  instance.registerAppMetadata (
-      '0x73a',
-      'u1',
-      'Qmrandomhash1',
-      ['0xdeadcafe'],
+  instance.registerAppMetadata(
+    '0x73a',
+    'u1',
+    'Qmrandomhash1',
+    ['0xdeadcafe']
   )
 
   // assert
@@ -1511,10 +1511,10 @@ test.only('should add metadata items', async (t) => {
 
   // act
   // 'to' parameter should be defaulted to '*'
-  instance.registerAppMetadata (
-      '0x73a',
-      'u1',
-      'Qmrandomhash1'
+  instance.registerAppMetadata(
+    '0x73a',
+    'u1',
+    'Qmrandomhash1'
   )
 
   // assert
@@ -1523,7 +1523,7 @@ test.only('should add metadata items', async (t) => {
       from: '0x73a',
       dataId: 'u1',
       cid: 'Qmrandomhash1',
-      to: ['*'],
+      to: ['*']
     })
   })
 })
