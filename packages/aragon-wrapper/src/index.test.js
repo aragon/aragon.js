@@ -2,7 +2,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
-import { first, take } from 'rxjs/operators'
+import { first } from 'rxjs/operators'
 import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
@@ -848,7 +848,7 @@ test('should check membership correctly', async (t) => {
 
   // arrange
   const instance = new Aragon()
-  let memberCheckerStub = sinon.stub();
+  let memberCheckerStub = sinon.stub()
   memberCheckerStub.withArgs('balanceOf', '0x123').returns(0)
   memberCheckerStub.withArgs('balanceOf', '0x432').returns(1)
   instance.apps = of([
@@ -856,11 +856,11 @@ test('should check membership correctly', async (t) => {
       appId: 'counterApp'
     }, {
       appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f',
-      call: function(method, param) { return memberCheckerStub(method, param) }
+      call: function (method, param) { return memberCheckerStub(method, param) }
     }
   ])
 
-  console.log("check stub", memberCheckerStub('balanceOf', '0x432'))
+  console.log('check stub', memberCheckerStub('balanceOf', '0x432'))
   await instance.initTokenManagers()
   await instance.initMembers()
   // act
@@ -872,7 +872,7 @@ test('should check membership correctly', async (t) => {
   )
   instance.members.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
-      '0x123': false,
+      '0x123': false
     })
   })
   instance.setMembership(
@@ -882,7 +882,7 @@ test('should check membership correctly', async (t) => {
   instance.members.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
       '0x123': false,
-      '0x432': true,
+      '0x432': true
     })
   })
 })

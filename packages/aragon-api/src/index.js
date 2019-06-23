@@ -93,7 +93,6 @@ export class AppProxy {
     )
   }
 
-
   /**
    * Check user membership.
    *
