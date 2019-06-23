@@ -177,7 +177,7 @@ export class AppProxy {
    * Creates a handle to interact with an external contract
    * (i.e. a contract that is **not** your app's smart contract, such as a token).
    *
-   * @param  {string} address The address of the external contract
+   * @param  {string} address The proxy address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
    * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
    */
@@ -227,6 +227,21 @@ export class AppProxy {
       contract[methodJsonInterface.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_call',
+          [address, methodJsonInterface, ...params]
+        ).pipe(
+          pluck('result')
+        )
+      }
+    })
+
+    // bind contract non-call methods for external intents
+    const externalIntentMethods = jsonInterface.filter(
+      (item) => item.type === 'function' && !item.constant
+    )
+    externalIntentMethods.forEach((methodJsonInterface) => {
+      contract[methodJsonInterface.name] = (...params) => {
+        return this.rpc.sendAndObserveResponse(
+          'external_intent',
           [address, methodJsonInterface, ...params]
         ).pipe(
           pluck('result')

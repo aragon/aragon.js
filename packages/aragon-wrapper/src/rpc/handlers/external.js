@@ -16,6 +16,23 @@ export function call (request, proxy, wrapper) {
   return contract.methods[method.name](...params).call()
 }
 
+export async function externalIntent (request, proxy, wrapper) {
+  const [
+    externalProxyAddress,
+    method,
+    ...params
+  ] = request.params
+  const transactionPath = await wrapper.getTransactionPath(
+    externalProxyAddress,
+    method.name,
+    params
+  )
+
+  return wrapper.performTransactionPath(
+    transactionPath.map((tx) => ({ ...tx, external: true }))
+  )
+}
+
 export function events (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [

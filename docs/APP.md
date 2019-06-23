@@ -137,18 +137,15 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token).
 
-> **Note**<br>
-> Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
-
 #### Parameters
 
-- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The address of the external contract
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The proxy address of the external contract
 - `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>**: The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract
 
 #### Examples
 
 ```javascript
-const token = api.external(tokenAddress, tokenJsonInterface)
+const token = api.external(tokenProxyAddress, tokenJsonInterface)
 
 // Retrieve the symbol of the token
 token.symbol().subscribe(symbol => console.log(`The token symbol is ${symbol}`))
