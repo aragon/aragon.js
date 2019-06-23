@@ -837,7 +837,7 @@ export default class Aragon {
    * @return {void}
    */
   initTokenManagers () {
-    const tokenManagerID = "0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f"
+    const tokenManagerID = '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f'
     this.tokenManagers = this.apps.pipe(
       map(
         (apps) => apps.filter((app) => app.appId === tokenManagerID)
@@ -877,7 +877,7 @@ export default class Aragon {
     })
   }
 
-    /**
+  /**
    * Initialize the forwardedActions observable
    *
    * @return {void}
@@ -925,6 +925,33 @@ export default class Aragon {
       actionId,
       evmScript,
       state
+    })
+  }
+
+  /**
+   * Initialize the appMetadata observable
+   */
+  initAppMetadata () {
+    this.appMetadata = new BehaviorSubject({}).pipe(
+      publishReplay(1)
+    )
+    this.appMetadata.connect()
+  }
+
+  /**
+   * registers new app metadata item
+   *
+   * @param {string} from Address of the application generating the data
+   * @param {string} dataId internal ID assigned to the data by the originator
+   * @param {string} cid external identifier (e.g., IPFS hash)
+   * @param {<Array>string} to Optional list of addresses of the applications allowed access to the data, defaults to '*'
+   */
+  registerAppMetadata (from, dataId, cid, to = ['*']) {
+    this.appMetadata.next({
+      from,
+      dataId,
+      cid,
+      to
     })
   }
 
@@ -1003,7 +1030,7 @@ export default class Aragon {
     return Promise.reject(new Error(`Provider (${providerName}) not installed`))
   }
 
-    /**
+  /**
    * Resolve the identity metadata for an address using the highest priority provider.
    *
    * @param  {string} address Address to resolve
@@ -1012,13 +1039,13 @@ export default class Aragon {
   checkMember (address) {
     let tokenManagers = this.tokenManagers
     let isMember = false
-    tokenManagers.subscribe( 
+    tokenManagers.subscribe(
       managers => {
         managers.forEach(manager => {
-          if(manager.call('balanceOf', address) > 0) isMember = true
+          if (manager.call('balanceOf', address) > 0) isMember = true
         })
       },
-      (err) => Promise.reject(new Error(`Manager (${manager}) is not configured correctly`))
+      (err) => Promise.reject(new Error(`Manager is not configured correctly: ${err}`))
     )
     return isMember
   }
@@ -1284,7 +1311,8 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
         handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
         handlers.createRequestHandler(request$, 'update_forwarded_action', handlers.updateForwardedAction),
-        handlers.createRequestHandler(request$, 'get_forwarded_actions', handlers.getForwardedActions)
+        handlers.createRequestHandler(request$, 'get_forwarded_actions', handlers.getForwardedActions),
+        handlers.createRequestHandler(request$, 'register_app_metadata', handlers.registerAppMetadata)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )

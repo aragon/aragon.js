@@ -93,7 +93,6 @@ export class AppProxy {
     )
   }
 
-
   /**
    * Check user membership.
    *
@@ -606,18 +605,27 @@ export class AppProxy {
    * Register data for external apps
    *
    * @param {string} from Address of the application generating the data
-   * @param {<Array>string} to Address of the applications allowed access to the data
+   * @param {<Array>string} to Optional list of addresses of the applications allowed access to the data, defaults to '*'
    * @param {string} dataId internal ID assigned to the data by the originator
    * @param {string} cid external identifier (e.g., IPFS hash)
    * @return {void}
    */
-  registerAppMetadata (from, to, dataId, cid) {
+  registerAppMetadata (from, dataId, cid, to = ['*']) {
     return this.rpc.send(
       'register_app_metadata',
-      [from, to, dataId, cid]
+      [from, dataId, cid, to]
     )
   }
 
+  /**
+   * Gets data from external apps
+   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of objects containing data from external apps
+   */
+  getAppMetadata () {
+    return this.rpc.sendAndObserveResponses(
+      'get_app_metadata'
+    ).pipe(pluck('result'))
+  }
 }
 
 /**

@@ -2,7 +2,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
-import { first, take } from 'rxjs/operators'
+import { first } from 'rxjs/operators'
 import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
@@ -848,7 +848,7 @@ test('should check membership correctly', async (t) => {
 
   // arrange
   const instance = new Aragon()
-  let memberCheckerStub = sinon.stub();
+  let memberCheckerStub = sinon.stub()
   memberCheckerStub.withArgs('balanceOf', '0x123').returns(0)
   memberCheckerStub.withArgs('balanceOf', '0x432').returns(1)
   instance.apps = of([
@@ -856,11 +856,11 @@ test('should check membership correctly', async (t) => {
       appId: 'counterApp'
     }, {
       appId: '0x6b20a3010614eeebf2138ccec99f028a61c811b3b1a3343b6ff635985c75c91f',
-      call: function(method, param) { return memberCheckerStub(method, param) }
+      call: function (method, param) { return memberCheckerStub(method, param) }
     }
   ])
 
-  console.log("check stub", memberCheckerStub('balanceOf', '0x432'))
+  console.log('check stub', memberCheckerStub('balanceOf', '0x432'))
   await instance.initTokenManagers()
   await instance.initMembers()
   // act
@@ -872,7 +872,7 @@ test('should check membership correctly', async (t) => {
   )
   instance.members.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
-      '0x123': false,
+      '0x123': false
     })
   })
   instance.setMembership(
@@ -882,7 +882,7 @@ test('should check membership correctly', async (t) => {
   instance.members.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
       '0x123': false,
-      '0x432': true,
+      '0x432': true
     })
   })
 })
@@ -1454,7 +1454,7 @@ test('should be able to decode an evm call script with multiple transactions', a
   ])
 })
 
-test.only('should init the forwarded actions correctly', async (t) => {
+test('should init the forwarded actions correctly', async (t) => {
   t.plan(1)
   // arrange
   const { Aragon } = t.context
@@ -1468,7 +1468,7 @@ test.only('should init the forwarded actions correctly', async (t) => {
   })
 })
 
-test.only('should set forwarded actions', async (t) => {
+test('should set forwarded actions', async (t) => {
   t.plan(3)
 
   // arrange
@@ -1541,5 +1541,64 @@ test.only('should set forwarded actions', async (t) => {
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
       state: 0
     }])
+  })
+})
+
+test('should init the appMetadata correctly', async (t) => {
+  t.plan(1)
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  // act
+  await instance.initAppMetadata()
+  // assert
+  instance.appMetadata.subscribe(value => {
+    console.log('value: ', value)
+    t.deepEqual(value, {})
+  })
+})
+
+test.only('should add metadata items', async (t) => {
+  t.plan(2)
+
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+
+  // act
+  await instance.initAppMetadata()
+  instance.registerAppMetadata(
+    '0x73a',
+    'u1',
+    'Qmrandomhash1',
+    ['0xdeadcafe']
+  )
+
+  // assert
+  instance.appMetadata.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      from: '0x73a',
+      dataId: 'u1',
+      cid: 'Qmrandomhash1',
+      to: ['0xdeadcafe']
+    })
+  })
+
+  // act
+  // 'to' parameter should be defaulted to '*'
+  instance.registerAppMetadata(
+    '0x73a',
+    'u1',
+    'Qmrandomhash1'
+  )
+
+  // assert
+  instance.appMetadata.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {
+      from: '0x73a',
+      dataId: 'u1',
+      cid: 'Qmrandomhash1',
+      to: ['*']
+    })
   })
 })
