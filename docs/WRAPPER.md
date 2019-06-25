@@ -200,6 +200,12 @@ Initializes the forwardedActions Observable
 
 Returns **void**
 
+### removeLocalIdentities
+
+Remove specific local identities.
+
+`removeLocalIdentities (addresses: Array<String>) : Promise`
+
 ### searchIdentities
 
 Search identites using the highest priority provider.
