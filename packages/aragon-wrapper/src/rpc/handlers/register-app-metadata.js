@@ -4,7 +4,7 @@ export default function (request, proxy, wrapper) {
     cid,
     to
   ] = request.params
-  
+
   wrapper.registerAppMetadata(
     proxy.address,
     dataId,

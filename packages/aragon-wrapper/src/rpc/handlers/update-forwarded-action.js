@@ -4,7 +4,7 @@ export default function (request, proxy, wrapper) {
     evmScript,
     state
   ] = request.params
-  
+
   wrapper.setForwardedAction(
     proxy.address,
     actionId,
