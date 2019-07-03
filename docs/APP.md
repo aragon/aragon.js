@@ -108,13 +108,19 @@ const frontendOfApp = new AragonApp(new providers.WindowMessage(window.parent))
 
 Get an array of the accounts the user currently controls over time.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an array of account addresses every time a change is detected.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of account addresses every time a change is detected.
 
 ### network
 
 Get the network the app is connected to over time.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an object with the connected network's id and type every time the network changes.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an object with the connected network's id and type every time the network changes.
+
+### getApps
+
+Get a list of installed applications
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected.
 
 ### call
 

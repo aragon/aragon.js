@@ -1173,7 +1173,8 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'get_apps', handlers.getApps)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -1291,6 +1292,15 @@ export default class Aragon {
       map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxyAddress))),
       first()
     ).toPromise()
+  }
+
+  /**
+   * Returns a list of app objects installed by the DAO
+   *
+   * @return {Promise<Array<string>>} An array of addresses
+   */
+  getApps () {
+    return this.apps.pipe(first()).toPromise()
   }
 
   /**
