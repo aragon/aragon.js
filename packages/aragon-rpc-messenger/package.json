@@ -9,7 +9,7 @@
   "scripts": {
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\"",
-    "test": "nyc --silent ava",
+    "test": "nyc --reporter=lcov ava",
     "test:watch": "ava --watch -v",
     "build": "babel src -d dist -s",
     "build:dev": "npm run build -- inline",
@@ -59,6 +59,14 @@
     ],
     "require": [
       "@babel/register"
+    ]
+  },
+  "nyc": {
+    "include": [
+      "src/**/*.js"
+    ],
+    "exclude": [
+      "src/**/*.test.js"
     ]
   },
   "browserslist": {
