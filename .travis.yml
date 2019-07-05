@@ -14,4 +14,4 @@ script:
   - npm run build
   - npm run size
 after_success:
-  - ./node_modules/.bin/nyc report --reporter=text-lcov | ./node_modules/.bin/coveralls
+  - ./node_modules/.bin/lcov-result-merger 'packages/*/coverage/lcov.info' | ./node_modules/.bin/coveralls
