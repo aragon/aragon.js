@@ -1347,6 +1347,7 @@ test('should be able to decode an evm call script with a single transaction', as
   t.deepEqual(decodedScript, [
     {
       data: '0xcafe',
+      selector: '0x',
       to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c'
     }
   ])
@@ -1374,13 +1375,75 @@ test('should be able to decode an evm call script with multiple transactions', a
   t.deepEqual(decodedScript, [
     {
       to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+      selector: '0x',
       data: '0xcafe'
     }, {
       to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
+      selector: '0x',
       data: '0xbeef'
     }, {
       to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+      selector: '0x',
       data: '0x'
+    }
+  ])
+})
+
+test('should be able to decode an evm call script with multiple nested transactions', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const script = encodeCallScript([{
+    to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '00000044' +                                                            // 68 data length
+          '40c10f19' +                                                            // mint
+          '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+          '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+  }, {
+    to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '00000044' +                                                            // 68 data length
+          '9dc29fac' +                                                            // burn
+          '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+          '0000000000000000000000000000000000000000000000000de0b6b3a7640000'      // 1e18
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      selector: '0xd948d468',
+      data: '0xd948d468000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000600000000114a3208711873b6aab2005f6cca0f91658e287ef0000004440c10f19000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE70000000000000000000000000000000000000000000000003782dace9d900000',
+      children: [{
+        data: '0x40c10f19000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE70000000000000000000000000000000000000000000000003782dace9d900000',
+        selector: '0x40c10f19',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    }, {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      selector: '0xd948d468',
+      data: '0xd948d468000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000600000000114a3208711873b6aab2005f6cca0f91658e287ef000000449dc29fac0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb0000000000000000000000000000000000000000000000000de0b6b3a7640000',
+      children: [{
+        data: '0x9dc29fac0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb0000000000000000000000000000000000000000000000000de0b6b3a7640000',
+        selector: '0x9dc29fac',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
     }
   ])
 })

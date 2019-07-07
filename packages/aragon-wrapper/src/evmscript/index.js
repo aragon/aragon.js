@@ -1,5 +1,6 @@
 import abi from 'web3-eth-abi'
 
+export const FORWARD_SIG = '0xd948d468'
 export const CALLSCRIPT_ID = '0x00000001'
 
 /**
@@ -11,6 +12,20 @@ export const CALLSCRIPT_ID = '0x00000001'
  *   data: string;
  * }
  * ```
+ *
+ * Example:
+ *
+ * input:
+ * [
+ *  { to: 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, data: 0x11111111 },
+ *  { to: 0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, data: 0x2222222222 }
+ * ]
+ *
+ * output:
+ * 0x00000001
+ *   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0000000411111111
+ *   bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb000000052222222222
+ *
  *
  * @param {Array<CallScriptAction>} actions
  * @returns {string}

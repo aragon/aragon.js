@@ -38,7 +38,7 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
+import { FORWARD_SIG, CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -1504,6 +1504,7 @@ export default class Aragon {
       // Get data
       const dataLength = parseInt(`0x${script.substring(0, 8)}`, 16) * 2
       script = script.substring(8)
+      const selector = dataLength >= 8 ? `0x${script.substring(0, 8)}` : '0x'
       const data = `0x${script.substring(0, dataLength)}`
 
       // Return rest of script for processing
@@ -1511,8 +1512,9 @@ export default class Aragon {
 
       return {
         segment: {
-          data,
-          to
+          to,
+          selector,
+          data
         },
         scriptLeft: script
       }
@@ -1528,6 +1530,22 @@ export default class Aragon {
     let scriptData = script.substring(10)
     while (scriptData.length > 0) {
       const { segment, scriptLeft } = decodePathSegment(scriptData)
+      const { selector, data } = segment
+
+      if (selector === FORWARD_SIG) {
+        const forwardCallData = data.substring(10)
+        const forwardDataOffset = parseInt(`0x${forwardCallData.substring(0, 64)}`, 16) * 2
+        const forwardDataStartIndex = forwardDataOffset + 64
+        const forwardDataLength = parseInt(`0x${forwardCallData.substring(forwardDataOffset, forwardDataStartIndex)}`, 16) * 2
+        const forwardData = `0x${forwardCallData.substring(forwardDataStartIndex, forwardDataStartIndex + forwardDataLength)}`
+
+        // If forwarding data is a script decode it
+        const forwardScriptId = script.substring(0, 10)
+        if (forwardScriptId === CALLSCRIPT_ID) {
+          segment.children = this.decodeTransactionPath(forwardData)
+        }
+      }
+
       segments.push(segment)
       scriptData = scriptLeft
     }
@@ -1540,7 +1558,7 @@ export default class Aragon {
    * @param  {Array<Object>} path
    * @return {Promise<Array<Object>>} The given `path`, with decorated with descriptions at each step
    */
-  describeTransactionPath (path) {
+  async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       let decoratedStep
 
@@ -1570,12 +1588,18 @@ export default class Aragon {
       }
 
       // Annotate the description, if one was found
-      if (decoratedStep && decoratedStep.description) {
-        try {
-          const processed = await this.postprocessRadspecDescription(decoratedStep.description)
-          decoratedStep.description = processed.description
-          decoratedStep.annotatedDescription = processed.annotatedDescription
-        } catch (err) { }
+      if (decoratedStep) {
+        if (decoratedStep.description) {
+          try {
+            const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+            decoratedStep.description = processed.description
+            decoratedStep.annotatedDescription = processed.annotatedDescription
+          } catch (err) { }
+        }
+
+        if (decoratedStep.children) {
+          decoratedStep.children = await this.describeTransactionPath(decoratedStep.children)
+        }
       }
 
       return decoratedStep || step
