@@ -38,7 +38,7 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript, isValidForwardEncodedScript, parseForwardData } from './evmscript'
+import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -54,6 +54,7 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
   createDirectTransaction,
@@ -1530,12 +1531,12 @@ export default class Aragon {
       const { segment, scriptLeft } = decodePathSegment(scriptData)
       const { data } = segment
 
-      if (isValidForwardEncodedScript(data)) {
-        const forwardData = parseForwardData(data)
-        const forwardDataSelector = forwardData.substring(0, 10)
-        // Check if the forwarding data is actually an encoded script, and decode it if so
-        if (forwardDataSelector === CALLSCRIPT_ID) {
-          segment.children = this.decodeTransactionPath(forwardData)
+      if (isValidForwardCall(data)) {
+        const forwardedEvmScript = parseForwardCall(data)
+        const forwardedScriptId = forwardedEvmScript.substring(0, 10)
+        // Check if the forwarded evmscript is a CallScript, and decode it as a child if so
+        if (forwardedScriptId === CALLSCRIPT_ID) {
+          segment.children = this.decodeTransactionPath(forwardedEvmScript)
         }
       }
 

@@ -3,9 +3,10 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
-import { getCacheKey } from './utils'
 import { encodeCallScript } from './evmscript'
+import { getCacheKey } from './utils'
 import AsyncRequestCache from './utils/AsyncRequestCache'
+import * as forwardingUtils from './utils/forwarding'
 
 // soliditySha3('app')
 const APP_NAMESPACE_HASH = '0xf1f3eb40f5bc1ad1344716ced8b8a0431d840b5783aea1fd01786bc26f35ac0f'
@@ -23,10 +24,11 @@ test.beforeEach(t => {
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
     AsyncRequestCache,
-    makeAddressMapProxy: sinon.fake.returns({}),
-    makeProxy: sinon.stub(),
+    getCacheKey,
     addressesEqual: Object.is,
-    getCacheKey
+    forwarding: forwardingUtils,
+    makeAddressMapProxy: sinon.fake.returns({}),
+    makeProxy: sinon.stub()
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
