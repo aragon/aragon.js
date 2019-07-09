@@ -38,7 +38,6 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -54,6 +53,7 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { CALLSCRIPT_ID, encodeCallScript } from './utils/callscript'
 import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
