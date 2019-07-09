@@ -38,7 +38,7 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
+import { CALLSCRIPT_ID, encodeCallScript, isValidForwardEncodedScript, parseForwardData } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -1511,8 +1511,8 @@ export default class Aragon {
 
       return {
         segment: {
-          data,
-          to
+          to,
+          data
         },
         scriptLeft: script
       }
@@ -1528,6 +1528,17 @@ export default class Aragon {
     let scriptData = script.substring(10)
     while (scriptData.length > 0) {
       const { segment, scriptLeft } = decodePathSegment(scriptData)
+      const { data } = segment
+
+      if (isValidForwardEncodedScript(data)) {
+        const forwardData = parseForwardData(data)
+        const forwardDataSelector = forwardData.substring(0, 10)
+        // Check if the forwarding data is actually an encoded script, and decode it if so
+        if (forwardDataSelector === CALLSCRIPT_ID) {
+          segment.children = this.decodeTransactionPath(forwardData)
+        }
+      }
+
       segments.push(segment)
       scriptData = scriptLeft
     }
@@ -1540,7 +1551,7 @@ export default class Aragon {
    * @param  {Array<Object>} path
    * @return {Promise<Array<Object>>} The given `path`, with decorated with descriptions at each step
    */
-  describeTransactionPath (path) {
+  async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       let decoratedStep
 
@@ -1570,12 +1581,18 @@ export default class Aragon {
       }
 
       // Annotate the description, if one was found
-      if (decoratedStep && decoratedStep.description) {
-        try {
-          const processed = await this.postprocessRadspecDescription(decoratedStep.description)
-          decoratedStep.description = processed.description
-          decoratedStep.annotatedDescription = processed.annotatedDescription
-        } catch (err) { }
+      if (decoratedStep) {
+        if (decoratedStep.description) {
+          try {
+            const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+            decoratedStep.description = processed.description
+            decoratedStep.annotatedDescription = processed.annotatedDescription
+          } catch (err) { }
+        }
+
+        if (decoratedStep.children) {
+          decoratedStep.children = await this.describeTransactionPath(decoratedStep.children)
+        }
       }
 
       return decoratedStep || step
