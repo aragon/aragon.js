@@ -1,6 +1,6 @@
 {
   "name": "@aragon/rpc-messenger",
-  "version": "1.1.0",
+  "version": "2.0.0-beta.1",
   "description": "Aragon RPC messenger",
   "main": "dist/index.js",
   "files": [
@@ -9,7 +9,8 @@
   "scripts": {
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\"",
-    "test": "nyc --silent ava 'src/**/*.test.js'",
+    "test": "nyc --reporter=lcov ava",
+    "test:watch": "ava --watch -v",
     "build": "babel src -d dist -s",
     "build:dev": "npm run build -- inline",
     "prepublishOnly": "env NODE_ENV=production npm run build"
@@ -33,7 +34,7 @@
     "@babel/plugin-transform-runtime": "^7.1.0",
     "@babel/preset-env": "^7.1.0",
     "@babel/register": "^7.0.0",
-    "ava": "^1.0.0-rc.1",
+    "ava": "^2.0.0",
     "babel-eslint": "^10.0.1",
     "babel-preset-minify": "^0.5.0",
     "eslint-plugin-flowtype": "^2.50.3",
@@ -53,8 +54,19 @@
     ]
   },
   "ava": {
+    "files": [
+      "src/**/*.test.js"
+    ],
     "require": [
       "@babel/register"
+    ]
+  },
+  "nyc": {
+    "include": [
+      "src/**/*.js"
+    ],
+    "exclude": [
+      "src/**/*.test.js"
     ]
   },
   "browserslist": {
@@ -62,7 +74,7 @@
     "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
   },
   "dependencies": {
-    "rxjs": "^6.2.1",
+    "rxjs": "^6.5.2",
     "@babel/runtime": "^7.1.2",
     "uuid": "^3.2.1"
   }
