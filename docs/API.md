@@ -35,57 +35,6 @@ Every method in this class sends an RPC message to the wrapper.
 
 The app communicates with the wrapper using a messaging provider. The default provider uses the [MessageChannel PostMessage API](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort/postMessage), but you may specify another provider to use (see the exported [providers](/docs/PROVIDERS.md) to learn more about them). You will most likely want to use the [`WindowMessage` provider](/docs/PROVIDERS.md#windowmessage) in your frontend.
 
-To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
-
-For example, to execute the `increment` function in your app's smart contract:
-
-```js
-const api = new AragonApp()
-
-// Sends an intent to the wrapper that we wish to invoke `increment` on our app's smart contract
-api
-  .increment(1)
-  .subscribe(
-    txHash => console.log(`Success! Incremented in tx ${txHash}`),
-    err => console.log(`Could not increment: ${err}`)
-  )
-```
-
-The intent function returns an [RxJS observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable) that emits the hash of the transaction that was sent or an error if the user choose not to sign the transaction.
-
-You can also pass an optional object after all the required function arguments to specify some values that will be sent in the transaction. They are the same values that can be passed to `web3.eth.sendTransaction()` and can be checked in this [web3.js document](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
-
-```js
-api.increment(1, { gas: 200000, gasPrice: 80000000 })
-```
-
-You can include a `token` parameter in this optional object if you need to grant the app token allowance approval before a transaction. A slightly modified [example](https://github.com/aragon/aragon-apps/blob/7d61235044509095db09cf354f38422f0778d4bb/apps/finance/app/src/App.js#L58) from the Finance app:
-
-```js
-intentParams = {
-  token: { address: tokenAddress, value: amount }
-  gas: 500000
-}
-
-api.deposit(tokenAddress, amount, reference, intentParams)
-```
-
-If you want to grant the token allowance approval to a contract different to the app, you can pass along a `spender` paramater in the `token` object as follows:
-
-```js
-intentParams = {
-  token: { address: tokenAddress, value: amount, spender: otherContractAddress }
-  gas: 500000
-}
-
-api.deposit(tokenAddress, amount, reference, intentParams)
-```
-
-Some caveats to customizing transaction parameters:
-
-- `from`, `to`, `data`: will be ignored as aragon.js will calculate those.
-- `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragon.js results in more gas than provided in the parameter, the estimated gas will prevail.
-
 ### Parameters
 
 - `provider` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `MessagePortMessage`): A provider used to send and receive messages to and from the wrapper. See [providers](/docs/PROVIDERS.md).
@@ -114,6 +63,67 @@ const frontendOfApp = new AragonApp(new providers.WindowMessage(window.parent))
 > All methods returning observables will only send their RPC requests upon the returned observable being subscribed. For example, calling `api.increment()` will **NOT** send an intent until you have subscribed to the returned observable. This is to ensure that responses cannot be accidentally skipped.
 >
 > If you're not interested in the response, you can either make an "empty" subscription (i.e. `api.increment().subscribe()`), or turn it into a promise and await it (i.e. `await api.increment().toPromise()`).
+
+### intents
+
+To send an intent to the wrapper (i.e. invoke a method on your smart contract), simply call it on the instance of this class as if it was a JavaScript function.
+
+For example, to execute the `increment` function in your app's smart contract:
+
+```js
+const api = new AragonApp()
+
+// Sends an intent to the wrapper that we wish to invoke `increment` on our app's smart contract
+api
+  .increment(1)
+  .subscribe(
+    txHash => console.log(`Success! Incremented in tx ${txHash}`),
+    err => console.log(`Could not increment: ${err}`)
+  )
+```
+
+The intent function returns a single-emission [RxJS observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable) that emits the hash of the transaction that was sent or an error if the user choose not to sign the transaction.
+
+You can also pass an optional object after all the required function arguments to specify some transaction options. They are the same values that can be passed to `web3.eth.sendTransaction()` and the full list can be seen in the [web3.js documentation](https://web3js.readthedocs.io/en/1.0/web3-eth.html#id62).
+
+```js
+api.increment(1, { gas: 200000, gasPrice: 80000000 })
+```
+
+Some caveats to customizing transaction parameters:
+
+- `from`, `to`, `data`: will be ignored as aragonAPI will calculate those.
+- `gas`: If the intent cannot be performed directly (needs to be forwarded), the gas amount will be interpreted as the minimum amount of gas to send in the transaction. Because forwarding performs a heavier transaction gas-wise, if the gas estimation done by aragonAPI results in more gas than provided in the parameter, the estimated gas will prevail.
+
+#### Pretransactions
+
+> **Note**<br>
+> Some intents may require additional transactions ahead of the actual intent, such as a token approval if the intent is to transfer tokens on the user's behalf.
+> We use the concept of "pretransactions" to allow apps to easily declare that they require these actions.
+
+**Token Approvals**
+
+You can include a `token` parameter in the final options object if you need to grant the app an token allowance before a transaction. A slightly modified [example](https://github.com/aragon/aragon-apps/blob/7d61235044509095db09cf354f38422f0778d4bb/apps/finance/app/src/App.js#L58) from the Finance app:
+
+```js
+intentParams = {
+  token: { address: tokenAddress, value: amount }
+  gas: 500000
+}
+
+api.deposit(tokenAddress, amount, reference, intentParams)
+```
+
+If you want to grant the token allowance to a different contract from the current app, you can pass along a `spender` paramater in the `token` object as follows:
+
+```js
+intentParams = {
+  token: { address: tokenAddress, value: amount, spender: otherContractAddress }
+  gas: 500000
+}
+
+api.deposit(tokenAddress, amount, reference, intentParams)
+```
 
 ### accounts
 
