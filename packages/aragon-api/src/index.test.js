@@ -94,6 +94,90 @@ test('should return the accounts as an observable', t => {
   t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'accounts')
 })
 
+test('should return the installed apps as an observable', t => {
+  t.plan(3)
+  // arrange
+  const getAppsFn = Index.AppProxy.prototype.getApps
+  const observable = of({
+    jsonrpc: '2.0',
+    id: 'uuid1',
+    result: [
+      {
+        abi: 'abi for kernel',
+        appId: 'kernel',
+        codeAddress: '0xkernel',
+        isAragonOsInternalApp: true,
+        proxyAddress: '0x123'
+      }, {
+        abi: 'abi for counterApp',
+        appId: 'counterApp',
+        codeAddress: '0xcounterApp',
+        isForwarder: false,
+        kernelAddress: '0x123',
+        proxyAddress: '0x456'
+      }, {
+        abi: 'abi for votingApp',
+        appId: 'votingApp',
+        codeAddress: '0xvotingApp',
+        isForwarder: false,
+        kernelAddress: '0x123',
+        proxyAddress: '0x789'
+      }, {
+        abi: 'abi for repo',
+        appId: 'repoApp',
+        codeAddress: '0xrepoApp',
+        isForwarder: false,
+        kernelAddress: '0x123',
+        proxyAddress: '0xrepo'
+      }
+    ]
+  })
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = getAppsFn.call(instanceStub)
+  // assert
+  // the call to sendAndObserveResponse is made before we subscribe
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  result.subscribe(value => {
+    t.deepEqual(value, [
+      {
+        abi: 'abi for kernel',
+        appId: 'kernel',
+        codeAddress: '0xkernel',
+        isAragonOsInternalApp: true,
+        proxyAddress: '0x123'
+      }, {
+        abi: 'abi for counterApp',
+        appId: 'counterApp',
+        codeAddress: '0xcounterApp',
+        isForwarder: false,
+        kernelAddress: '0x123',
+        proxyAddress: '0x456'
+      }, {
+        abi: 'abi for votingApp',
+        appId: 'votingApp',
+        codeAddress: '0xvotingApp',
+        isForwarder: false,
+        kernelAddress: '0x123',
+        proxyAddress: '0x789'
+      }, {
+        abi: 'abi for repo',
+        appId: 'repoApp',
+        codeAddress: '0xrepoApp',
+        isForwarder: false,
+        kernelAddress: '0x123',
+        proxyAddress: '0xrepo'
+      }
+    ])
+  })
+  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'get_apps')
+})
+
 test('should send an identify request', t => {
   t.plan(2)
   // arrange

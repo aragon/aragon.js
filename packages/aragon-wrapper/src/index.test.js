@@ -1260,6 +1260,42 @@ test('should get the app from a proxy address', async (t) => {
   })
 })
 
+test('should get a list of apps correctly', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.apps = of([
+    {
+      appId: 'coolApp',
+      kernelAddress: '0x124',
+      abi: 'abi for coolApp',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
+  // act
+  const result = await instance.getApps()
+  console.log('RESULT', result)
+  // assert
+  t.deepEqual(result, [{
+    appId: 'coolApp',
+    kernelAddress: '0x124',
+    abi: 'abi for coolApp',
+    proxyAddress: '0x456'
+  }, {
+    appId: 'votingApp',
+    kernelAddress: '0x123',
+    abi: 'abi for votingApp',
+    proxyAddress: '0x789'
+  }])
+})
+
 test('should get the permission manager', async (t) => {
   const { Aragon } = t.context
 
