@@ -15,6 +15,7 @@ test('interfaces: getAbi', async (t) => {
     'aragon/AppProxy',
     'aragon/ERCProxy',
     'aragon/Forwarder',
+    'aragon/ForwarderFee',
     'aragon/Kernel',
     'aragon/EVM Script Registry',
     'apm/APM Registry',
