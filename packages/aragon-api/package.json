@@ -1,13 +1,13 @@
 {
   "name": "@aragon/api",
-  "version": "2.0.0-beta.3",
+  "version": "2.0.0-beta.4",
   "description": "Aragon app API",
   "main": "dist/index.js",
   "scripts": {
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\"",
-    "test": "nyc --silent ava 'src/**/*.test.js'",
-    "test:watch": "ava --watch -v 'src/**/*.test.js'",
+    "test": "nyc --reporter=lcov ava",
+    "test:watch": "ava --watch -v",
     "build": "babel src -d dist -s",
     "build:dev": "npm run build -- inline",
     "prepublishOnly": "env NODE_ENV=production npm run build"
@@ -38,7 +38,7 @@
     "@babel/plugin-transform-runtime": "^7.1.0",
     "@babel/preset-env": "^7.1.0",
     "@babel/register": "^7.0.0",
-    "ava": "^1.0.0-rc.1",
+    "ava": "^2.0.0",
     "babel-eslint": "^10.0.1",
     "babel-preset-minify": "^0.5.0",
     "debug": "^3.1.0",
@@ -59,8 +59,19 @@
     ]
   },
   "ava": {
+    "files": [
+      "src/**/*.test.js"
+    ],
     "require": [
       "@babel/register"
+    ]
+  },
+  "nyc": {
+    "include": [
+      "src/**/*.js"
+    ],
+    "exclude": [
+      "src/**/*.test.js"
     ]
   },
   "browserslist": {

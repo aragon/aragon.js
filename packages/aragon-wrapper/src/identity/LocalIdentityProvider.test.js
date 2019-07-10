@@ -88,8 +88,8 @@ test.serial('should always have createAt in metadata', async t => {
   t.truthy(identityMetadata.createdAt)
 })
 
-test.serial('clear clears the local cache', async t => {
-  t.plan(3)
+test.serial('clears the local cache', async t => {
+  t.plan(6)
   const provider = t.context.localIdentityProvider
   const name = 'vitalik'
   await provider.modify(ADDRESS_MIXED_CASE, { name })
@@ -99,6 +99,31 @@ test.serial('clear clears the local cache', async t => {
   t.truthy(await provider.resolve(ADDRESS_MIXED_CASE))
   t.truthy(await provider.resolve(SECOND_ADDRESS))
   t.truthy(await provider.resolve(THIRD_ADDRESS))
+
+  await provider.clear()
+
+  t.falsy(await provider.resolve(ADDRESS_MIXED_CASE))
+  t.falsy(await provider.resolve(SECOND_ADDRESS))
+  t.falsy(await provider.resolve(THIRD_ADDRESS))
+})
+
+test.serial('removes selected local identities', async t => {
+  t.plan(4)
+  const provider = t.context.localIdentityProvider
+  const name = 'vitalik'
+  await provider.modify(ADDRESS_MIXED_CASE, { name })
+  await provider.modify(SECOND_ADDRESS, { name })
+
+  const { name: name1 } = await provider.resolve(ADDRESS_MIXED_CASE)
+  t.is(name1, name)
+  const { name: name2 } = await provider.resolve(SECOND_ADDRESS)
+  t.is(name2, name)
+
+  await provider.remove(ADDRESS_MIXED_CASE)
+
+  t.falsy(await provider.resolve(ADDRESS_MIXED_CASE))
+  const { name: name4 } = await provider.resolve(SECOND_ADDRESS)
+  t.is(name4, name)
 })
 
 test.serial('getAll will return all local identities with lowercase address keys', async t => {
@@ -119,4 +144,47 @@ test.serial('getAll will return all local identities with lowercase address keys
   t.truthy(all[ADDRESS_LOWER_CASE].createdAt)
   t.truthy(all[SECOND_ADDRESS].createdAt)
   t.truthy(all[THIRD_ADDRESS.toLowerCase()].createdAt)
+})
+
+test.serial('search should return an array of results of freely matching identities', async t => {
+  // t.plan(7)
+  const provider = t.context.localIdentityProvider
+  const identities = [
+    [ '0x1110000000000000000000000000000000000001', 'James Baldwin' ],
+    [ '0x1120000000000000000000000000000000000001', 'David Deutsch' ],
+    [ '0x3000000000000000000000000000000000000001', 'Isaac Newton' ],
+    [ '0x4000000000000000000000000000000000000001', 'Henry Newton' ],
+    [ '0x6000000000000000000000000000000000000001', 'Marie Curie' ],
+    [ '0x7000000000000000000000000000000000000001', 'Winnie the Pooh' ],
+    [ '0x8900000000088888870000000000000000000001', 'Richard Feynman' ],
+    [ '0x0900000000000000000000000000000000000001', 'Aristotle' ],
+    [ '0xa000000000000000000000000000000000000002', '0x3b The Who' ],
+    [ '0x3b00000000000000000000000000000000000002', 'The man who sold the world? (Nirvana not $Bowie)' ]
+  ]
+  // map of search terms to expected count and names
+  const searchTermToExpectation = {
+    'D': { names: ['James Baldwin', 'David Deutsch', 'Richard Feynman', 'The man who sold the world? (Nirvana not $Bowie)'] },
+    'xn': { names: [] },
+    '0a': { names: [] },
+    'eu': { names: ['David Deutsch'] },
+    'new': { names: [ 'Isaac Newton', 'Henry Newton' ] },
+    'win': { names: [ 'James Baldwin', 'Winnie the Pooh' ] },
+    'jam': { names: [ 'James Baldwin' ] },
+    'ari': { names: [ 'Marie Curie', 'Aristotle' ] },
+    '0x09': { names: [ 'Aristotle' ] },
+    '0x11': { names: [ 'James Baldwin', 'David Deutsch' ] },
+    '0x3b': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] },
+    'who': { names: [ '0x3b The Who', 'The man who sold the world? (Nirvana not $Bowie)' ] }
+  }
+  // save test identities
+  for (const [address, name] of identities) {
+    await provider.modify(address, { name })
+  }
+
+  for (const [searchTerm, expectedResult] of Object.entries(searchTermToExpectation)) {
+    const results = await provider.search(searchTerm)
+    const resultNames = results.map(({ name }) => name)
+    t.is(results.length, expectedResult.names.length, `Matching the result count when searching for ${searchTerm}`)
+    t.deepEqual(resultNames, expectedResult.names)
+  }
 })

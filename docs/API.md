@@ -119,13 +119,13 @@ const frontendOfApp = new AragonApp(new providers.WindowMessage(window.parent))
 
 Get an array of the accounts the user currently controls over time.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an array of account addresses every time a change is detected.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of account addresses every time a change is detected.
 
 ### network
 
 Get the network the app is connected to over time.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits an object with the connected network's id and type every time the network changes.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an object with the connected network's id and type every time the network changes.
 
 ### call
 
@@ -136,13 +136,23 @@ Perform a read-only call on the app's smart contract.
 - `method` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the method to call
 - `params` **...any**: An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the result of the call.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the result of the call.
+
+### describeScript
+
+Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
+
+#### Parameters
+
+- `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The EVM callscript to describe
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
 
 ### events
 
 Listens for events on your app's smart contract from the last unhandled block.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification). Note that in the background, an `eth_getLogs` will first be done to retrieve events from the last unhandled block and only afterwards will an `eth_subscribe` be made to subscribe to new events.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification). Note that in the background, an `eth_getLogs` will first be done to retrieve events from the last unhandled block and only afterwards will an `eth_subscribe` be made to subscribe to new events.
 
 ### external
 
@@ -172,6 +182,66 @@ token
 
 Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**: An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable) that emits the value of the call.
 
+### requestSignMessage
+
+Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1.0/web3-eth-personal.html#sign) method.
+
+#### Parameters
+
+- `message` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The message to sign
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the result of the signature. Errors if the user chose not to sign the message.
+
+#### Examples
+
+```javascript
+  api
+    .requestSignMessage('messageToSign')
+    .subscribe(
+      signature => {
+        // use signature hash
+      },
+      err => {
+        // handle error (including the user denying the signature request)
+      }
+    )
+```
+
+### web3Eth
+
+Request a white-listed [web3.eth](https://web3js.readthedocs.io/en/1.0/web3-eth.html) function call.
+
+Currently the white-list includes:
+
+- `estimateGas`,
+- `getAccounts`,
+- `getBalance`,
+- `getBlock`,
+- `getBlockNumber`,
+- `getBlockTransactionCount`,
+- `getCode`,
+- `getCoinbase`,
+- `getCompilers`,
+- `getGasPrice`,
+- `getHashrate`,
+- `getPastLogs`,
+- `getProtocolVersion`,
+- `getStorageAt`,
+- `getTransaction`,
+- `getTransactionCount`,
+- `getTransactionFromBlock`,
+- `getTransactionReceipt`,
+- `getWork`,
+- `getUncle`,
+- `isMining`,
+- `isSyncing`
+
+#### Parameters
+
+- `params` **...any**: An optional variadic number of parameters for the function. See the [web3.eth docs](https://web3js.readthedocs.io/en/1.0/web3-eth.html) for more details.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable with the result of the call.
+
 ### cache
 
 Set a value in the application cache.
@@ -181,7 +251,7 @@ Set a value in the application cache.
 - `key` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The cache key for the value
 - `value` **any**: The value to persist in the cache (must conform to the [structured cloning algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm))
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits when the cache operation has been commited.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits when the cache operation has been commited.
 
 ### state
 
@@ -189,7 +259,7 @@ Observe the cached application state over time.
 
 This method is also used to share state between the background script and front-end of your application.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits the application state every time it changes. The type of the emitted values is application specific.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits the application state every time it changes. The type of the emitted values is application specific.
 
 ### store
 
@@ -244,17 +314,7 @@ const state$ = api.store(
 )
 ```
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable  that emits the application state every time it changes. The type of the emitted values is application specific.
-
-### describeScript
-
-Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
-
-#### Parameters
-
-- `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The EVM callscript to describe
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable  that emits the application state every time it changes. The type of the emitted values is application specific.
 
 ### identify
 
@@ -286,7 +346,7 @@ Resolve an address' identity, using the highest priority provider.
 
 - `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to resolve
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the resolved identity or null if not found.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the resolved identity or null if not found.
 
 ### requestAddressIdentityModification
 
@@ -296,67 +356,17 @@ Request an address' identity be modified with the highest priority provider. The
 
 - `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: Address to modify
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits if the modification succeeded or was cancelled by the user.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits if the modification succeeded or was cancelled by the user.
 
-### requestSignMessage
+### searchIdentities
 
-Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1.0/web3-eth-personal.html#sign) method.
-
-#### Parameters
-
-- `message` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The message to sign
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable that emits the result of the signature. Errors if the user chose not to sign the message.
-
-#### Examples
-
-```javascript
-  api
-    .requestSignMessage('messageToSign')
-    .subscribe(
-      signature => {
-        // use signature hash
-      },
-      err => {
-        // handle error (including the user denying the signature request)
-      }
-    )
-```
-
-### web3Eth
-
-Request a white-listed [web3.eth](https://web3js.readthedocs.io/en/1.0/web3-eth.html) function call.
-
-Currently the white-list includes:
-
-- `estimateGas`,
-- `getAccounts`,
-- `getBalance`,
-- `getBlock`,
-- `getBlockNumber`,
-- `getBlockTransactionCount`,
-- `getCode`,
-- `getCoinbase`,
-- `getCompilers`,
-- `getGasPrice`,
-- `getHashrate`,
-- `getPastLogs`,
-- `getProtocolVersion`,
-- `getStorageAt`,
-- `getTransaction`,
-- `getTransactionCount`,
-- `getTransactionFromBlock`,
-- `getTransactionReceipt`,
-- `getWork`,
-- `getUncle`,
-- `isMining`,
-- `isSyncing`
+Search for identities that match a given search term.
 
 #### Parameters
 
-- `params` **...any**: An optional variadic number of parameters for the function. See the [web3.eth docs](https://web3js.readthedocs.io/en/1.0/web3-eth.html) for more details.
+- `searchTerm` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: String to search for. Must be above a certain length, as defined by the handler (e.g. Aragon client uses minimum length of 3).
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An single-emission observable with the result of the call.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits with an array of any matching identities.
 
 ### context
 
@@ -370,7 +380,7 @@ For example, if a notification or a shortcut is clicked, the context attached to
 
 App contexts can be used to display specific views in your app or anything else you might find interesting.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits app contexts as they are received.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits app contexts as they are received.
 
 ### notify
 
