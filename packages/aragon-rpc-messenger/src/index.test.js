@@ -176,7 +176,7 @@ test('should end response stream, once notified of its completion', (t) => {
 
   // act
   responsesMock.next({ data: 'thanks', id })
-  responsesMock.next({ completed: true, id })
+  responsesMock.next({ completed: true, id }) // this should complete the messages stream
   responsesMock.next({ data: 'thanks again', id })
   responsesMock.complete()
 
@@ -281,7 +281,7 @@ test('should end response stream immediately on first response', (t) => {
   // act
   responsesMock.next({ data: 'thanks', id })
   responsesMock.next({ data: 'thanks again', id })
-  responsesMock.next({ completed: true, id })
+  responsesMock.next({ completed: true, id }) // this should complete the messages stream
   responsesMock.complete()
 
   t.true(completed)

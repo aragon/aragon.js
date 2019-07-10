@@ -3,6 +3,7 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { empty, from, of, ReplaySubject, Subject } from 'rxjs'
 import { first } from 'rxjs/operators'
+import { signals as rpcSignals } from '@aragon/rpc-messenger'
 import { getCacheKey } from './utils'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 import * as callscriptUtils from './utils/callscript'
@@ -24,6 +25,7 @@ test.beforeEach(t => {
     getApmAppInfo: sinon.stub()
   }
   const messengerConstructorStub = sinon.stub()
+  messengerConstructorStub.signals = rpcSignals
   const utilsStub = {
     AsyncRequestCache,
     getCacheKey,
