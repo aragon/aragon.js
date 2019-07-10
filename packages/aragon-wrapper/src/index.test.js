@@ -1281,7 +1281,6 @@ test('should get a list of apps correctly', async (t) => {
   ])
   // act
   const result = await instance.getApps()
-  console.log('RESULT', result)
   // assert
   t.deepEqual(result, [{
     appId: 'coolApp',

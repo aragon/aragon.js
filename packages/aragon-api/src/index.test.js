@@ -115,20 +115,6 @@ test('should return the installed apps as an observable', t => {
         isForwarder: false,
         kernelAddress: '0x123',
         proxyAddress: '0x456'
-      }, {
-        abi: 'abi for votingApp',
-        appId: 'votingApp',
-        codeAddress: '0xvotingApp',
-        isForwarder: false,
-        kernelAddress: '0x123',
-        proxyAddress: '0x789'
-      }, {
-        abi: 'abi for repo',
-        appId: 'repoApp',
-        codeAddress: '0xrepoApp',
-        isForwarder: false,
-        kernelAddress: '0x123',
-        proxyAddress: '0xrepo'
       }
     ]
   })
@@ -158,20 +144,6 @@ test('should return the installed apps as an observable', t => {
         isForwarder: false,
         kernelAddress: '0x123',
         proxyAddress: '0x456'
-      }, {
-        abi: 'abi for votingApp',
-        appId: 'votingApp',
-        codeAddress: '0xvotingApp',
-        isForwarder: false,
-        kernelAddress: '0x123',
-        proxyAddress: '0x789'
-      }, {
-        abi: 'abi for repo',
-        appId: 'repoApp',
-        codeAddress: '0xrepoApp',
-        isForwarder: false,
-        kernelAddress: '0x123',
-        proxyAddress: '0xrepo'
       }
     ])
   })
