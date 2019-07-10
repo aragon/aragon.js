@@ -1,5 +1,5 @@
 import test from 'ava'
-import * as script from './'
+import * as script from './callscript'
 
 test('encodeCallScript', (t) => {
   const callScript = script.encodeCallScript([{

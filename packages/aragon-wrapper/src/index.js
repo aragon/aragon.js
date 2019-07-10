@@ -38,7 +38,6 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript, isValidForwardEncodedScript, parseForwardData } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -54,6 +53,8 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callscript'
+import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
   createDirectTransaction,
@@ -1497,53 +1498,26 @@ export default class Aragon {
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
   decodeTransactionPath (script) {
-    function decodePathSegment (script) {
-      // Get address
-      const to = `0x${script.substring(0, 40)}`
-      script = script.substring(40)
-
-      // Get data
-      const dataLength = parseInt(`0x${script.substring(0, 8)}`, 16) * 2
-      script = script.substring(8)
-      const data = `0x${script.substring(0, dataLength)}`
-
-      // Return rest of script for processing
-      script = script.substring(dataLength)
-
-      return {
-        segment: {
-          to,
-          data
-        },
-        scriptLeft: script
-      }
+    // In the future we may support more EVMScripts, but for now let's just assume we're only
+    // dealing with call scripts
+    if (!isCallScript(script)) {
+      throw new Error(`Script could not be decoded: ${script}`)
     }
 
-    // Get script identifier (0x prefix + bytes4)
-    const scriptId = script.substring(0, 10)
-    if (scriptId !== CALLSCRIPT_ID) {
-      throw new Error(`Unknown script ID ${scriptId}`)
-    }
-
-    const segments = []
-    let scriptData = script.substring(10)
-    while (scriptData.length > 0) {
-      const { segment, scriptLeft } = decodePathSegment(scriptData)
+    const path = decodeCallScript(script)
+    return path.map((segment) => {
       const { data } = segment
 
-      if (isValidForwardEncodedScript(data)) {
-        const forwardData = parseForwardData(data)
-        const forwardDataSelector = forwardData.substring(0, 10)
-        // Check if the forwarding data is actually an encoded script, and decode it if so
-        if (forwardDataSelector === CALLSCRIPT_ID) {
-          segment.children = this.decodeTransactionPath(forwardData)
-        }
+      if (isValidForwardCall(data)) {
+        const forwardedEvmScript = parseForwardCall(data)
+
+        try {
+          segment.children = this.decodeTransactionPath(forwardedEvmScript)
+        } catch (err) {}
       }
 
-      segments.push(segment)
-      scriptData = scriptLeft
-    }
-    return segments
+      return segment
+    })
   }
 
   /**
