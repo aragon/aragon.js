@@ -88,7 +88,7 @@ test.serial('should always have createAt in metadata', async t => {
   t.truthy(identityMetadata.createdAt)
 })
 
-test.serial('clear clears the local cache', async t => {
+test.serial('clears the local cache', async t => {
   t.plan(6)
   const provider = t.context.localIdentityProvider
   const name = 'vitalik'
@@ -107,7 +107,7 @@ test.serial('clear clears the local cache', async t => {
   t.falsy(await provider.resolve(THIRD_ADDRESS))
 })
 
-test.serial('remove removes selected local identities', async t => {
+test.serial('removes selected local identities', async t => {
   t.plan(4)
   const provider = t.context.localIdentityProvider
   const name = 'vitalik'
