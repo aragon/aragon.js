@@ -947,15 +947,6 @@ export default class Aragon {
   }
 
   /**
-   * Clear all local identities
-   *
-   * @return {Promise<void>}
-   */
-  clearLocalIdentities () {
-    return this.identityProviderRegistrar.get('local').clear()
-  }
-
-  /**
    * Remove selected local identities
    *
    * @param {Array<string>} addresses The addresses to be removed from the local identity provider
