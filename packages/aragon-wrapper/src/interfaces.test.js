@@ -8,7 +8,7 @@ test.afterEach.always(() => {
 })
 
 test('interfaces: getAbi', async (t) => {
-  t.plan(11)
+  t.plan(12)
   // arrange
   const availableABIs = [
     'aragon/ACL',
