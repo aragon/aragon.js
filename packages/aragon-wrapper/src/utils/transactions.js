@@ -62,9 +62,9 @@ export async function applyForwardingPretransaction (forwardingTransaction, web3
 
   const feeDetails = { amount: toBN(0) }
   try {
-    const [tokenAddress, feeAmount] = await forwardFee().call()
-    feeDetails.tokenAddress = tokenAddress
-    feeDetails.amount = toBN(feeAmount)
+    const feeResult = await forwardFee().call() // forwardFee() returns (address, uint256)
+    feeDetails.tokenAddress = feeResult[0]
+    feeDetails.amount = toBN(feeResult[1])
   } catch (err) {
     // Not all forwarders implement the `forwardFee()` interface
   }
