@@ -5,6 +5,7 @@ import abiAragonACL from '@aragon/os/abi/ACL'
 import abiAragonAppProxy from '@aragon/os/abi/AppProxyBase'
 import abiAragonERCProxy from '@aragon/os/abi/ERCProxy'
 import abiAragonForwarder from '@aragon/os/abi/IForwarder'
+import abiAragonForwarderFee from '@aragon/os/abi/IForwarderFee'
 import abiAragonKernel from '@aragon/os/abi/Kernel'
 import abiAragonEVMScriptRegistry from '@aragon/os/abi/EVMScriptRegistry'
 import abiERC20 from '@aragon/os/abi/ERC20'
@@ -25,6 +26,7 @@ const ABIS = {
   'aragon/AppProxy': abiAragonAppProxy.abi,
   'aragon/ERCProxy': abiAragonERCProxy.abi,
   'aragon/Forwarder': abiAragonForwarder.abi,
+  'aragon/ForwarderFee': abiAragonForwarderFee.abi,
   'aragon/Kernel': abiAragonKernel.abi,
   'aragon/EVM Script Registry': abiAragonEVMScriptRegistry.abi,
   'apm/APM Registry': abiApmRegistry.abi,

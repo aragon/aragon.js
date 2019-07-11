@@ -4,6 +4,83 @@ import { getAbi } from '../interfaces'
 const DEFAULT_GAS_FUZZ_FACTOR = 1.5
 const PREVIOUS_BLOCK_GAS_LIMIT_FACTOR = 0.95
 
+export async function applyPretransaction (directTransaction, web3) {
+  // Token allowance pretransaction
+  if (directTransaction.token) {
+    const {
+      from,
+      to,
+      token: { address: tokenAddress, value: tokenValue, spender }
+    } = directTransaction
+
+    // Approve the transaction destination unless an spender is passed to approve a different contract
+    const approveSpender = spender || to
+
+    const erc20ABI = getAbi('standard/ERC20')
+    const tokenContract = new web3.eth.Contract(erc20ABI, tokenAddress)
+    const balance = await tokenContract.methods.balanceOf(from).call()
+
+    const tokenValueBN = toBN(tokenValue)
+
+    if (toBN(balance).lt(tokenValueBN)) {
+      throw new Error(`Balance too low. ${from} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
+    }
+
+    const allowance = await tokenContract.methods.allowance(from, approveSpender).call()
+    const allowanceBN = toBN(allowance)
+
+    // If allowance is already greater than or equal to amount, there is no need to do an approve transaction
+    if (allowanceBN.lt(tokenValueBN)) {
+      if (allowanceBN.gt(toBN(0))) {
+        // TODO: Actually handle existing approvals (some tokens fail when the current allowance is not 0)
+        console.warn(`${from} already approved ${approveSpender}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
+      }
+
+      const tokenApproveTransaction = {
+        // TODO: should we include transaction options?
+        from,
+        to: tokenAddress,
+        data: tokenContract.methods.approve(approveSpender, tokenValue).encodeABI()
+      }
+
+      directTransaction.pretransaction = tokenApproveTransaction
+      delete directTransaction.token
+    }
+  }
+
+  return directTransaction
+}
+
+export async function applyForwardingPretransaction (forwardingTransaction, web3) {
+  const { to: forwarder } = forwardingTransaction
+
+  // Check if a token approval pretransaction is needed due to the forwarder requiring a fee
+  const forwardFee = new web3.eth.Contract(
+    getAbi('aragon/ForwarderFee'),
+    forwarder
+  ).methods['forwardFee']
+
+  const feeDetails = { amount: toBN(0) }
+  try {
+    const feeResult = await forwardFee().call() // forwardFee() returns (address, uint256)
+    feeDetails.tokenAddress = feeResult[0]
+    feeDetails.amount = toBN(feeResult[1])
+  } catch (err) {
+    // Not all forwarders implement the `forwardFee()` interface
+  }
+
+  if (feeDetails.tokenAddress && feeDetails.amount.gt(toBN(0))) {
+    // Needs a token approval pretransaction
+    forwardingTransaction.token = {
+      address: feeDetails.tokenAddress,
+      spender: forwarder, // since it's a forwarding transaction, always show the real spender
+      value: feeDetails.amount.toString()
+    }
+  }
+
+  return applyPretransaction(forwardingTransaction, web3)
+}
+
 export async function createDirectTransaction (sender, app, methodName, params, web3) {
   if (!app) {
     throw new Error(`Could not create transaction due to missing app artifact`)
@@ -39,44 +116,8 @@ export async function createDirectTransaction (sender, app, methodName, params, 
     data: web3.eth.abi.encodeFunctionCall(methodABI, params)
   }
 
-  if (transactionOptions.token) {
-    const { address: tokenAddress, value: tokenValue, spender } = transactionOptions.token
-
-    const erc20ABI = getAbi('standard/ERC20')
-    const tokenContract = new web3.eth.Contract(erc20ABI, tokenAddress)
-    const balance = await tokenContract.methods.balanceOf(sender).call()
-
-    const tokenValueBN = toBN(tokenValue)
-
-    if (toBN(balance).lt(tokenValueBN)) {
-      throw new Error(`Balance too low. ${sender} balance of ${tokenAddress} token is ${balance} (attempting to send ${tokenValue})`)
-    }
-
-    const allowance = await tokenContract.methods.allowance(sender, destination).call()
-    const allowanceBN = toBN(allowance)
-
-    // If allowance is already greater than or equal to amount, there is no need to do an approve transaction
-    if (allowanceBN.lt(tokenValueBN)) {
-      if (allowanceBN.gt(toBN(0))) {
-        // TODO: Actually handle existing approvals (some tokens fail when the current allowance is not 0)
-        console.warn(`${sender} already approved ${destination}. In some tokens, approval will fail unless the allowance is reset to 0 before re-approving again.`)
-      }
-
-      // Approve the app (destination) unless an spender is passed to approve a different contract
-      const approveSpender = spender || destination
-      const tokenApproveTransaction = {
-        // TODO: should we include transaction options?
-        from: sender,
-        to: tokenAddress,
-        data: tokenContract.methods.approve(approveSpender, tokenValue).encodeABI()
-      }
-
-      directTransaction.pretransaction = tokenApproveTransaction
-      delete transactionOptions.token
-    }
-  }
-
-  return directTransaction
+  // Add any pretransactions specified
+  return applyPretransaction(directTransaction, web3)
 }
 
 export function createForwarderTransactionBuilder (sender, directTransaction, web3) {

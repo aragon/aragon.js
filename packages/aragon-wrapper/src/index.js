@@ -57,6 +57,7 @@ import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callsc
 import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
+  applyForwardingPretransaction,
   createDirectTransaction,
   createForwarderTransactionBuilder,
   getRecommendedGasLimit
@@ -1835,8 +1836,9 @@ export default class Aragon {
       return []
     }
 
-    // Only apply the pretransaction to the final forwarding transaction
-    const pretransaction = directTransaction.pretransaction
+    // TODO: handle pretransactions specified in the intent
+    // This is difficult to do generically, as some pretransactions
+    // (e.g. token approvals) only work if they're for a specific target
     delete directTransaction.pretransaction
 
     const createForwarderTransaction = createForwarderTransactionBuilder(sender, directTransaction, this.web3)
@@ -1847,9 +1849,15 @@ export default class Aragon {
       const script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
-        transaction.pretransaction = pretransaction
-        // TODO: recover if applying gas fails here
-        return [await this.applyTransactionGas(transaction, true), directTransaction]
+        try {
+          const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+          // `applyTransactionGas` can throw if the transaction will fail
+          // If that happens, we give up as we should've been able to perform the action with this
+          // forwarder
+          return [await this.applyTransactionGas(transactionWithFee, true), directTransaction]
+        } catch (err) {
+          return []
+        }
       }
     }
 
@@ -1898,10 +1906,18 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
-          transaction.pretransaction = pretransaction
-          // `applyTransactionGas` is only done for the transaction that will be executed
-          // TODO: recover if applying gas fails here
-          return [await this.applyTransactionGas(transaction, true), ...path]
+
+          // Only apply pretransactions and gas to the first transaction in the path
+          // as it's the only one that will be executed by the user
+          try {
+            const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+            // `applyTransactionGas` can throw if the transaction will fail
+            // If that happens, we give up as we should've been able to perform the action with this
+            // forwarding path
+            return [await this.applyTransactionGas(transactionWithFee, true), ...path]
+          } catch (err) {
+            return []
+          }
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
