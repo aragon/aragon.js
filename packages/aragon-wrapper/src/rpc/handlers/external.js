@@ -1,4 +1,5 @@
 import { fromEvent, from } from 'rxjs'
+import { createDirectTransaction } from '../../utils/transactions'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
@@ -18,18 +19,43 @@ export function call (request, proxy, wrapper) {
 
 export async function externalIntent (request, proxy, wrapper) {
   const [
-    externalProxyAddress,
+    proxyAddress,
     method,
     ...params
   ] = request.params
-  const transactionPath = await wrapper.getTransactionPath(
-    externalProxyAddress,
-    method.name,
-    params
-  )
+
+  const installedApp = await wrapper.getApp(proxyAddress)
+  let transactionPath = []
+  if (installedApp) {
+    transactionPath = await wrapper.getTransactionPath(
+      proxyAddress,
+      method.name,
+      params
+    )
+  } else {
+    const [sender] = await wrapper.getAccounts()
+    const mockApp = {
+      proxyAddress,
+      abi: [method],
+    }
+
+    transactionPath = await wrapper.describeTransactionPath([
+      await createDirectTransaction(
+        sender,
+        mockApp,
+        method.name,
+        params,
+        wrapper.web3
+      )
+    ])
+  }
 
   return wrapper.performTransactionPath(
-    transactionPath.map((tx) => ({ ...tx, external: true }))
+    transactionPath.map((tx) => ({
+      ...tx,
+      external: true,
+      installedApp: !!installedApp
+    }))
   )
 }
 
