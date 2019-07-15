@@ -4,8 +4,11 @@ import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
 import { getCacheKey } from './utils'
-import { encodeCallScript } from './evmscript'
 import AsyncRequestCache from './utils/AsyncRequestCache'
+import * as callscriptUtils from './utils/callscript'
+import * as forwardingUtils from './utils/forwarding'
+
+const { encodeCallScript } = callscriptUtils
 
 // soliditySha3('app')
 const APP_NAMESPACE_HASH = '0xf1f3eb40f5bc1ad1344716ced8b8a0431d840b5783aea1fd01786bc26f35ac0f'
@@ -23,10 +26,12 @@ test.beforeEach(t => {
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
     AsyncRequestCache,
-    makeAddressMapProxy: sinon.fake.returns({}),
-    makeProxy: sinon.stub(),
+    getCacheKey,
     addressesEqual: Object.is,
-    getCacheKey
+    callscript: callscriptUtils,
+    forwarding: forwardingUtils,
+    makeAddressMapProxy: sinon.fake.returns({}),
+    makeProxy: sinon.stub()
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
@@ -1416,6 +1421,302 @@ test('should be able to decode an evm call script with multiple transactions', a
     }, {
       to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
       data: '0x'
+    }
+  ])
+})
+
+test('should be able to decode an evm call script with multiple nested transactions', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const script = encodeCallScript([{
+    to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data bytes length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '00000044' +                                                            // 68 data bytes length
+          '40c10f19' +                                                            // mint
+          '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+          '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+  }, {
+    to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '00000000000000000000000000000000000000000000000000000000000000c0' +    // 192 data bytes length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '000000a4' +                                                            // 164 data bytes length
+          'bfe07da6' +                                                            // deposit
+          '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+          '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +    // 1e18
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // 1 word
+          '0000000000000000000000000000000000000000000000000000000000000004' +    // 4 bytes
+          '4141414100000000000000000000000000000000000000000000000000000000'      // "AAAA" encoded
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000060' +
+            '00000001' +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '00000044' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+      children: [{
+        data: '0x' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    }, {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '00000000000000000000000000000000000000000000000000000000000000c0' +
+            '00000001' +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '000000a4' +
+            'bfe07da6' +
+            '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+            '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000004' +
+            '4141414100000000000000000000000000000000000000000000000000000000',
+      children: [{
+        data: '0x' +
+              'bfe07da6' +
+              '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+              '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+              '0000000000000000000000000000000000000000000000000000000000000020' +
+              '0000000000000000000000000000000000000000000000000000000000000004' +
+              '4141414100000000000000000000000000000000000000000000000000000000',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    }
+  ])
+})
+
+test('should be able to decode an evm call script with a complex nested transaction', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const nestedScript =
+    encodeCallScript([{
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      data: '0x' +
+            'd948d468' +                                                            // forward signature
+            '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+            '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data bytes length
+            '00000001' +                                                            // spec id
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+            '00000044' +                                                            // 68 data bytes length
+            '40c10f19' +                                                            // mint
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+            '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+    }, {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      data: '0x' +
+            'd948d468' +                                                            // forward signature
+            '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+            '00000000000000000000000000000000000000000000000000000000000000c0' +    // 192 data bytes length
+            '00000001' +                                                            // spec id
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+            '000000a4' +                                                            // 164 data bytes length
+            'bfe07da6' +                                                            // deposit
+            '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+            '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +    // 1e18
+            '0000000000000000000000000000000000000000000000000000000000000020' +    // 1 word
+            '0000000000000000000000000000000000000000000000000000000000000004' +    // 4 bytes
+            '4141414100000000000000000000000000000000000000000000000000000000'      // "AAAA" encoded
+    }]).substring(2)                                                                   // cut off '0x' prefix
+  // Divide by 2 for hex, convert number into hex string, and pad for uint256
+  const nestedScriptDataLength = `${(nestedScript.length / 2).toString(16)}`.padStart(64, 0)
+  const script = encodeCallScript([{
+    to: '0x62451b8705e6691b92afaa7766c0722c93a0e204',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          nestedScriptDataLength +                                                // previous script data bytes length
+          nestedScript                                                            // previous script data
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0x62451b8705e6691b92afaa7766c0722c93a0e204',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            nestedScriptDataLength +
+            nestedScript,
+      children: [
+        {
+          to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+          data: '0x' +
+                'd948d468' +
+                '0000000000000000000000000000000000000000000000000000000000000020' +
+                '0000000000000000000000000000000000000000000000000000000000000060' +
+                '00000001' +
+                '14a3208711873b6aab2005f6cca0f91658e287ef' +
+                '00000044' +
+                '40c10f19' +
+                '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+                '0000000000000000000000000000000000000000000000003782dace9d900000',
+          children: [{
+            data: '0x' +
+                '40c10f19' +
+                '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+                '0000000000000000000000000000000000000000000000003782dace9d900000',
+            to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+          }]
+        }, {
+          to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+          data: '0x' +
+                'd948d468' +
+                '0000000000000000000000000000000000000000000000000000000000000020' +
+                '00000000000000000000000000000000000000000000000000000000000000c0' +
+                '00000001' +
+                '14a3208711873b6aab2005f6cca0f91658e287ef' +
+                '000000a4' +
+                'bfe07da6' +
+                '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+                '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+                '0000000000000000000000000000000000000000000000000000000000000020' +
+                '0000000000000000000000000000000000000000000000000000000000000004' +
+                '4141414100000000000000000000000000000000000000000000000000000000',
+          children: [{
+            data: '0x' +
+                  'bfe07da6' +
+                  '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+                  '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+                  '0000000000000000000000000000000000000000000000000000000000000020' +
+                  '0000000000000000000000000000000000000000000000000000000000000004' +
+                  '4141414100000000000000000000000000000000000000000000000000000000',
+            to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+          }]
+        }
+      ]
+    }
+  ])
+})
+
+test('should not decode non-call scripts', async (t) => {
+  const { Aragon } = t.context
+  const badSpecId = '0x00000002'
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  const script = `${badSpecId}${'123'.padStart(64, 0)}`
+  // assert
+  t.throws(
+    () => instance.decodeTransactionPath(script),
+    {
+      instanceOf: Error,
+      message: `Script could not be decoded: ${script}`
+    }
+  )
+})
+
+test('should be only able to decode call scripts when there are multiple nested transactions', async (t) => {
+  const { Aragon } = t.context
+  const badSpecId = '0x00000002'
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const script = encodeCallScript([{
+    to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data bytes length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '00000044' +                                                            // 68 data bytes length
+          '40c10f19' +                                                            // mint
+          '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+          '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+  }, {
+    to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '00000000000000000000000000000000000000000000000000000000000000c0' +    // 192 data bytes length
+          badSpecId.substring(2) +                                                // **BAD SPEC ID**
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '000000a4' +                                                            // 164 data bytes length
+          'bfe07da6' +                                                            // deposit
+          '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+          '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +    // 1e18
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // 1 word
+          '0000000000000000000000000000000000000000000000000000000000000004' +    // 4 bytes
+          '4141414100000000000000000000000000000000000000000000000000000000'      // "AAAA" encoded
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000060' +
+            '00000001' +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '00000044' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+      children: [{
+        data: '0x' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    },
+    {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '00000000000000000000000000000000000000000000000000000000000000c0' +
+            badSpecId.substring(2) +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '000000a4' +
+            'bfe07da6' +
+            '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+            '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000004' +
+            '4141414100000000000000000000000000000000000000000000000000000000'
+      // ignores the second target's children because it's not a call script forward
     }
   ])
 })

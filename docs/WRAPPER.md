@@ -54,8 +54,7 @@ Initialise the wrapper.
 
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
   An optional options object for configuring the wrapper.
-  - `accounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
-    Options object for [`initAccounts()`](#initaccounts)
+  - `accounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>** Options object for [`initAccounts()`](#initaccounts)
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
@@ -68,10 +67,8 @@ Initialise user-controlled accounts.
 #### **Parameters**
 
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
-  - `fetchFromWeb3` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)**
-    Whether accounts should also be fetched from the Web3 instance provided to the wrapper
-  - `providedAccounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>**
-    An array of accounts that the user controls
+  - `fetchFromWeb3` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Whether accounts should also be fetched from the Web3 instance provided to the wrapper
+  - `providedAccounts` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>** An array of accounts that the user controls
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
@@ -82,8 +79,7 @@ Initialise the ACL.
 #### **Parameters**
 
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
-  - `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**
-    Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/dev/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
+  - `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/dev/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
@@ -144,8 +140,7 @@ Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/
 
 ### getTransactionPath
 
-Calculate the transaction path for a transaction to `destination`
-that invokes `methodName` with `params`.
+Calculate the transaction path for a transaction to `destination` that invokes `methodName` with `params`.
 
 #### **Parameters**
 
@@ -157,8 +152,7 @@ Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Gl
 
 ### calculateTransactionPath
 
-Calculate the transaction path for a transaction to `destination`
-that invokes `methodName` with `params`.
+Calculate the transaction path for a transaction to `destination` that invokes `methodName` with `params`.
 
 #### **Parameters**
 
@@ -173,37 +167,47 @@ Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Gl
 
 Modify the identity metadata for an address using the highest priority provider.
 
-`modifyAddressIdentity (address: string, metadata: Object) : Promise`
+#### **Parameters**
 
-Returns a promise that resolves if the modification was successful.
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to modify
+- `metadata` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Identity metadata
+
+Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>** that resolves if the modification was successful.
 
 ### resolveAddressIdentity
 
 Resolve the identity metadata for an address using the highest priority provider.
 
-`resolveAddressIdentity (address: string) : Promise`
+#### **Parameters**
 
-Returns a promise that resolves with the identity or null if not found
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to resolve
+
+Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>** that resolves with the identity or null if not found.
 
 ### requestAddressIdentityModification
 
 Request an identity modification using the highest priority provider.
 
-`requestAddressIdentityModification (address: string) : Promise`
+#### **Parameters**
 
-Request an identity modification using the highest priority provider.
-Returns a promise which delegates resolution to the handler which listens and handles `this.identityIntents`
+- `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address to request modification
+
+Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>** that delegates resolution to the handler.
 
 ### removeLocalIdentities
 
 Remove specific local identities.
 
-`removeLocalIdentities (addresses: Array<String>) : Promise`
+#### **Parameters**
+
+- `addresses` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;string>** Addresses to remove from local identities
 
 ### searchIdentities
 
 Search identites using the highest priority provider.
 
-`searchIdentities (searchTerm: string) : Promise<Array<String>>`
+#### **Parameters**
 
-Returns a promise which resolves with the found identities or an empty array.
+- `searchTerm` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** String to search for
+
+Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** which resolves with the found identities or an empty array.

@@ -38,7 +38,6 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -54,8 +53,11 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callscript'
+import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
+  applyForwardingPretransaction,
   createDirectTransaction,
   createForwarderTransactionBuilder,
   getRecommendedGasLimit
@@ -946,23 +948,15 @@ export default class Aragon {
   }
 
   /**
-   * Clear all local identities
-   *
-   * @return {Promise<void>}
-   */
-  clearLocalIdentities () {
-    return this.identityProviderRegistrar.get('local').clear()
-  }
-
-  /**
    * Remove selected local identities
    *
-   * @param {Array<Address>} addresses The addresses to be removed from the local identity provider
+   * @param {Array<string>} addresses The addresses to be removed from the local identity provider
    * @return {Promise}
    */
   async removeLocalIdentities (addresses) {
+    const localProvider = this.identityProviderRegistrar.get('local')
     for (const address of addresses) {
-      await this.identityProviderRegistrar.get('local').remove(address)
+      await localProvider.remove(address)
     }
   }
 
@@ -1506,42 +1500,26 @@ export default class Aragon {
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
   decodeTransactionPath (script) {
-    function decodePathSegment (script) {
-      // Get address
-      const to = `0x${script.substring(0, 40)}`
-      script = script.substring(40)
+    // In the future we may support more EVMScripts, but for now let's just assume we're only
+    // dealing with call scripts
+    if (!isCallScript(script)) {
+      throw new Error(`Script could not be decoded: ${script}`)
+    }
 
-      // Get data
-      const dataLength = parseInt(`0x${script.substring(0, 8)}`, 16) * 2
-      script = script.substring(8)
-      const data = `0x${script.substring(0, dataLength)}`
+    const path = decodeCallScript(script)
+    return path.map((segment) => {
+      const { data } = segment
 
-      // Return rest of script for processing
-      script = script.substring(dataLength)
+      if (isValidForwardCall(data)) {
+        const forwardedEvmScript = parseForwardCall(data)
 
-      return {
-        segment: {
-          data,
-          to
-        },
-        scriptLeft: script
+        try {
+          segment.children = this.decodeTransactionPath(forwardedEvmScript)
+        } catch (err) {}
       }
-    }
 
-    // Get script identifier (0x prefix + bytes4)
-    const scriptId = script.substring(0, 10)
-    if (scriptId !== CALLSCRIPT_ID) {
-      throw new Error(`Unknown script ID ${scriptId}`)
-    }
-
-    const segments = []
-    let scriptData = script.substring(10)
-    while (scriptData.length > 0) {
-      const { segment, scriptLeft } = decodePathSegment(scriptData)
-      segments.push(segment)
-      scriptData = scriptLeft
-    }
-    return segments
+      return segment
+    })
   }
 
   /**
@@ -1550,7 +1528,7 @@ export default class Aragon {
    * @param  {Array<Object>} path
    * @return {Promise<Array<Object>>} The given `path`, with decorated with descriptions at each step
    */
-  describeTransactionPath (path) {
+  async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       let decoratedStep
 
@@ -1580,12 +1558,18 @@ export default class Aragon {
       }
 
       // Annotate the description, if one was found
-      if (decoratedStep && decoratedStep.description) {
-        try {
-          const processed = await this.postprocessRadspecDescription(decoratedStep.description)
-          decoratedStep.description = processed.description
-          decoratedStep.annotatedDescription = processed.annotatedDescription
-        } catch (err) { }
+      if (decoratedStep) {
+        if (decoratedStep.description) {
+          try {
+            const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+            decoratedStep.description = processed.description
+            decoratedStep.annotatedDescription = processed.annotatedDescription
+          } catch (err) { }
+        }
+
+        if (decoratedStep.children) {
+          decoratedStep.children = await this.describeTransactionPath(decoratedStep.children)
+        }
       }
 
       return decoratedStep || step
@@ -1862,8 +1846,9 @@ export default class Aragon {
       return []
     }
 
-    // Only apply the pretransaction to the final forwarding transaction
-    const pretransaction = directTransaction.pretransaction
+    // TODO: handle pretransactions specified in the intent
+    // This is difficult to do generically, as some pretransactions
+    // (e.g. token approvals) only work if they're for a specific target
     delete directTransaction.pretransaction
 
     const createForwarderTransaction = createForwarderTransactionBuilder(sender, directTransaction, this.web3)
@@ -1874,9 +1859,15 @@ export default class Aragon {
       const script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
-        transaction.pretransaction = pretransaction
-        // TODO: recover if applying gas fails here
-        return [await this.applyTransactionGas(transaction, true), directTransaction]
+        try {
+          const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+          // `applyTransactionGas` can throw if the transaction will fail
+          // If that happens, we give up as we should've been able to perform the action with this
+          // forwarder
+          return [await this.applyTransactionGas(transactionWithFee, true), directTransaction]
+        } catch (err) {
+          return []
+        }
       }
     }
 
@@ -1925,10 +1916,18 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
-          transaction.pretransaction = pretransaction
-          // `applyTransactionGas` is only done for the transaction that will be executed
-          // TODO: recover if applying gas fails here
-          return [await this.applyTransactionGas(transaction, true), ...path]
+
+          // Only apply pretransactions and gas to the first transaction in the path
+          // as it's the only one that will be executed by the user
+          try {
+            const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+            // `applyTransactionGas` can throw if the transaction will fail
+            // If that happens, we give up as we should've been able to perform the action with this
+            // forwarding path
+            return [await this.applyTransactionGas(transactionWithFee, true), ...path]
+          } catch (err) {
+            return []
+          }
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a
