@@ -24,20 +24,17 @@ export async function externalIntent (request, proxy, wrapper) {
   ] = request.params
 
   const installedApp = await wrapper.getApp(proxyAddress)
-  let transactionPath = []
-  if (installedApp) {
-    transactionPath = await wrapper.getTransactionPath(
+  const transactionPath = installedApp
+    ? await wrapper.getTransactionPath(
       proxyAddress,
       method.name,
       params
     )
-  } else {
-    transactionPath = await wrapper.getUninstalledAppTransactionPath(
+    : await wrapper.getUninstalledAppTransactionPath(
       proxyAddress,
       method,
       params
     )
-  }
 
   return wrapper.performTransactionPath(
     transactionPath.map((tx) => ({
