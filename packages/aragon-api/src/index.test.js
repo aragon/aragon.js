@@ -190,7 +190,7 @@ test('should return a handle for creating external transaction intents', t => {
   })
 
   const jsonInterfaceStub = [
-    { type: 'function', name: 'add', constant: false },
+    { type: 'function', name: 'add', constant: false }
   ]
 
   const instanceStub = {

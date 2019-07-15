@@ -22,7 +22,7 @@ test.beforeEach(t => {
       name: 'add',
       constant: false,
       inputs: [{ name: 'number', type: 'uint8' }]
-    },
+    }
   ]
   const txOpts = {
     gasPrice: 1,
@@ -64,7 +64,6 @@ test.beforeEach(t => {
   }
 })
 
-
 test('should return an observable from the contract events', async (t) => {
   t.plan(1)
   // arrange
@@ -102,7 +101,7 @@ test('should return the correct tx path from external tx intent', async t => {
     permissionsCreator,
     txOpts,
     wrapper,
-    web3,
+    web3
   } = t.context
 
   const requestFromExternalInstalledApp = {
