@@ -1416,7 +1416,7 @@ export default class Aragon {
     // Failed to find a path
     return {
       direct: false,
-      transactions: []
+      path: []
     }
   }
 
