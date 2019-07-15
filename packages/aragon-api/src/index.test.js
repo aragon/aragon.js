@@ -180,6 +180,39 @@ test('should return an handle for an external contract events', t => {
   })
 })
 
+test('should return a handle for creating external transaction intents', t => {
+  t.plan(3)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableIntent = of({
+    id: 'uuid4',
+    result: 10
+  })
+
+  const jsonInterfaceStub = [
+    { type: 'function', name: 'add', constant: false },
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableIntent)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+
+  // assert
+  const hadAddFn = Object.keys(result).indexOf('add') > -1
+  t.is(hadAddFn, true)
+
+  result.add().subscribe(value => {
+    t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_intent')
+    t.is(value, 10)
+  })
+})
+
 test('should return the state from cache', t => {
   t.plan(3)
   // arrange
