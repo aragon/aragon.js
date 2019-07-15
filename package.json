@@ -1,5 +1,12 @@
 {
+  "name": "@aragon/monorepo-js",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Aragon Assocation <legal@aragon.org>",
+  "license": "AGPL-3.0-or-later",
   "devDependencies": {
+    "coveralls": "^3.0.4",
+    "lcov-result-merger": "^3.1.0",
     "lerna": "^3.11.1",
     "size-limit": "^0.21.0"
   },

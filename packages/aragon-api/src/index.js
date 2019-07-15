@@ -51,7 +51,7 @@ export class AppProxy {
   /**
    * Get an array of the accounts the user currently controls over time.
    *
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of account addresses every time a change is detected.
+   * @return {Observable} Multi-emission Observable that emits an array of account addresses every time a change is detected.
    */
   accounts () {
     return this.rpc.sendAndObserveResponses(
@@ -64,7 +64,7 @@ export class AppProxy {
   /**
    * Get the network the app is connected to over time.
    *
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an object with the connected network's id and type every time the network changes.
+   * @return {Observable} Multi-emission Observable that emits an object with the connected network's id and type every time the network changes.
    */
   network () {
     return this.rpc.sendAndObserveResponses(
@@ -97,7 +97,7 @@ export class AppProxy {
    * Resolve an address' identity, using the highest priority provider.
    *
    * @param  {string} address Address to resolve.
-   * @return {Observable} Single-emission observable that emits the resolved identity or null if not found
+   * @return {Observable} Single-emission Observable that emits the resolved identity or null if not found
    */
   resolveAddressIdentity (address) {
     return this.rpc.sendAndObserveResponse(
@@ -114,7 +114,7 @@ export class AppProxy {
    * The request is typically handled by the aragon client.
    *
    * @param  {string} address Address to modify.
-   * @return {Observable} Single-emission observable that emits if the modification succeeded or cancelled by the user
+   * @return {Observable} Single-emission Observable that emits if the modification succeeded or cancelled by the user
    */
   requestAddressIdentityModification (address) {
     return this.rpc.sendAndObserveResponse(
@@ -126,12 +126,12 @@ export class AppProxy {
   }
 
   /**
-   * Request an address' identity be modified with the highest priority provider.
+   * Search for identities that match a given search term.
    *
-   * The request is typically handled by the aragon client.
+   * The request is typically handled by the Aragon client.
    *
-   * @param  {string} searchTerm what to search
-   * @return {Observable} Single-emission observable that emits if the modification succeeded or cancelled by the user
+   * @param  {string} searchTerm Search string
+   * @return {Observable} Single-emission Observable that emits with an array of any matching identities
    */
   searchIdentities (searchTerm) {
     return this.rpc.sendAndObserveResponse(
@@ -143,10 +143,41 @@ export class AppProxy {
   }
 
   /**
+   * Perform a read-only call on the app's smart contract.
+   *
+   * @param  {string} method The name of the method to call.
+   * @param  {...*} params An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
+   * @return {Observable} Single-emission Observable that emits the result of the call.
+   */
+  call (method, ...params) {
+    return this.rpc.sendAndObserveResponse(
+      'call',
+      [method, ...params]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
+   *
+   * @param  {string} script The EVM callscript to describe
+   * @return {Observable} Single-emission Observable that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
+   */
+  describeScript (script) {
+    return this.rpc.sendAndObserveResponse(
+      'describe_script',
+      [script]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Listens for events on your app's smart contract from the last unhandled block.
    *
-   * @param  {string} fromBlock block from which to fetch the events
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
+   * @param  {string} fromBlock Block from which to fetch the events
+   * @return {Observable} Multi-emission Observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   events (fromBlock) {
     return this.rpc.sendAndObserveResponses(
@@ -160,9 +191,9 @@ export class AppProxy {
   /**
    * Fetch past events from your app's smart contract for requestsed range
    *
-   * @param  {string} fromBlock block from which to fetch the events
-   * @param  {string} toBlock block up to which to fetch the events
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
+   * @param  {string} fromBlock Block from which to fetch the events
+   * @param  {string} toBlock Block up to which to fetch the events
+   * @return {Observable} Single-emission Observable that emits an array of [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
   pastEvents (fromBlock, toBlock) {
     return this.rpc.sendAndObserveResponse(
@@ -179,7 +210,7 @@ export class AppProxy {
    *
    * @param  {string} address The proxy address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return an [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the value of the call.
+   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return a single-emission Observable that emits the value of the call.
    */
   external (address, jsonInterface) {
     const contract = {
@@ -253,11 +284,41 @@ export class AppProxy {
   }
 
   /**
+   * Allow apps to sign arbitrary data via a RPC call
+   *
+   * @param  {string} message The message to sign
+   * @return {void}
+   */
+  requestSignMessage (message) {
+    return this.rpc
+      .sendAndObserveResponse('sign_message', [message])
+      .pipe(
+        pluck('result')
+      )
+  }
+
+  /**
+   * Invoke a whitelisted web3.eth function.
+   *
+   * @param  {string} method The method to call. Must be in the whitelisted group (mostly getters).
+   * @param  {...*} params Parameters for the call
+   * @return {Observable} Single-emission Observable that emits the return value of the call.
+   */
+  web3Eth (method, ...params) {
+    return this.rpc.sendAndObserveResponse(
+      'web3_eth',
+      [method, ...params]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Set a value in the application cache.
    *
    * @param  {string} key The cache key to set a value for
    * @param  {string} value The value to persist in the cache
-   * @return {string} A single emission RxJS observable that emits when the cache operation has been committed
+   * @return {string} Single-emission Observable that emits when the cache operation has been committed
    */
   cache (key, value) {
     return this.rpc.sendAndObserveResponse(
@@ -272,7 +333,7 @@ export class AppProxy {
    * Get a value from the application cache.
    *
    * @param  {string} key The cache key to get a value for
-   * @return {Observable} A single emission RxJS observable with the value for the specified cache key
+   * @return {Observable} Single-emission Observable with the value for the specified cache key
    */
   getCache (key) {
     return this.rpc.sendAndObserveResponse(
@@ -288,7 +349,7 @@ export class AppProxy {
    *
    * This method is also used to share state between the background script and front-end of your application.
    *
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the application state every time it changes. The type of the emitted values is application specific.
+   * @return {Observable} Multi-emission Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   state () {
     return this.rpc.sendAndObserveResponses(
@@ -324,7 +385,7 @@ export class AppProxy {
    * @param  {Object} [options] An optional options object
    * @param  {Array.<{contract: Object, initializationBlock: String}>} [options.externals] An optional array of objects containing `contract` (as returned from `api.external`) and an optional `initializationBlock` from which to fetch events
    * @param  {Function} [options.init] An optional initialization function for the state. Should return a promise that resolves to the init state.
-   * @return {Observable} An Observable that emits the application state every time it changes. The type of the emitted values is application specific.
+   * @return {Observable} Multi-emission Observable that emits the application state every time it changes. The type of the emitted values is application specific.
    */
   store (reducer, { externals = [], init } = {}) {
     const CACHED_STATE_KEY = 'CACHED_STATE_KEY'
@@ -456,22 +517,6 @@ export class AppProxy {
   }
 
   /**
-   * Perform a read-only call on the app's smart contract.
-   *
-   * @param  {string} method The name of the method to call.
-   * @param  {...*} params An optional variadic number of parameters. The last parameter can be the call options (optional). See the [web3.js doc](https://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#id16) for more details.
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the result of the call.
-   */
-  call (method, ...params) {
-    return this.rpc.sendAndObserveResponse(
-      'call',
-      [method, ...params]
-    ).pipe(
-      pluck('result')
-    )
-  }
-
-  /**
    * **NOTE: This call is not currently handled by the wrapper**
    *
    * Send a notification.
@@ -500,58 +545,13 @@ export class AppProxy {
    *
    * App contexts can be used to display specific views in your app or anything else you might find interesting.
    *
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits app contexts as they are received.-
+   * @return {Observable} Single-emisison Observable that emits app contexts as they are received.
    */
   context () {
     return this.rpc.requests().pipe(
       filter((request) => request.method === 'context'),
       map((request) => request.params[0])
     )
-  }
-
-  /**
-   * Decodes an EVM callscript and tries to describe the transaction path that the script encodes.
-   *
-   * @param  {string} script The EVM callscript to describe
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
-   */
-  describeScript (script) {
-    return this.rpc.sendAndObserveResponse(
-      'describe_script',
-      [script]
-    ).pipe(
-      pluck('result')
-    )
-  }
-
-  /**
-   * Invoke a whitelisted web3.eth function.
-   *
-   * @param  {string} method The method to call. Must be in the whitelisted group (mostly getters).
-   * @param  {...*} params Parameters for the call
-   * @return {Observable} An observable that emits the return value(s) of the call.
-   */
-  web3Eth (method, ...params) {
-    return this.rpc.sendAndObserveResponse(
-      'web3_eth',
-      [method, ...params]
-    ).pipe(
-      pluck('result')
-    )
-  }
-
-  /**
-   * Allow apps to sign arbitrary data via a RPC call
-   *
-   * @param  {string} message The message to sign
-   * @return {void}
-   */
-  requestSignMessage (message) {
-    return this.rpc
-      .sendAndObserveResponse('sign_message', [message])
-      .pipe(
-        pluck('result')
-      )
   }
 }
 
