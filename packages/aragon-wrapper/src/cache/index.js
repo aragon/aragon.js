@@ -9,8 +9,16 @@ import memoryStorageDriver from 'localforage-memoryStorageDriver'
 export default class Cache {
   #trackedKeys = new Set()
 
-  constructor (prefix) {
+  constructor (
+    prefix,
+    driver = [
+      localforage.INDEXEDDB,
+      localforage.LOCALSTORAGE,
+      memoryStorageDriver
+    ]
+  ) {
     this.prefix = prefix
+    this.driver = driver
   }
 
   async init () {
@@ -19,7 +27,7 @@ export default class Cache {
 
     // Set up cache DB
     this.db = localforage.createInstance({
-      driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver._driver],
+      driver: this.driver,
       name: `localforage/${this.prefix}`
     })
 
