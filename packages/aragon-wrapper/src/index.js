@@ -152,7 +152,9 @@ export default class Aragon {
       apm: {},
       defaultGasPriceFn: () => { },
       provider: detectProvider(),
-      cacheDriver: null
+      cache: {
+        forceLocalStorage: false
+      }
     }
     options = Object.assign(defaultOptions, options)
 
@@ -166,7 +168,7 @@ export default class Aragon {
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
-    this.cache = new Cache(daoAddress, options)
+    this.cache = new Cache(daoAddress, options.cache)
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
