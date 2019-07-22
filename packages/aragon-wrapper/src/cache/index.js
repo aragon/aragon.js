@@ -9,16 +9,12 @@ import memoryStorageDriver from 'localforage-memoryStorageDriver'
 export default class Cache {
   #trackedKeys = new Set()
 
-  constructor (
-    prefix,
-    driver = [
-      localforage.INDEXEDDB,
-      localforage.LOCALSTORAGE,
-      memoryStorageDriver
-    ]
-  ) {
+  constructor (prefix, { forceLocalStorage }) {
     this.prefix = prefix
-    this.driver = driver
+    this.driver = forceLocalStorage
+      ? [localforage.LOCALSTORAGE, memoryStorageDriver]
+      : [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
+
   }
 
   async init () {
