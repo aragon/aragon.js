@@ -37,5 +37,5 @@ export const knownAppIds = [
   apmAppId('finance'),
   apmAppId('token-manager'),
   apmAppId('vault'),
-  apmAppId('voting'),
+  apmAppId('voting')
 ]
