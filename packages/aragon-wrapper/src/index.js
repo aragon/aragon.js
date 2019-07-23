@@ -170,7 +170,8 @@ export default class Aragon {
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
-    this.cache = new Cache(daoAddress, options.cache)
+    this.cacheOptions = options.cache
+    this.cache = new Cache(daoAddress, this.cacheOptions)
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
@@ -855,7 +856,7 @@ export default class Aragon {
   async initIdentityProviders () {
     const defaultIdentityProviders = [{
       name: 'local',
-      provider: new LocalIdentityProvider()
+      provider: new LocalIdentityProvider(this.cacheOptions)
     }]
     // TODO: detect other installed providers
     const detectedIdentityProviders = []

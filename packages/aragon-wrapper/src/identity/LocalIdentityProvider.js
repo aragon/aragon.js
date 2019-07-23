@@ -10,9 +10,9 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   /**
    * Create a new identity provider attached to a locally-stored cache.
    */
-  constructor () {
+  constructor (cacheOptions) {
     super()
-    this.identityCache = new Cache('localIdentity')
+    this.identityCache = new Cache('localIdentity', cacheOptions)
   }
 
   async init () {
