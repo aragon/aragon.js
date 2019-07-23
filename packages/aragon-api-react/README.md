@@ -1,6 +1,6 @@
 # aragonAPI for React
 
-This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md) is used under the hood, so being familiar with it can be useful.
+This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
 
 ## Usage
 
@@ -82,7 +82,7 @@ It returns an object containing the following entries:
 
 #### `api`
 
-This is the current [`AragonApp`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#aragonapp) instance. Use it to call methods on the contract.
+This is the current [`AragonApp`](https://github.com/aragon/aragon.js/blob/master/docs/API.md#aragonapp) instance. Use it to call methods on the contract.
 
 Example:
 
@@ -125,7 +125,7 @@ function App() {
 
 #### `network`
 
-An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
+An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
 
 Example:
 
