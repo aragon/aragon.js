@@ -1,6 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 
+import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
 import Cache from './index'
 
@@ -22,6 +23,26 @@ test('should set the cache driver to in-memory on non-browser environments', asy
   await instance.set('counter', 5)
   // assert
   t.is(await instance.get('counter'), 5)
+})
+
+test('should prefer indexeddb driver by default', async (t) => {
+  // arrange
+  const instance = new Cache('counterapp')
+  // assert
+  t.deepEqual(
+    instance.drivers,
+    [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
+  )
+})
+
+test('should downgrade to localstorage driver when requested', async (t) => {
+  // arrange
+  const instance = new Cache('counterapp', { forceLocalStorage: true })
+  // assert
+  t.deepEqual(
+    instance.drivers,
+    [localforage.LOCALSTORAGE, memoryStorageDriver]
+  )
 })
 
 test('should set to the cache and emit the change', async (t) => {
