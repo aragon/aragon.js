@@ -1340,10 +1340,11 @@ export default class Aragon {
    * @param  {Object} [options]
    * @param  {string} [options.checkMode] Path checking mode
    * @return {Promise<Object>} An object containing:
-   *   - `direct`: whether the current account can directly invoke this basket
-   *     (requiring separate transactions)
-   *   - `transactions`: array of Ethereum transactions that describe each step in the path, with
-   *     the last step being an array of transactions that describe each intent in the basket
+   *   - `path` (Array<Object>): a multi-step transaction path that eventually invokes this basket.
+   *     Empty if no such path could be found.
+   *   - `transactions` (Array<Object>): array of Ethereum transactions that invokes this basket.
+   *     If a multi-step transaction path was found, returns the first transaction in that path.
+   *     Empty if no such transactions could be found.
    */
   async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
     // Get transaction paths for entire basket
@@ -1381,7 +1382,7 @@ export default class Aragon {
           )
 
           return {
-            direct: true,
+            path: [],
             transactions: decoratedTransactions
           }
         } catch (_) { }
@@ -1410,8 +1411,9 @@ export default class Aragon {
           // Put the finishing touches: apply gas, and add radspec descriptions
           forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
           return {
-            direct: false,
-            path: await this.describeTransactionPath(forwarderPath)
+            path: await this.describeTransactionPath(forwarderPath),
+            // When we have a path, we only need to send the first transaction to start it
+            transactions: [forwarderPath[0]]
           }
         } catch (_) { }
       }
@@ -1419,7 +1421,7 @@ export default class Aragon {
 
     // Failed to find a path
     return {
-      direct: false,
+      path: [],
       transactions: []
     }
   }
