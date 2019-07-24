@@ -38,6 +38,8 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
+import { setConfiguration } from './configuration'
+import * as configurationKeys from './configuration/keys'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -138,6 +140,14 @@ export const setupTemplates = (from, options = {}) => {
  *        IPFS provider config for apm.js
  * @param {string} [options.apm.ipfs.gateway]
  *        IPFS gateway apm.js will use to fetch artifacts from
+ * @param {Object} [options.cache]
+ *        Options for the internal cache
+ * @param {boolean} [options.forceLocalStorage=false]
+ *        Downgrade to localStorage even if IndexedDB is available
+ * @param {Object} [options.events]
+ *        Options for handling Ethereum events
+ * @param {boolean} [options.subscriptionEventDelay]
+ *        Time in ms to delay a new event from a contract subscription
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
@@ -156,9 +166,24 @@ export default class Aragon {
       provider: detectProvider(),
       cache: {
         forceLocalStorage: false
+      },
+      events: {
+        subscriptionDelayTime: 0
       }
     }
     options = Object.assign(defaultOptions, options)
+
+    // Set up desired configuration
+    setConfiguration(
+      configurationKeys.FORCE_LOCAL_STORAGE,
+      !!(options.cache && options.cache.forceLocalStorage)
+    )
+    setConfiguration(
+      configurationKeys.SUBSCRIPTION_EVENT_DELAY,
+      Number.isFinite(options.events && options.events.subscriptionEventDelay)
+        ? options.events.subscriptionEventDelay
+        : 0
+    )
 
     // Set up Web3
     this.web3 = new Web3(options.provider)
@@ -170,8 +195,7 @@ export default class Aragon {
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
-    this.cacheOptions = options.cache
-    this.cache = new Cache(daoAddress, this.cacheOptions)
+    this.cache = new Cache(daoAddress)
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
@@ -239,7 +263,7 @@ export default class Aragon {
     }
 
     // Set up ACL proxy
-    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
+    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, { initializationBlock: this.kernelProxy.initializationBlock })
 
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
@@ -856,7 +880,7 @@ export default class Aragon {
   async initIdentityProviders () {
     const defaultIdentityProviders = [{
       name: 'local',
-      provider: new LocalIdentityProvider(this.cacheOptions)
+      provider: new LocalIdentityProvider()
     }]
     // TODO: detect other installed providers
     const detectedIdentityProviders = []

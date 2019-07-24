@@ -3,6 +3,7 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
+import * as configurationKeys from './configuration/keys'
 import { getCacheKey } from './utils'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 import * as callscriptUtils from './utils/callscript'
@@ -23,6 +24,9 @@ test.beforeEach(t => {
   const apmCoreStub = {
     getApmAppInfo: sinon.stub()
   }
+  const configurationStub = {
+    setConfiguration: sinon.stub()
+  }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
     AsyncRequestCache,
@@ -38,6 +42,8 @@ test.beforeEach(t => {
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
     './core/apm': apmCoreStub,
+    './configuration': configurationStub,
+    './configuration/keys': configurationKeys,
     './utils': utilsStub
   }).default
 
@@ -46,6 +52,7 @@ test.beforeEach(t => {
     apmStub,
     aragonOSCoreStub,
     apmCoreStub,
+    configurationStub,
     messengerConstructorStub,
     utilsStub
   }
@@ -87,6 +94,63 @@ test('should throw on init if daoAddress is not a Kernel', async (t) => {
       message: `Provided daoAddress is not a DAO`
     }
   )
+})
+
+test('should set the default configuration', t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0)
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, false)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 0)
+  )
+  t.not(instance.apm, undefined)
+})
+
+test('should set the given configuration', t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0, {
+    cache: { forceLocalStorage: true },
+    events: { subscriptionEventDelay: 1000 }
+  })
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, true)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 1000)
+  )
+  t.not(instance.apm, undefined)
+})
+
+test("should set the default configuration if overriding configuration doesn't contain keys", t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0, {
+    cache: {},
+    events: {}
+  })
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, false)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 0)
+  )
+  t.not(instance.apm, undefined)
 })
 
 test('should use provided accounts', async (t) => {

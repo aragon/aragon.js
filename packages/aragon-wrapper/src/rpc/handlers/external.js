@@ -1,4 +1,7 @@
 import { fromEvent, from } from 'rxjs'
+import { delay } from 'rxjs/operators'
+import { getConfiguration } from '../../configuration'
+import * as configurationKeys from '../../configuration/keys'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
@@ -31,11 +34,15 @@ export function events (request, proxy, wrapper) {
     address
   )
 
-  return fromEvent(
+  const eventSource = fromEvent(
     contract.events.allEvents({
       fromBlock
     }), 'data'
   )
+
+  const eventDelay = getConfiguration(configurationKeys.SUBSCRIPTION_EVENT_DELAY) || 0
+  // Small optimization: don't pipe a delay if we don't have to
+  return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
 }
 
 export function pastEvents (request, proxy, wrapper) {
