@@ -1,8 +1,8 @@
 import { fromEvent, from } from 'rxjs'
 import { filter } from 'rxjs/operators'
 
-export default class Proxy {
-  constructor (address, jsonInterface, web3, initializationBlock = 0) {
+export default class ContractProxy {
+  constructor (address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
     this.address = address
     this.contract = new web3.eth.Contract(
       jsonInterface,

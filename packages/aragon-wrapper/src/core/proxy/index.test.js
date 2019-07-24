@@ -2,7 +2,7 @@ import test from 'ava'
 import sinon from 'sinon'
 import { EventEmitter } from 'events'
 
-import Proxy from './index'
+import ContractProxy from './index'
 
 test.afterEach.always(() => {
   sinon.restore()
@@ -23,7 +23,7 @@ test('should get all the events', (t) => {
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub)
+  const instance = new ContractProxy(null, null, web3Stub)
   // act
   const events = instance.events()
   // assert
@@ -49,7 +49,7 @@ test('should get only the requested events', (t) => {
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub)
+  const instance = new ContractProxy(null, null, web3Stub)
   // act
   const events = instance.events(['PayFee', 'PayService'])
   // assert
@@ -81,7 +81,7 @@ test('should get only request the single event', (t) => {
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub)
+  const instance = new ContractProxy(null, null, web3Stub)
   // act
   const events = instance.events('PayFee')
   // assert
@@ -127,7 +127,7 @@ test('should default the fromBlock to initializationBlock for requested events',
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub, initializationBlock)
+  const instance = new ContractProxy(null, null, web3Stub, { initializationBlock })
   // act
   const events = instance.events()
   // assert
@@ -156,7 +156,7 @@ test('should use the correct options for requested events', (t) => {
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub)
+  const instance = new ContractProxy(null, null, web3Stub)
   // act
   const events = instance.events(null, { fromBlock })
   // assert
@@ -185,7 +185,7 @@ test('should use the correct options for requested past events with fromBlock an
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub)
+  const instance = new ContractProxy(null, null, web3Stub)
   // act
   const events = instance.pastEvents(null, { fromBlock, toBlock })
   // assert
@@ -216,7 +216,7 @@ test('should use the correct options for requested past events with toBlock and 
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub, initializationBlock)
+  const instance = new ContractProxy(null, null, web3Stub, { initializationBlock })
   // act
   instance.pastEvents(null, { toBlock })
   // assert
@@ -241,7 +241,7 @@ test('should filter past events correctly when more than one eventName is passed
       Contract: sinon.stub().returns(contract)
     }
   }
-  const instance = new Proxy(null, null, web3Stub)
+  const instance = new ContractProxy(null, null, web3Stub)
   // act
   const events = instance.pastEvents(['Orange', 'Pear'])
   // assert
