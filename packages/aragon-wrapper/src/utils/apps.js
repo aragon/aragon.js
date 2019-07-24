@@ -12,25 +12,28 @@ export const apmAppId = appName => namehash(`${appName}.aragonpm.eth`)
  * @return {Object} Method with radspec notice and function signature
  */
 export function findAppMethodFromData (app, data) {
-  if (app && app.functions) {
-    // Find the method
-    const methodId = data.substring(2, 10)
+  const methodId = data.substring(2, 10)
+  const { deprecatedFunctions, functions } = app || {}
 
-    let method = app.functions.find(
+  let method
+
+  // First try to find the method in the current functions
+  if (Array.isArray(functions)) {
+    method = functions.find(
       method => keccak256(method.sig).substring(0, 8) === methodId
     )
-
-    if (method === undefined) {
-      app.deprecated.forEach(version => {
-        method = version.find(
-          method => keccak256(method.sig).substring(0, 8) === methodId
-        )
-        if (method) return method
-      })
-    }
-
-    return method
   }
+
+  // Couldn't find it in current functions, try on deprecated versions
+  if (!method && Array.isArray(deprecatedFunctions)) {
+    // Flatten all the deprecated functions
+    const allDeprecatedFunctions = [].concat(...Object.values(deprecatedFunctions))
+    method = allDeprecatedFunctions.find(
+      method => keccak256(method.sig).substring(0, 8) === methodId
+    )
+  }
+
+  return method
 }
 
 export const knownAppIds = [
