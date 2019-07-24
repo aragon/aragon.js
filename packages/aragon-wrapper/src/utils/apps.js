@@ -25,7 +25,8 @@ export function findAppMethodFromData (app, data) {
   }
 
   // Couldn't find it in current functions, try on deprecated versions
-  if (!method && Array.isArray(deprecatedFunctions)) {
+  const hasValidDeprecatedFunctions = Object.values(deprecatedFunctions || {}).every(Array.isArray)
+  if (!method && hasValidDeprecatedFunctions) {
     // Flatten all the deprecated functions
     const allDeprecatedFunctions = [].concat(...Object.values(deprecatedFunctions))
     method = allDeprecatedFunctions.find(
