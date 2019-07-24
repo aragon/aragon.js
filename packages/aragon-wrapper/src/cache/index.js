@@ -2,6 +2,8 @@ import { Subject, concat, race } from 'rxjs'
 import { filter, pluck } from 'rxjs/operators'
 import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
+import { getConfiguration } from '../configuration'
+import * as configurationKeys from '../configuration/keys'
 
 /**
  * A persistent cache on browser environments, preferring IndexedDB when available.
@@ -17,8 +19,9 @@ import memoryStorageDriver from 'localforage-memoryStorageDriver'
 export default class Cache {
   #trackedKeys = new Set()
 
-  constructor (prefix, { forceLocalStorage } = {}) {
+  constructor (prefix) {
     this.prefix = prefix
+    const forceLocalStorage = getConfiguration(configurationKeys.FORCE_LOCAL_STORAGE)
     this.drivers = forceLocalStorage
       ? [localforage.LOCALSTORAGE, memoryStorageDriver]
       : [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
