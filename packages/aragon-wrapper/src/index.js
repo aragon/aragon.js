@@ -1298,15 +1298,6 @@ export default class Aragon {
   }
 
   /**
-   * Returns a list of app objects installed by the DAO
-   *
-   * @return {Promise<Array<string>>} An array of addresses
-   */
-  getApps () {
-    return this.apps.pipe(first()).toPromise()
-  }
-
-  /**
    * Calculate the transaction path for a transaction to `destination`
    * that invokes `methodName` with `params`.
    *
