@@ -192,7 +192,7 @@ test('should use the correct options for requested events', (t) => {
   eventEmitter.emit('data', { foo: 'bar' })
 })
 
-test('should not apply a delay to events if not specified', (t) => {
+test('should not apply a delay to events if not configured', (t) => {
   const { ContractProxy, configurationStub } = t.context
 
   t.plan(2)
@@ -228,7 +228,7 @@ test('should not apply a delay to events if not specified', (t) => {
   eventEmitter.emit('data', { foo: 'bar' })
 })
 
-test('should apply a delay to events if specified', (t) => {
+test('should apply a delay to events if configured', (t) => {
   const { ContractProxy, configurationStub } = t.context
   const delayTime = 1000
 
