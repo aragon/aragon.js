@@ -39,7 +39,7 @@ test('should send intent when the method does not exist in target', t => {
 })
 
 test('should return the network details as an observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const networkDetails = {
     id: 4,
@@ -61,15 +61,14 @@ test('should return the network details as an observable', t => {
   const result = networkFn.call(instanceStub)
   // assert
   // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('network'))
   result.subscribe(value => {
     t.deepEqual(value, networkDetails)
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
 })
 
 test('should return the accounts as an observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const accountsFn = Index.AppProxy.prototype.accounts
   const observable = of({
@@ -87,15 +86,14 @@ test('should return the accounts as an observable', t => {
   const result = accountsFn.call(instanceStub)
   // assert
   // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('accounts'))
   result.subscribe(value => {
     t.deepEqual(value, ['accountX', 'accountY', 'accountZ'])
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'accounts')
 })
 
 test('should return the installed apps as an observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const getAppsFn = Index.AppProxy.prototype.getApps
   const observable = of({
@@ -127,8 +125,8 @@ test('should return the installed apps as an observable', t => {
   // act
   const result = getAppsFn.call(instanceStub)
   // assert
-  // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  // the call to sendAndObserveResponses is made before we subscribe
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('get_apps'))
   result.subscribe(value => {
     t.deepEqual(value, [
       {
@@ -147,7 +145,6 @@ test('should return the installed apps as an observable', t => {
       }
     ])
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'get_apps')
 })
 
 test('should send an identify request', t => {
