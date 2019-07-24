@@ -93,29 +93,39 @@ test('should return the accounts as an observable', t => {
 })
 
 test('should return the installed apps as an observable', t => {
-  t.plan(2)
+  t.plan(3)
+
+  const initialApps = [
+    {
+      abi: 'abi for kernel',
+      appId: 'kernel',
+      codeAddress: '0xkernel',
+      isAragonOsInternalApp: true,
+      proxyAddress: '0x123'
+    }
+  ]
+  const endApps = [].concat(initialApps, {
+    abi: 'abi for counterApp',
+    appId: 'counterApp',
+    codeAddress: '0xcounterApp',
+    isForwarder: false,
+    kernelAddress: '0x123',
+    proxyAddress: '0x456'
+  })
+
   // arrange
   const getAppsFn = Index.AppProxy.prototype.getApps
-  const observable = of({
-    jsonrpc: '2.0',
-    id: 'uuid1',
-    result: [
-      {
-        abi: 'abi for kernel',
-        appId: 'kernel',
-        codeAddress: '0xkernel',
-        isAragonOsInternalApp: true,
-        proxyAddress: '0x123'
-      }, {
-        abi: 'abi for counterApp',
-        appId: 'counterApp',
-        codeAddress: '0xcounterApp',
-        isForwarder: false,
-        kernelAddress: '0x123',
-        proxyAddress: '0x456'
-      }
-    ]
-  })
+  const observable = of(
+    {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: initialApps
+    }, {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: endApps
+    }
+  )
   const instanceStub = {
     rpc: {
       // Mimic behaviour of @aragon/rpc-messenger
@@ -127,23 +137,17 @@ test('should return the installed apps as an observable', t => {
   // assert
   // the call to sendAndObserveResponses is made before we subscribe
   t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('get_apps'))
+  let emitIndex = 1
   result.subscribe(value => {
-    t.deepEqual(value, [
-      {
-        abi: 'abi for kernel',
-        appId: 'kernel',
-        codeAddress: '0xkernel',
-        isAragonOsInternalApp: true,
-        proxyAddress: '0x123'
-      }, {
-        abi: 'abi for counterApp',
-        appId: 'counterApp',
-        codeAddress: '0xcounterApp',
-        isForwarder: false,
-        kernelAddress: '0x123',
-        proxyAddress: '0x456'
-      }
-    ])
+    if (emitIndex === 1) {
+      t.deepEqual(value, initialApps)
+    } else if (emitIndex === 2) {
+      t.deepEqual(value, endApps)
+    } else {
+      t.fail('too many emissions')
+    }
+
+    emitIndex++
   })
 })
 
