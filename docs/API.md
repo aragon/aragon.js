@@ -139,7 +139,7 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 ### getApps
 
-Get a list of installed applications
+Get the list of installed applications on the organization that this app is installed in.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected.
 

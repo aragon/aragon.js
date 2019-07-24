@@ -1151,24 +1151,33 @@ export default class Aragon {
 
       // Register request handlers
       const handlerSubscription = handlers.combineRequestHandlers(
+        // Generic handlers
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
-        handlers.createRequestHandler(request$, 'events', handlers.events),
-        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+
+        // Contract handlers
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
-        handlers.createRequestHandler(request$, 'network', handlers.network),
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+
+        // External contract handlers
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
+
+        // Identity handlers
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
-        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
-        handlers.createRequestHandler(request$, 'get_apps', handlers.getApps)
+
+        // Etc.
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )

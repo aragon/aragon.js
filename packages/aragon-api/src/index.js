@@ -94,9 +94,9 @@ export class AppProxy {
   }
 
   /**
-   * Get an array of the DAO's installed apps.
+   * Get an array of the organization's installed apps.
    *
-   * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an * array of Aragon apps every time a change is detected.
+   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the organization every time a change is detected.
    */
   getApps () {
     return this.rpc.sendAndObserveResponses(

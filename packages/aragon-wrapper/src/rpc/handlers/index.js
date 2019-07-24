@@ -46,20 +46,24 @@ export function combineRequestHandlers (...handlers) {
 
 // Export request handlers
 export { default as accounts } from './accounts'
-export { default as addressIdentity } from './address-identity'
-export { default as appIdentifier } from './app-identifier'
 export { default as cache } from './cache'
-export { default as call } from './call'
 export { default as describeScript } from './describe-script'
+export { default as getApps } from './get-apps'
+export { default as network } from './network'
+export { default as web3Eth } from './web3-eth'
+
+export { default as intent } from './intent'
+export { default as call } from './call'
+export { default as signMessage } from './sign-message'
+export { default as events } from './events'
+export { default as pastEvents } from './past-events'
+
 export { call as externalCall } from './external'
 export { events as externalEvents } from './external'
 export { pastEvents as externalPastEvents } from './external'
-export { default as events } from './events'
-export { default as pastEvents } from './past-events'
-export { default as intent } from './intent'
-export { default as network } from './network'
-export { default as notifications } from './notifications'
+
+export { default as addressIdentity } from './address-identity'
+export { default as appIdentifier } from './app-identifier'
 export { default as searchIdentities } from './search-identities'
-export { default as signMessage } from './sign-message'
-export { default as web3Eth } from './web3-eth'
-export { default as getApps } from './getApps'
+
+export { default as notifications } from './notifications'
