@@ -1,5 +1,7 @@
 import { fromEvent, from } from 'rxjs'
-import { filter } from 'rxjs/operators'
+import { delay, filter } from 'rxjs/operators'
+import { getConfiguration } from '../../configuration'
+import * as configurationKeys from '../../configuration/keys'
 
 export default class ContractProxy {
   constructor (address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
@@ -74,7 +76,9 @@ export default class ContractProxy {
       )
     }
 
-    return eventSource
+    const eventDelay = getConfiguration(configurationKeys.SUBSCRIPTION_EVENT_DELAY) || 0
+    // Small optimization: don't pipe a delay if we don't have to
+    return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
   }
 
   async call (method, ...params) {

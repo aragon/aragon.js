@@ -1,14 +1,30 @@
 import test from 'ava'
+import proxyquire from 'proxyquire'
 import sinon from 'sinon'
 import { EventEmitter } from 'events'
+import * as configurationKeys from '../../configuration/keys'
 
-import ContractProxy from './index'
+test.beforeEach(t => {
+  const configurationStub = {
+    getConfiguration: sinon.stub()
+  }
+  const ContractProxy = proxyquire('./index', {
+    '../../configuration': configurationStub
+  }).default
+
+  t.context = {
+    ContractProxy,
+    configurationStub
+  }
+})
 
 test.afterEach.always(() => {
   sinon.restore()
 })
 
 test('should get all the events', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(1)
   // arrange
   const eventEmitter = new EventEmitter()
@@ -35,6 +51,8 @@ test('should get all the events', (t) => {
 })
 
 test('should get only the requested events', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(2)
   // arrange
   const eventEmitter = new EventEmitter()
@@ -63,6 +81,8 @@ test('should get only the requested events', (t) => {
 })
 
 test('should get only request the single event', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(4)
   // arrange
   const allEventEmitter = new EventEmitter()
@@ -111,6 +131,8 @@ test('should get only request the single event', (t) => {
 })
 
 test('should default the fromBlock to initializationBlock for requested events', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(2)
   // arrange
   const initializationBlock = 5
@@ -140,6 +162,8 @@ test('should default the fromBlock to initializationBlock for requested events',
 })
 
 test('should use the correct options for requested events', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(2)
   // arrange
   const fromBlock = 10
@@ -168,7 +192,83 @@ test('should use the correct options for requested events', (t) => {
   eventEmitter.emit('data', { foo: 'bar' })
 })
 
+test('should not apply a delay to events if not specified', (t) => {
+  const { ContractProxy, configurationStub } = t.context
+
+  t.plan(2)
+  // arrange
+  const eventEmitter = new EventEmitter()
+  const contract = {
+    events: {
+      allEvents: () => eventEmitter
+    }
+  }
+
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+
+  // Set no delay
+  configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(0)
+  const instance = new ContractProxy(null, null, web3Stub)
+  // act
+  const events = instance.events()
+  // assert
+  const startTime = Date.now()
+
+  events.subscribe(event => {
+    t.deepEqual(event, { foo: 'bar' })
+    // Hard to say exactly how much time this will take, but 20ms seems safe
+    // (this should be immediate)
+    t.true((Date.now() - startTime) < 20)
+  })
+
+  eventEmitter.emit('data', { foo: 'bar' })
+})
+
+test('should apply a delay to events if specified', (t) => {
+  const { ContractProxy, configurationStub } = t.context
+  const delayTime = 1000
+
+  t.plan(2)
+  // arrange
+  const eventEmitter = new EventEmitter()
+  const contract = {
+    events: {
+      allEvents: () => eventEmitter
+    }
+  }
+
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+
+  // Set a delay
+  configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(delayTime)
+  const instance = new ContractProxy(null, null, web3Stub)
+  // act
+  const events = instance.events()
+  // assert
+  // Since we've added the delay, we need to tell ava to wait until we're done subscribing
+  return new Promise(resolve => {
+    const startTime = Date.now()
+    events.subscribe(event => {
+      t.deepEqual(event, { foo: 'bar' })
+      t.true((Date.now() - startTime) > delayTime)
+      resolve()
+    })
+
+    eventEmitter.emit('data', { foo: 'bar' })
+  })
+})
+
 test('should use the correct options for requested past events with fromBlock and toBlock ', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(4)
   // arrange
   const fromBlock = 10
@@ -200,6 +300,8 @@ test('should use the correct options for requested past events with fromBlock an
 })
 
 test('should use the correct options for requested past events with toBlock and initializationBlock set ', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(1)
   // arrange
   const toBlock = 500
@@ -224,6 +326,8 @@ test('should use the correct options for requested past events with toBlock and 
 })
 
 test('should filter past events correctly when more than one eventName is passed', (t) => {
+  const { ContractProxy } = t.context
+
   t.plan(4)
   // arrange
   const pastEventsStub = sinon.stub().resolves([
