@@ -228,6 +228,7 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
+    this.initPath()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -1047,6 +1048,26 @@ export default class Aragon {
   }
 
   /**
+   * Initialise the path observable.
+   *
+   * @return {Promise<void>}
+   */
+  async initPath () {
+    this.path = new ReplaySubject(1)
+    this.path.next('/')
+  }
+
+  /**
+   * Set the path of the current app.
+   *
+   * @param {string} path
+   * @return {void}
+   */
+  setPath (path) {
+    this.path.next(path)
+  }
+
+  /**
    * Run an app.
    *
    * As there may be race conditions with losing messages from cross-context environments,
@@ -1100,6 +1121,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
         handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'path', handlers.path),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
 
         // Contract handlers
