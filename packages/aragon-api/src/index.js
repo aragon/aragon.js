@@ -61,6 +61,19 @@ export class AppProxy {
   }
 
   /**
+   * Get current path.
+   *
+   * @return {Observable} Multi-emission Observable that emits a path every time a change is detected.
+   */
+  path () {
+    return this.rpc.sendAndObserveResponses(
+      'path'
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Get the network the app is connected to over time.
    *
    * @return {Observable} Multi-emission Observable that emits an object with the connected network's id and type every time the network changes.
