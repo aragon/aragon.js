@@ -60,10 +60,6 @@ function AragonApi({
         setDisplayMenuButton(data.value)
       }
 
-      if (data.name === 'apps' && Array.isArray(data.value)) {
-        setApps(data.value)
-      }
-
       if (data.name === 'ready') {
         subscribers = [
           // app state
@@ -73,6 +69,11 @@ function AragonApi({
           api
             .accounts()
             .subscribe(accounts => setConnectedAccount(accounts[0] || '')),
+
+          // apps
+          api
+            .apps()
+            .subscribe(apps => setApps(apps || [])),
 
           // network
           api.network().subscribe(network => setNetwork(network || null)),
