@@ -94,6 +94,19 @@ export class AppProxy {
   }
 
   /**
+   * Get an array of the organization's installed apps.
+   *
+   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the organization every time a change is detected.
+   */
+  getApps () {
+    return this.rpc.sendAndObserveResponses(
+      'get_apps'
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Resolve an address' identity, using the highest priority provider.
    *
    * @param  {string} address Address to resolve.
