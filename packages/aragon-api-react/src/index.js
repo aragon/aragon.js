@@ -65,10 +65,6 @@ function AragonApi({
         setDisplayMenuButton(data.value)
       }
 
-      if (data.name === 'path' && data.value !== path) {
-        setPath(data.value)
-      }
-
       if (data.name === 'ready') {
         subscribers = [
           // app state
@@ -81,6 +77,9 @@ function AragonApi({
 
           // network
           api.network().subscribe(network => setNetwork(network || null)),
+
+          // path
+          api.path().subscribe(path => setPath(path)),
         ]
 
         postMessage('ready', true)
@@ -95,7 +94,7 @@ function AragonApi({
       window.removeEventListener('message', handleMessage)
       subscribers.forEach(subscriber => subscriber.unsubscribe())
     }
-  }, [api, path, reducer])
+  }, [api, reducer])
 
   // We are only using createElement() once so let’s use it directly rather
   // than the JSX syntax, so we avoid adding a babel transform for it.
