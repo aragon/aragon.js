@@ -38,6 +38,8 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
+import { setConfiguration } from './configuration'
+import * as configurationKeys from './configuration/keys'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -138,6 +140,14 @@ export const setupTemplates = (from, options = {}) => {
  *        IPFS provider config for apm.js
  * @param {string} [options.apm.ipfs.gateway]
  *        IPFS gateway apm.js will use to fetch artifacts from
+ * @param {Object} [options.cache]
+ *        Options for the internal cache
+ * @param {boolean} [options.forceLocalStorage=false]
+ *        Downgrade to localStorage even if IndexedDB is available
+ * @param {Object} [options.events]
+ *        Options for handling Ethereum events
+ * @param {boolean} [options.subscriptionEventDelay]
+ *        Time in ms to delay a new event from a contract subscription
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
@@ -153,9 +163,27 @@ export default class Aragon {
     const defaultOptions = {
       apm: {},
       defaultGasPriceFn: () => { },
-      provider: detectProvider()
+      provider: detectProvider(),
+      cache: {
+        forceLocalStorage: false
+      },
+      events: {
+        subscriptionDelayTime: 0
+      }
     }
     options = Object.assign(defaultOptions, options)
+
+    // Set up desired configuration
+    setConfiguration(
+      configurationKeys.FORCE_LOCAL_STORAGE,
+      !!(options.cache && options.cache.forceLocalStorage)
+    )
+    setConfiguration(
+      configurationKeys.SUBSCRIPTION_EVENT_DELAY,
+      Number.isFinite(options.events && options.events.subscriptionEventDelay)
+        ? options.events.subscriptionEventDelay
+        : 0
+    )
 
     // Set up Web3
     this.web3 = new Web3(options.provider)
@@ -235,7 +263,7 @@ export default class Aragon {
     }
 
     // Set up ACL proxy
-    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
+    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, { initializationBlock: this.kernelProxy.initializationBlock })
 
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
@@ -1151,24 +1179,34 @@ export default class Aragon {
 
       // Register request handlers
       const handlerSubscription = handlers.combineRequestHandlers(
+        // Generic handlers
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
-        handlers.createRequestHandler(request$, 'events', handlers.events),
-        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+
+        // Contract handlers
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
-        handlers.createRequestHandler(request$, 'network', handlers.network),
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+
+        // External contract handlers
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_intent', handlers.externalIntent),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
         handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
+
+        // Identity handlers
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
-        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+
+        // Etc.
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -1376,10 +1414,11 @@ export default class Aragon {
    * @param  {Object} [options]
    * @param  {string} [options.checkMode] Path checking mode
    * @return {Promise<Object>} An object containing:
-   *   - `direct`: whether the current account can directly invoke this basket
-   *     (requiring separate transactions)
-   *   - `transactions`: array of Ethereum transactions that describe each step in the path, with
-   *     the last step being an array of transactions that describe each intent in the basket
+   *   - `path` (Array<Object>): a multi-step transaction path that eventually invokes this basket.
+   *     Empty if no such path could be found.
+   *   - `transactions` (Array<Object>): array of Ethereum transactions that invokes this basket.
+   *     If a multi-step transaction path was found, returns the first transaction in that path.
+   *     Empty if no such transactions could be found.
    */
   async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
     // Get transaction paths for entire basket
@@ -1417,7 +1456,7 @@ export default class Aragon {
           )
 
           return {
-            direct: true,
+            path: [],
             transactions: decoratedTransactions
           }
         } catch (_) { }
@@ -1446,8 +1485,9 @@ export default class Aragon {
           // Put the finishing touches: apply gas, and add radspec descriptions
           forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
           return {
-            direct: false,
-            path: await this.describeTransactionPath(forwarderPath)
+            path: await this.describeTransactionPath(forwarderPath),
+            // When we have a path, we only need to send the first transaction to start it
+            transactions: [forwarderPath[0]]
           }
         } catch (_) { }
       }
@@ -1455,7 +1495,7 @@ export default class Aragon {
 
     // Failed to find a path
     return {
-      direct: false,
+      path: [],
       transactions: []
     }
   }

@@ -32,6 +32,8 @@ const providers = require('@aragon/wrapper').providers
   - `options.provider` **any** The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider` if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws (optional)
   - `options.apm` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Primarily used to set an alternative ipfs provider (optional, default `{}`)
   - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry (optional, default `null`)
+  - `options.cache` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Cache options
+  - `options.cache.forceLocalStorage` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** On browser environments, downgrade to localStorage even if IndexedDB is available
 
 ### **Examples**
 
