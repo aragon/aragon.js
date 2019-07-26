@@ -1322,38 +1322,41 @@ export default class Aragon {
 
   /**
    * Calculate the transaction path for a transaction to `destination`
-   * that invokes `methodName` with `params`.
+   * that invokes `method` with `params`.
    *
    * @param  {string} destination An address of an uninstalled smart contract application
    * @param  {string} method ABI of smart contract method
    * @param  {Array<*>} params
    * @return {Promise<Array<Object>>} An array of a single Ethereum direct transaction
    */
-  async getUninstalledAppTransactionPath (destination, method, params) {
-    const accounts = await this.getAccounts()
+  async getExternalTransactionPath (destination, method, params) {
+    const installedApp = await this.getApp(destination)
 
-    for (let account of accounts) {
-      const mockApp = {
-        proxyAddress: destination,
-        abi: [method]
+    if (!installedApp) {
+      const accounts = await this.getAccounts()
+      for (let account of accounts) {
+        const path = await createDirectTransaction(
+          account,
+          {
+            proxyAddress: destination,
+            abi: [method]
+          },
+          method.name,
+          params,
+          this.web3
+        )
+
+        if (path) {
+          try {
+            return this.describeTransactionPath([path])
+          } catch (_) { }
+        }
       }
 
-      const directTransaction = await createDirectTransaction(
-        account,
-        mockApp,
-        method.name,
-        params,
-        this.web3
-      )
-
-      if (directTransaction) {
-        try {
-          return this.describeTransactionPath([directTransaction])
-        } catch (_) { }
-      }
+      return []
     }
 
-    return []
+    return this.getTransactionPath(destination, method.name, params)
   }
 
   /**

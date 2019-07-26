@@ -34,8 +34,7 @@ test.beforeEach(t => {
     applyTransactionGas: (tx) => Promise.resolve(tx),
     performTransactionPath: sinon.stub(),
     getAccounts: () => Promise.resolve([permissionsCreator]),
-    getTransactionPath: () => Promise.resolve([txObject]),
-    getUninstalledAppTransactionPath: () => Promise.resolve([txObject]),
+    getExternalTransactionPath: () => Promise.resolve([txObject]),
     getApp: (appAddress) => new Promise(resolve => {
       if (appAddress === app.proxyAddress) resolve(app)
       else resolve(null)
@@ -143,12 +142,10 @@ test('should return the correct tx path from external tx intent', async t => {
   t.deepEqual(wrapper.performTransactionPath.getCall(0).args[0], [{
     ...expected,
     external: true,
-    installedApp: true
   }])
 
   t.deepEqual(wrapper.performTransactionPath.getCall(1).args[0], [{
     ...expected,
     external: true,
-    installedApp: false
   }])
 })

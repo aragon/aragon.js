@@ -18,29 +18,21 @@ export function call (request, proxy, wrapper) {
 
 export async function externalIntent (request, proxy, wrapper) {
   const [
-    proxyAddress,
+    address,
     method,
     ...params
   ] = request.params
 
-  const installedApp = await wrapper.getApp(proxyAddress)
-  const transactionPath = installedApp
-    ? await wrapper.getTransactionPath(
-      proxyAddress,
-      method.name,
-      params
-    )
-    : await wrapper.getUninstalledAppTransactionPath(
-      proxyAddress,
-      method,
-      params
-    )
+  const transactionPath = await wrapper.getExternalTransactionPath(
+    address,
+    method,
+    params
+  )
 
   return wrapper.performTransactionPath(
     transactionPath.map((tx) => ({
       ...tx,
-      external: true,
-      installedApp: !!installedApp
+      external: true
     }))
   )
 }
