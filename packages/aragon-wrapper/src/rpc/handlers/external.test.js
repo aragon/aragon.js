@@ -4,7 +4,7 @@ import sinon from 'sinon'
 import { EventEmitter } from 'events'
 import Web3 from 'web3'
 
-import { events, externalIntent } from './external'
+import { externalIntent } from './external'
 import * as configurationKeys from '../../configuration/keys'
 
 test.beforeEach(t => {
@@ -154,12 +154,12 @@ test('should return the correct tx path from external tx intent', async t => {
   // assert
   t.deepEqual(wrapper.performTransactionPath.getCall(0).args[0], [{
     ...expected,
-    external: true,
+    external: true
   }])
 
   t.deepEqual(wrapper.performTransactionPath.getCall(1).args[0], [{
     ...expected,
-    external: true,
+    external: true
   }])
 })
 
