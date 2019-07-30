@@ -1,7 +1,15 @@
 export default function (request, proxy, wrapper) {
+  const [
+    dataId,
+    cid,
+    to
+  ] = request.params
+
   wrapper.registerAppMetadata(
     proxy.address,
-    request.params
+    dataId,
+    cid,
+    to
   )
   return Promise.resolve()
 }
