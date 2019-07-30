@@ -1387,7 +1387,7 @@ test('should init the appMetadata correctly', async (t) => {
   })
 })
 
-test.only('should add metadata items', async (t) => {
+test('should add metadata items', async (t) => {
   t.plan(2)
 
   // arrange
