@@ -412,7 +412,7 @@ test('should update an action', t => {
   t.deepEqual(instanceStub2.rpc.send.getCall(0).args[1], ['2', '', '1'])
 })
 
-test.only('should return the forwardedActions observable', t => {
+test('should return the forwardedActions observable', t => {
   t.plan(3)
   // arrange
   const getFwdActionsFn = Index.AppProxy.prototype.getForwardedActions
