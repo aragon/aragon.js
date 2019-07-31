@@ -1131,7 +1131,8 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
         handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
-        handlers.createRequestHandler(request$, 'register_app_metadata', handlers.registerAppMetadata)
+        handlers.createRequestHandler(request$, 'register_app_metadata', handlers.registerAppMetadata),
+        handlers.createRequestHandler(request$, 'get_app_metadata', handlers.getAppMetadata)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
