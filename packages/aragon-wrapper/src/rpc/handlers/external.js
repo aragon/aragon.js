@@ -32,12 +32,7 @@ export async function externalIntent (request, proxy, wrapper) {
     params
   )
 
-  return wrapper.performTransactionPath(
-    transactionPath.map((tx) => ({
-      ...tx,
-      external: true
-    }))
-  )
+  return wrapper.performTransactionPath(transactionPath, true)
 }
 
 export function events (request, proxy, wrapper) {
