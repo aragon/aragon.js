@@ -1131,6 +1131,54 @@ test('should be able to reject intent when perform transaction path', async (t) 
   ])
 })
 
+test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.permissions = of({
+    counter: {
+      add: {
+        allowedEntities: ['0x1', '0x2']
+      },
+      subtract: {
+        allowedEntities: ['0x1'],
+        manager: 'im manager'
+      }
+    }
+  })
+  instance.forwarders = of([
+    {
+      appId: 'forwarderA',
+      proxyAddress: '0x999'
+    }
+  ])
+  instance.apps = of([
+    {
+      appId: 'counterApp',
+      kernelAddress: '0x123',
+      abi: 'abi for counterApp',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      // abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
+  // act
+  return instance.calculateTransactionPath(null, '0x789')
+    .catch(err => {
+      // assert
+      t.is(err.message, 'No ABI specified in artifact for 0x789')
+      /*
+       * Note: This test also "asserts" that the permissions object, the app object and the
+       * forwarders array does not throw any errors when they are being extracted from their observables.
+       */
+    })
+})
+
 test('should run the app and reply to a request', async (t) => {
   const { Aragon, messengerConstructorStub, utilsStub } = t.context
 
@@ -1350,54 +1398,6 @@ test('should get the permission manager', async (t) => {
   const result = await instance.getPermissionManager('counter', 'subtract')
   // assert
   t.is(result, 'im manager')
-})
-
-test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
-  const { Aragon } = t.context
-
-  t.plan(1)
-  // arrange
-  const instance = new Aragon()
-  instance.permissions = of({
-    counter: {
-      add: {
-        allowedEntities: ['0x1', '0x2']
-      },
-      subtract: {
-        allowedEntities: ['0x1'],
-        manager: 'im manager'
-      }
-    }
-  })
-  instance.forwarders = of([
-    {
-      appId: 'forwarderA',
-      proxyAddress: '0x999'
-    }
-  ])
-  instance.apps = of([
-    {
-      appId: 'counterApp',
-      kernelAddress: '0x123',
-      abi: 'abi for counterApp',
-      proxyAddress: '0x456'
-    }, {
-      appId: 'votingApp',
-      kernelAddress: '0x123',
-      // abi: 'abi for votingApp',
-      proxyAddress: '0x789'
-    }
-  ])
-  // act
-  return instance.calculateTransactionPath(null, '0x789')
-    .catch(err => {
-      // assert
-      t.is(err.message, 'No ABI specified in artifact for 0x789')
-      /*
-       * Note: This test also "asserts" that the permissions object, the app object and the
-       * forwarders array does not throw any errors when they are being extracted from their observables.
-       */
-    })
 })
 
 test('should be able to decode an evm call script with a single transaction', async (t) => {
