@@ -3,8 +3,13 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
-import { encodeCallScript } from './evmscript'
+import * as configurationKeys from './configuration/keys'
+import { getCacheKey } from './utils'
 import AsyncRequestCache from './utils/AsyncRequestCache'
+import * as callscriptUtils from './utils/callscript'
+import * as forwardingUtils from './utils/forwarding'
+
+const { encodeCallScript } = callscriptUtils
 
 // soliditySha3('app')
 const APP_NAMESPACE_HASH = '0xf1f3eb40f5bc1ad1344716ced8b8a0431d840b5783aea1fd01786bc26f35ac0f'
@@ -19,18 +24,26 @@ test.beforeEach(t => {
   const apmCoreStub = {
     getApmAppInfo: sinon.stub()
   }
+  const configurationStub = {
+    setConfiguration: sinon.stub()
+  }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
     AsyncRequestCache,
+    getCacheKey,
+    addressesEqual: Object.is,
+    callscript: callscriptUtils,
+    forwarding: forwardingUtils,
     makeAddressMapProxy: sinon.fake.returns({}),
-    makeProxy: sinon.stub(),
-    addressesEqual: Object.is
+    makeProxy: sinon.stub()
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
     './core/apm': apmCoreStub,
+    './configuration': configurationStub,
+    './configuration/keys': configurationKeys,
     './utils': utilsStub
   }).default
 
@@ -39,6 +52,7 @@ test.beforeEach(t => {
     apmStub,
     aragonOSCoreStub,
     apmCoreStub,
+    configurationStub,
     messengerConstructorStub,
     utilsStub
   }
@@ -80,6 +94,63 @@ test('should throw on init if daoAddress is not a Kernel', async (t) => {
       message: `Provided daoAddress is not a DAO`
     }
   )
+})
+
+test('should set the default configuration', t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0)
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, false)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 0)
+  )
+  t.not(instance.apm, undefined)
+})
+
+test('should set the given configuration', t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0, {
+    cache: { forceLocalStorage: true },
+    events: { subscriptionEventDelay: 1000 }
+  })
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, true)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 1000)
+  )
+  t.not(instance.apm, undefined)
+})
+
+test("should set the default configuration if overriding configuration doesn't contain keys", t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0, {
+    cache: {},
+    events: {}
+  })
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, false)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 0)
+  )
+  t.not(instance.apm, undefined)
 })
 
 test('should use provided accounts', async (t) => {
@@ -158,78 +229,81 @@ test('should get the network details from web3', async (t) => {
   })
 })
 
+const aclEvents = from([{
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'add',
+    allowed: true,
+    entity: '0x1'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: true,
+    entity: '0x1'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'add',
+    allowed: true,
+    entity: '0x2'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: true,
+    entity: '0x2'
+  }
+}, {
+  // Simulate real world mixed order of event types
+  event: 'ChangePermissionManager',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    manager: 'manager'
+  }
+}, {
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: false,
+    entity: '0x2'
+  }
+}, {
+  // duplicate, should not affect the final result because we use a Set
+  event: 'SetPermission',
+  returnValues: {
+    app: 'counter',
+    role: 'subtract',
+    allowed: false,
+    entity: '0x2'
+  }
+}])
+
 test('should init the ACL correctly', async (t) => {
   const { Aragon, utilsStub } = t.context
 
   t.plan(1)
-  // arrange
-  const setPermissionEvents = from([{
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'add',
-      allowed: true,
-      entity: '0x1'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: true,
-      entity: '0x1'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'add',
-      allowed: true,
-      entity: '0x2'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: true,
-      entity: '0x2'
-    }
-  }, {
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: false,
-      entity: '0x2'
-    }
-  }, {
-    // duplicate, should not affect the final result because we use a Set
-    event: 'SetPermission',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      allowed: false,
-      entity: '0x2'
-    }
-  }])
-  const changePermissionManagerEvents = of({
-    event: 'ChangePermissionManager',
-    returnValues: {
-      app: 'counter',
-      role: 'subtract',
-      manager: 'manager'
-    }
-  })
+
   const instance = new Aragon()
   instance.kernelProxy = {
     call: sinon.stub()
   }
+  instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
+
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
-  aclProxyStub.events.withArgs('SetPermission').returns(setPermissionEvents)
-  aclProxyStub.events.withArgs('ChangePermissionManager').returns(changePermissionManagerEvents)
   utilsStub.makeProxy.returns(aclProxyStub)
   // act
   await instance.initAcl()
@@ -260,8 +334,10 @@ test('should init the acl with the default acl fetched from the kernel by defaul
   // arrange
   const defaultAclAddress = '0x321'
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
+
   const kernelProxyStub = {
     call: sinon.stub()
       .withArgs('acl').resolves(defaultAclAddress)
@@ -271,6 +347,8 @@ test('should init the acl with the default acl fetched from the kernel by defaul
     .withArgs(defaultAclAddress).returns(aclProxyStub)
 
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl()
@@ -287,7 +365,8 @@ test('should init the acl with the provided acl', async (t) => {
   const defaultAclAddress = '0x321'
   const givenAclAddress = '0x123'
   const aclProxyStub = {
-    events: sinon.stub()
+    events: sinon.stub().returns(aclEvents),
+    pastEvents: sinon.stub().returns(empty())
   }
   const kernelProxyStub = {
     call: sinon.stub()
@@ -298,6 +377,8 @@ test('should init the acl with the provided acl', async (t) => {
     .withArgs(givenAclAddress).returns(aclProxyStub)
 
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
+  instance.cache.set = sinon.stub().resolves()
 
   // act
   await instance.initAcl({ aclAddress: givenAclAddress })
@@ -822,7 +903,7 @@ test('should init the notifications correctly', async (t) => {
         title: 'receive'
       }
     ])
-  instance.cache.set = sinon.stub()
+  instance.cache.set = sinon.stub().resolves()
   // act
   await instance.initNotifications()
   // assert
@@ -1430,4 +1511,300 @@ test('should add metadata items', async (t) => {
       to: ['*']
     })
   })
+})
+
+test('should be able to decode an evm call script with multiple nested transactions', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const script = encodeCallScript([{
+    to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data bytes length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '00000044' +                                                            // 68 data bytes length
+          '40c10f19' +                                                            // mint
+          '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+          '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+  }, {
+    to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '00000000000000000000000000000000000000000000000000000000000000c0' +    // 192 data bytes length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '000000a4' +                                                            // 164 data bytes length
+          'bfe07da6' +                                                            // deposit
+          '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+          '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +    // 1e18
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // 1 word
+          '0000000000000000000000000000000000000000000000000000000000000004' +    // 4 bytes
+          '4141414100000000000000000000000000000000000000000000000000000000'      // "AAAA" encoded
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000060' +
+            '00000001' +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '00000044' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+      children: [{
+        data: '0x' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    }, {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '00000000000000000000000000000000000000000000000000000000000000c0' +
+            '00000001' +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '000000a4' +
+            'bfe07da6' +
+            '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+            '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000004' +
+            '4141414100000000000000000000000000000000000000000000000000000000',
+      children: [{
+        data: '0x' +
+              'bfe07da6' +
+              '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+              '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+              '0000000000000000000000000000000000000000000000000000000000000020' +
+              '0000000000000000000000000000000000000000000000000000000000000004' +
+              '4141414100000000000000000000000000000000000000000000000000000000',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    }
+  ])
+})
+
+test('should be able to decode an evm call script with a complex nested transaction', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const nestedScript =
+    encodeCallScript([{
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      data: '0x' +
+            'd948d468' +                                                            // forward signature
+            '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+            '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data bytes length
+            '00000001' +                                                            // spec id
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+            '00000044' +                                                            // 68 data bytes length
+            '40c10f19' +                                                            // mint
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+            '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+    }, {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      data: '0x' +
+            'd948d468' +                                                            // forward signature
+            '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+            '00000000000000000000000000000000000000000000000000000000000000c0' +    // 192 data bytes length
+            '00000001' +                                                            // spec id
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+            '000000a4' +                                                            // 164 data bytes length
+            'bfe07da6' +                                                            // deposit
+            '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+            '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +    // 1e18
+            '0000000000000000000000000000000000000000000000000000000000000020' +    // 1 word
+            '0000000000000000000000000000000000000000000000000000000000000004' +    // 4 bytes
+            '4141414100000000000000000000000000000000000000000000000000000000'      // "AAAA" encoded
+    }]).substring(2)                                                                   // cut off '0x' prefix
+  // Divide by 2 for hex, convert number into hex string, and pad for uint256
+  const nestedScriptDataLength = `${(nestedScript.length / 2).toString(16)}`.padStart(64, 0)
+  const script = encodeCallScript([{
+    to: '0x62451b8705e6691b92afaa7766c0722c93a0e204',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          nestedScriptDataLength +                                                // previous script data bytes length
+          nestedScript                                                            // previous script data
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0x62451b8705e6691b92afaa7766c0722c93a0e204',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            nestedScriptDataLength +
+            nestedScript,
+      children: [
+        {
+          to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+          data: '0x' +
+                'd948d468' +
+                '0000000000000000000000000000000000000000000000000000000000000020' +
+                '0000000000000000000000000000000000000000000000000000000000000060' +
+                '00000001' +
+                '14a3208711873b6aab2005f6cca0f91658e287ef' +
+                '00000044' +
+                '40c10f19' +
+                '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+                '0000000000000000000000000000000000000000000000003782dace9d900000',
+          children: [{
+            data: '0x' +
+                '40c10f19' +
+                '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+                '0000000000000000000000000000000000000000000000003782dace9d900000',
+            to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+          }]
+        }, {
+          to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+          data: '0x' +
+                'd948d468' +
+                '0000000000000000000000000000000000000000000000000000000000000020' +
+                '00000000000000000000000000000000000000000000000000000000000000c0' +
+                '00000001' +
+                '14a3208711873b6aab2005f6cca0f91658e287ef' +
+                '000000a4' +
+                'bfe07da6' +
+                '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+                '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+                '0000000000000000000000000000000000000000000000000000000000000020' +
+                '0000000000000000000000000000000000000000000000000000000000000004' +
+                '4141414100000000000000000000000000000000000000000000000000000000',
+          children: [{
+            data: '0x' +
+                  'bfe07da6' +
+                  '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+                  '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+                  '0000000000000000000000000000000000000000000000000000000000000020' +
+                  '0000000000000000000000000000000000000000000000000000000000000004' +
+                  '4141414100000000000000000000000000000000000000000000000000000000',
+            to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+          }]
+        }
+      ]
+    }
+  ])
+})
+
+test('should not decode non-call scripts', async (t) => {
+  const { Aragon } = t.context
+  const badSpecId = '0x00000002'
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  const script = `${badSpecId}${'123'.padStart(64, 0)}`
+  // assert
+  t.throws(
+    () => instance.decodeTransactionPath(script),
+    {
+      instanceOf: Error,
+      message: `Script could not be decoded: ${script}`
+    }
+  )
+})
+
+test('should be only able to decode call scripts when there are multiple nested transactions', async (t) => {
+  const { Aragon } = t.context
+  const badSpecId = '0x00000002'
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  /* eslint-disable no-multi-spaces */
+  const script = encodeCallScript([{
+    to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '0000000000000000000000000000000000000000000000000000000000000060' +    // 96 data bytes length
+          '00000001' +                                                            // spec id
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '00000044' +                                                            // 68 data bytes length
+          '40c10f19' +                                                            // mint
+          '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +    // token holder
+          '0000000000000000000000000000000000000000000000003782dace9d900000'      // 4e18
+  }, {
+    to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+    data: '0x' +
+          'd948d468' +                                                            // forward signature
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // offset
+          '00000000000000000000000000000000000000000000000000000000000000c0' +    // 192 data bytes length
+          badSpecId.substring(2) +                                                // **BAD SPEC ID**
+          '14a3208711873b6aab2005f6cca0f91658e287ef' +                            // forward target
+          '000000a4' +                                                            // 164 data bytes length
+          'bfe07da6' +                                                            // deposit
+          '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +    // token holder
+          '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +    // 1e18
+          '0000000000000000000000000000000000000000000000000000000000000020' +    // 1 word
+          '0000000000000000000000000000000000000000000000000000000000000004' +    // 4 bytes
+          '4141414100000000000000000000000000000000000000000000000000000000'      // "AAAA" encoded
+  }])
+  /* eslint-enable no-multi-spaces */
+  // act
+  const decodedScript = instance.decodeTransactionPath(script)
+  // assert
+  t.deepEqual(decodedScript, [
+    {
+      to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000060' +
+            '00000001' +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '00000044' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+      children: [{
+        data: '0x' +
+            '40c10f19' +
+            '000000000000000000000000b4124cEB3451635DAcedd11767f004d8a28c6eE7' +
+            '0000000000000000000000000000000000000000000000003782dace9d900000',
+        to: '0x14a3208711873b6aab2005f6cca0f91658e287ef'
+      }]
+    },
+    {
+      to: '0x634faa183ba1f5f968cb96656d24dff66021f5a2',
+      data: '0x' +
+            'd948d468' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '00000000000000000000000000000000000000000000000000000000000000c0' +
+            badSpecId.substring(2) +
+            '14a3208711873b6aab2005f6cca0f91658e287ef' +
+            '000000a4' +
+            'bfe07da6' +
+            '0000000000000000000000008401eb5ff34cc943f096a32ef3d5113febe8d4eb' +
+            '0000000000000000000000000000000000000000000000000de0b6b3a7640000' +
+            '0000000000000000000000000000000000000000000000000000000000000020' +
+            '0000000000000000000000000000000000000000000000000000000000000004' +
+            '4141414100000000000000000000000000000000000000000000000000000000'
+      // ignores the second target's children because it's not a call script forward
+    }
+  ])
 })

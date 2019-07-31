@@ -16,8 +16,14 @@ export function includesAddress (arr, address) {
   return arr.some(a => addressesEqual(a, address))
 }
 
-export function makeAddressMapProxy (target) {
-  return new Proxy(target, {
+// Address map that ensures consistent non-checksummed interpretations of addresses
+export function makeAddressMapProxy (target = {}) {
+  const targetLowerCaseKeys = {}
+  Object.entries(target).forEach(([address, val]) => {
+    targetLowerCaseKeys[address.toLowerCase()] = val
+  })
+
+  return new Proxy(targetLowerCaseKeys, {
     get (target, property, receiver) {
       if (property in target) {
         return target[property]
@@ -39,13 +45,23 @@ export function makeAddressMapProxy (target) {
   })
 }
 
-export function makeProxy (address, interfaceName, web3, initializationBlock) {
-  const abi = getAbi(`aragon/${interfaceName}`)
-  return makeProxyFromABI(address, abi, web3, initializationBlock)
+/**
+ * Get a standard cache key
+ *
+ * @param {string} address
+ * @param {string} location
+ */
+export function getCacheKey (address, location) {
+  return `${address}.${location}`
 }
 
-export function makeProxyFromABI (address, abi, web3, initializationBlock) {
-  return new ContractProxy(address, abi, web3, initializationBlock)
+export function makeProxy (address, interfaceName, web3, options) {
+  const abi = getAbi(`aragon/${interfaceName}`)
+  return makeProxyFromABI(address, abi, web3, options)
+}
+
+export function makeProxyFromABI (address, abi, web3, options) {
+  return new ContractProxy(address, abi, web3, options)
 }
 
 export { default as AsyncRequestCache } from './AsyncRequestCache'

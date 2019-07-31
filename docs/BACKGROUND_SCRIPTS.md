@@ -6,7 +6,7 @@ Background scripts are parts of your app that are always run as soon as the Arag
 
 ## Setup
 
-First you need to instantiate an instance of the [`AragonApp`](/docs/APP.md#aragonapp) class from `@aragon/api`.
+First you need to instantiate an instance of the [`AragonApp`](/docs/API.md#aragonapp) class from `@aragon/api`.
 
 ```js
 import Aragon from '@aragon/api'
@@ -24,7 +24,7 @@ Next, you need to specify that your app has a background script. In your `manife
 
 ## Building State
 
-All of the [`AragonApp`](/docs/APP.md#aragonapp) methods are available to you. We highly recommend that you use [`AragonApp#store`](/docs/APP.md#store) as it handles state caching and events subscriptions for you.
+All of the [`AragonApp`](/docs/API.md#aragonapp) methods are available to you. We highly recommend that you use [`AragonApp#store`](/docs/API.md#store) as it handles state caching and events subscriptions for you.
 
 ```js
 const state$ = app.store((state, event) => {
@@ -47,4 +47,4 @@ const state$ = app.store((state, event) => {
 
 ## Sharing State
 
-If you use [`AragonApp#store`](/docs/APP.md#store) then state will be automatically shared with your front-end in [real-time](https://en.wikipedia.org/wiki/Real-time_web) (via [`AragonApp#state`](/docs/APP.md#state)).
+If you use [`AragonApp#store`](/docs/API.md#store) then state will be automatically shared with your front-end in [real-time](https://en.wikipedia.org/wiki/Real-time_web) (via [`AragonApp#state`](/docs/API.md#state)).

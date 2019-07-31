@@ -1,9 +1,10 @@
 // Externals
-import { ReplaySubject, Subject, BehaviorSubject, merge, of } from 'rxjs'
+import { asyncScheduler, concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
 import {
   concatMap,
   debounceTime,
   distinctUntilChanged,
+  endWith,
   filter,
   first,
   map,
@@ -11,10 +12,10 @@ import {
   mergeMap,
   publishReplay,
   scan,
-  skipWhile,
   startWith,
   switchMap,
   tap,
+  throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
 import uuidv4 from 'uuid/v4'
@@ -37,7 +38,8 @@ import {
   isAragonOsInternalApp
 } from './core/aragonOS'
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
-import { CALLSCRIPT_ID, encodeCallScript } from './evmscript'
+import { setConfiguration } from './configuration'
+import * as configurationKeys from './configuration/keys'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -45,6 +47,7 @@ import {
 } from './radspec'
 import {
   addressesEqual,
+  getCacheKey,
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
@@ -52,8 +55,11 @@ import {
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
+import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callscript'
+import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
+  applyForwardingPretransaction,
   createDirectTransaction,
   createForwarderTransactionBuilder,
   getRecommendedGasLimit
@@ -134,6 +140,14 @@ export const setupTemplates = (from, options = {}) => {
  *        IPFS provider config for apm.js
  * @param {string} [options.apm.ipfs.gateway]
  *        IPFS gateway apm.js will use to fetch artifacts from
+ * @param {Object} [options.cache]
+ *        Options for the internal cache
+ * @param {boolean} [options.forceLocalStorage=false]
+ *        Downgrade to localStorage even if IndexedDB is available
+ * @param {Object} [options.events]
+ *        Options for handling Ethereum events
+ * @param {boolean} [options.subscriptionEventDelay]
+ *        Time in ms to delay a new event from a contract subscription
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
@@ -149,9 +163,27 @@ export default class Aragon {
     const defaultOptions = {
       apm: {},
       defaultGasPriceFn: () => { },
-      provider: detectProvider()
+      provider: detectProvider(),
+      cache: {
+        forceLocalStorage: false
+      },
+      events: {
+        subscriptionDelayTime: 0
+      }
     }
     options = Object.assign(defaultOptions, options)
+
+    // Set up desired configuration
+    setConfiguration(
+      configurationKeys.FORCE_LOCAL_STORAGE,
+      !!(options.cache && options.cache.forceLocalStorage)
+    )
+    setConfiguration(
+      configurationKeys.SUBSCRIPTION_EVENT_DELAY,
+      Number.isFinite(options.events && options.events.subscriptionEventDelay)
+        ? options.events.subscriptionEventDelay
+        : 0
+    )
 
     // Set up Web3
     this.web3 = new Web3(options.provider)
@@ -231,64 +263,101 @@ export default class Aragon {
     }
 
     // Set up ACL proxy
-    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
+    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, { initializationBlock: this.kernelProxy.initializationBlock })
 
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
-    const aclObservables = [
-      SET_PERMISSION_EVENT,
-      CHANGE_PERMISSION_MANAGER_EVENT
-    ].map(event =>
-      this.aclProxy.events(event)
+    const ACL_CACHE_KEY = getCacheKey(aclAddress, 'acl')
+
+    const REORG_SAFETY_BLOCK_AGE = 100
+
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
+
+    // Check if we have cached ACL for this address
+    // Cache object for an ACL: { permissions, blockNumber }
+    const cachedAclState = await this.cache.get(ACL_CACHE_KEY, {})
+    const { permissions: cachedPermissions, blockNumber: cachedBlockNumber } = cachedAclState
+
+    const pastEventsOptions = {
+      toBlock: cacheBlockHeight,
+      // When using cache, fetch events from the next block after cache
+      fromBlock: cachedPermissions ? cachedBlockNumber + 1 : undefined
+    }
+    const pastEvents$ = this.aclProxy.pastEvents(null, pastEventsOptions).pipe(
+      mergeMap((pastEvents) => from(pastEvents)),
+      // Custom cache event
+      endWith({
+        event: ACL_CACHE_KEY,
+        returnValues: {}
+      })
+    )
+    const currentEvents$ = this.aclProxy.events(null, { fromBlock: cacheBlockHeight + 1 }).pipe(
+      startWith({
+        event: 'starting current events',
+        returnValues: {}
+      })
     )
 
-    // Set up permissions observable
-
     // Permissions Object:
-    // app -> role -> { manager, allowedEntities -> [ entities with permission ] }
-    this.permissions = merge(...aclObservables).pipe(
-      // Keep track of all the types of events that have been processed
-      scan(([permissions, eventSet], event) => {
+    // { app -> role -> { manager, allowedEntities -> [ entities with permission ] } }
+    const fetchedPermissions$ = concat(pastEvents$, currentEvents$).pipe(
+      scan(([permissions], event) => {
         const eventData = event.returnValues
 
-        // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
-        const appPermissions = permissions[eventData.app] || {}
+        if (eventData.app) {
+          // NOTE: dotprop.get() doesn't work through proxies, so we manually access permissions
+          const appPermissions = permissions[eventData.app] || {}
 
-        if (event.event === SET_PERMISSION_EVENT) {
-          const key = `${eventData.role}.allowedEntities`
+          if (event.event === SET_PERMISSION_EVENT) {
+            const key = `${eventData.role}.allowedEntities`
 
-          // Converts to and from a set to avoid duplicated entities
-          const permissionsForRole = new Set(dotprop.get(appPermissions, key, []))
+            // Converts to and from a set to avoid duplicated entities
+            const allowedEntitiesSet = new Set(dotprop.get(appPermissions, key, []))
 
-          if (eventData.allowed) {
-            permissionsForRole.add(eventData.entity)
-          } else {
-            permissionsForRole.delete(eventData.entity)
+            if (eventData.allowed) {
+              allowedEntitiesSet.add(eventData.entity)
+            } else {
+              allowedEntitiesSet.delete(eventData.entity)
+            }
+
+            dotprop.set(appPermissions, key, Array.from(allowedEntitiesSet))
           }
 
-          dotprop.set(appPermissions, key, Array.from(permissionsForRole))
+          if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
+            // We only care about the last one. An app permission can have only one manager
+            dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
+          }
+
+          permissions[eventData.app] = appPermissions
         }
 
-        if (event.event === CHANGE_PERMISSION_MANAGER_EVENT) {
-          dotprop.set(appPermissions, `${eventData.role}.manager`, eventData.manager)
-        }
+        return [permissions, event]
+      }, [ makeAddressMapProxy(cachedPermissions || {}) ]),
 
-        permissions[eventData.app] = appPermissions
-        return [permissions, eventSet.add(event.event)]
-      }, [makeAddressMapProxy({}), new Set()]),
-      // Skip until we have received events from all event subscriptions
-      // Note that this is safe as the ACL will always have to emit both
-      // ChangePermissionManager and SetPermission events every time a
-      // permission is created
-      skipWhile(([permissions, eventSet]) => eventSet.size < aclObservables.length),
-      map(([permissions]) => permissions),
+      // Cache if we're finished syncing up to cache block height
+      map(([permissions, event]) => {
+        if (event.event === ACL_CACHE_KEY) {
+          this.cache.set(
+            ACL_CACHE_KEY,
+            // Make copy for cache
+            { permissions: Object.assign({}, permissions), blockNumber: cacheBlockHeight }
+          )
+        }
+        return permissions
+      }),
+
       // Throttle so it only continues after 30ms without new values
       // Avoids DDOSing subscribers as during initialization there may be
       // hundreds of events processed in a short timespan
       debounceTime(30),
       publishReplay(1)
     )
+    fetchedPermissions$.connect()
+
+    const cachedPermissions$ = cachedPermissions ? of(makeAddressMapProxy(cachedPermissions)) : of()
+    this.permissions = concat(cachedPermissions$, fetchedPermissions$).pipe(publishReplay(1))
     this.permissions.connect()
   }
 
@@ -751,7 +820,8 @@ export default class Aragon {
           return nextRepos
         }
       }, []),
-      debounceTime(100),
+      // Throttle updates, but must keep trailing to ensure we don't drop any updates
+      throttleTime(500, asyncScheduler, { leading: false, trailing: true }),
       publishReplay(1)
     )
     this.installedRepos.connect()
@@ -891,6 +961,21 @@ export default class Aragon {
   }
 
   /**
+   * Search identities based on a term
+   *
+   * @param  {string} searchTerm
+   * @return {Promise} Resolves with the identity or null if not found
+   */
+  searchIdentities (searchTerm) {
+    const providerName = 'local' // TODO - get provider
+    const provider = this.identityProviderRegistrar.get(providerName)
+    if (provider && typeof provider.search === 'function') {
+      return provider.search(searchTerm)
+    }
+    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  }
+
+  /**
    * Request an identity modification using the highest priority provider.
    *
    * Returns a promise which delegates resolution to the handler
@@ -918,12 +1003,16 @@ export default class Aragon {
   }
 
   /**
-   * Clear all local identities
+   * Remove selected local identities
    *
-   * @return {Promise<void>}
+   * @param {Array<string>} addresses The addresses to be removed from the local identity provider
+   * @return {Promise}
    */
-  clearLocalIdentities () {
-    return this.identityProviderRegistrar.get('local').clear()
+  async removeLocalIdentities (addresses) {
+    const localProvider = this.identityProviderRegistrar.get('local')
+    for (const address of addresses) {
+      await localProvider.remove(address)
+    }
   }
 
   /**
@@ -1117,22 +1206,37 @@ export default class Aragon {
 
       // Register request handlers
       const handlerSubscription = handlers.combineRequestHandlers(
+        // Generic handlers
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
-        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+
+        // Contract handlers
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
-        handlers.createRequestHandler(request$, 'network', handlers.network),
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+
+        // External contract handlers
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
+
+        // Identity handlers
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
-        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
+
+        // cross-app handlers
         handlers.createRequestHandler(request$, 'register_app_metadata', handlers.registerAppMetadata),
-        handlers.createRequestHandler(request$, 'get_app_metadata', handlers.getAppMetadata)
+        handlers.createRequestHandler(request$, 'get_app_metadata', handlers.getAppMetadata),
+
+        // Etc.
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
@@ -1148,15 +1252,16 @@ export default class Aragon {
       const shutdownAndClearCache = async () => {
         shutdown()
 
-        return Promise.all(
-          Object
-            .keys(await this.cache.getAll())
-            .map(cacheKey =>
+        // Remove all cache keys related to this app one by one
+        return Object
+          .keys(await this.cache.getAll())
+          .reduce((promise, cacheKey) => {
+            return promise.then(() =>
               cacheKey.startsWith(proxyAddress)
                 ? this.cache.remove(cacheKey)
                 : Promise.resolve()
             )
-        )
+          }, Promise.resolve())
       }
 
       return {
@@ -1300,10 +1405,11 @@ export default class Aragon {
    * @param  {Object} [options]
    * @param  {string} [options.checkMode] Path checking mode
    * @return {Promise<Object>} An object containing:
-   *   - `direct`: whether the current account can directly invoke this basket
-   *     (requiring separate transactions)
-   *   - `transactions`: array of Ethereum transactions that describe each step in the path, with
-   *     the last step being an array of transactions that describe each intent in the basket
+   *   - `path` (Array<Object>): a multi-step transaction path that eventually invokes this basket.
+   *     Empty if no such path could be found.
+   *   - `transactions` (Array<Object>): array of Ethereum transactions that invokes this basket.
+   *     If a multi-step transaction path was found, returns the first transaction in that path.
+   *     Empty if no such transactions could be found.
    */
   async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
     // Get transaction paths for entire basket
@@ -1341,7 +1447,7 @@ export default class Aragon {
           )
 
           return {
-            direct: true,
+            path: [],
             transactions: decoratedTransactions
           }
         } catch (_) { }
@@ -1370,8 +1476,9 @@ export default class Aragon {
           // Put the finishing touches: apply gas, and add radspec descriptions
           forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
           return {
-            direct: false,
-            path: await this.describeTransactionPath(forwarderPath)
+            path: await this.describeTransactionPath(forwarderPath),
+            // When we have a path, we only need to send the first transaction to start it
+            transactions: [forwarderPath[0]]
           }
         } catch (_) { }
       }
@@ -1379,7 +1486,7 @@ export default class Aragon {
 
     // Failed to find a path
     return {
-      direct: false,
+      path: [],
       transactions: []
     }
   }
@@ -1454,42 +1561,26 @@ export default class Aragon {
    * @return {Array<Object>} An array of Ethereum transactions that describe each step in the path
    */
   decodeTransactionPath (script) {
-    function decodePathSegment (script) {
-      // Get address
-      const to = `0x${script.substring(0, 40)}`
-      script = script.substring(40)
+    // In the future we may support more EVMScripts, but for now let's just assume we're only
+    // dealing with call scripts
+    if (!isCallScript(script)) {
+      throw new Error(`Script could not be decoded: ${script}`)
+    }
 
-      // Get data
-      const dataLength = parseInt(`0x${script.substring(0, 8)}`, 16) * 2
-      script = script.substring(8)
-      const data = `0x${script.substring(0, dataLength)}`
+    const path = decodeCallScript(script)
+    return path.map((segment) => {
+      const { data } = segment
 
-      // Return rest of script for processing
-      script = script.substring(dataLength)
+      if (isValidForwardCall(data)) {
+        const forwardedEvmScript = parseForwardCall(data)
 
-      return {
-        segment: {
-          data,
-          to
-        },
-        scriptLeft: script
+        try {
+          segment.children = this.decodeTransactionPath(forwardedEvmScript)
+        } catch (err) {}
       }
-    }
 
-    // Get script identifier (0x prefix + bytes4)
-    const scriptId = script.substring(0, 10)
-    if (scriptId !== CALLSCRIPT_ID) {
-      throw new Error(`Unknown script ID ${scriptId}`)
-    }
-
-    const segments = []
-    let scriptData = script.substring(10)
-    while (scriptData.length > 0) {
-      const { segment, scriptLeft } = decodePathSegment(scriptData)
-      segments.push(segment)
-      scriptData = scriptLeft
-    }
-    return segments
+      return segment
+    })
   }
 
   /**
@@ -1498,7 +1589,7 @@ export default class Aragon {
    * @param  {Array<Object>} path
    * @return {Promise<Array<Object>>} The given `path`, with decorated with descriptions at each step
    */
-  describeTransactionPath (path) {
+  async describeTransactionPath (path) {
     return Promise.all(path.map(async (step) => {
       let decoratedStep
 
@@ -1528,12 +1619,18 @@ export default class Aragon {
       }
 
       // Annotate the description, if one was found
-      if (decoratedStep && decoratedStep.description) {
-        try {
-          const processed = await this.postprocessRadspecDescription(decoratedStep.description)
-          decoratedStep.description = processed.description
-          decoratedStep.annotatedDescription = processed.annotatedDescription
-        } catch (err) { }
+      if (decoratedStep) {
+        if (decoratedStep.description) {
+          try {
+            const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+            decoratedStep.description = processed.description
+            decoratedStep.annotatedDescription = processed.annotatedDescription
+          } catch (err) { }
+        }
+
+        if (decoratedStep.children) {
+          decoratedStep.children = await this.describeTransactionPath(decoratedStep.children)
+        }
       }
 
       return decoratedStep || step
@@ -1810,8 +1907,9 @@ export default class Aragon {
       return []
     }
 
-    // Only apply the pretransaction to the final forwarding transaction
-    const pretransaction = directTransaction.pretransaction
+    // TODO: handle pretransactions specified in the intent
+    // This is difficult to do generically, as some pretransactions
+    // (e.g. token approvals) only work if they're for a specific target
     delete directTransaction.pretransaction
 
     const createForwarderTransaction = createForwarderTransactionBuilder(sender, directTransaction, this.web3)
@@ -1822,9 +1920,15 @@ export default class Aragon {
       const script = encodeCallScript([directTransaction])
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
-        transaction.pretransaction = pretransaction
-        // TODO: recover if applying gas fails here
-        return [await this.applyTransactionGas(transaction, true), directTransaction]
+        try {
+          const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+          // `applyTransactionGas` can throw if the transaction will fail
+          // If that happens, we give up as we should've been able to perform the action with this
+          // forwarder
+          return [await this.applyTransactionGas(transactionWithFee, true), directTransaction]
+        } catch (err) {
+          return []
+        }
       }
     }
 
@@ -1873,10 +1977,18 @@ export default class Aragon {
           // The previous forwarder can forward a transaction for this forwarder,
           // and this forwarder can forward for our address, so we have found a path
           const transaction = createForwarderTransaction(forwarder, script)
-          transaction.pretransaction = pretransaction
-          // `applyTransactionGas` is only done for the transaction that will be executed
-          // TODO: recover if applying gas fails here
-          return [await this.applyTransactionGas(transaction, true), ...path]
+
+          // Only apply pretransactions and gas to the first transaction in the path
+          // as it's the only one that will be executed by the user
+          try {
+            const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+            // `applyTransactionGas` can throw if the transaction will fail
+            // If that happens, we give up as we should've been able to perform the action with this
+            // forwarding path
+            return [await this.applyTransactionGas(transactionWithFee, true), ...path]
+          } catch (err) {
+            return []
+          }
         } else {
           // The previous forwarder can forward a transaction for this forwarder,
           // but this forwarder can not forward for our address, so we add it as a

@@ -15,7 +15,8 @@ export function doIntentPathsMatch (intentPaths) {
 
   // Check if they all match by seeing if a unique set of the individual path
   // strings is a single path
-  return (new Set(individualPaths)).size === 1
+  // Also make sure that there was indeed an actual path found
+  return (new Set(individualPaths)).size === 1 && individualPaths[0]
 }
 
 export async function filterAndDecodeAppUpgradeIntents (intents, wrapper) {

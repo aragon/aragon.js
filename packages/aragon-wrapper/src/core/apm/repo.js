@@ -1,9 +1,9 @@
 import { getAbi } from '../../interfaces'
 import { makeProxyFromABI } from '../../utils'
 
-export async function makeRepoProxy (appId, apm, web3) {
+export async function makeRepoProxy (appId, apm, web3, options) {
   const repoAddress = await apm.ensResolve(appId)
-  return makeProxyFromABI(repoAddress, getAbi('apm/Repo'), web3)
+  return makeProxyFromABI(repoAddress, getAbi('apm/Repo'), web3, options)
 }
 
 export async function getAllRepoVersions (repoProxy) {

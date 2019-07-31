@@ -35,7 +35,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    *
    * @param  {string} address  Address to resolve
    * @param  {Object} metadata Metadata to modify
-   * @return {Promise} Resolved success action or rejected error
+   * @return {Promise} Resolved with saved address and metadata or rejected on error
    */
   async modify (address, { name = '', createdAt = Date.now() } = {}) {
     if (!name) {
@@ -51,6 +51,29 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   }
 
   /**
+   * Search for matches in the locally-stored labels.
+   *
+   * If the search term starts with '0x', addresses will be matched for instead.
+   *
+   * @param  {string} searchTerm Search term
+   * @return {Promise} Resolved with array of matches, each containing the address and name
+   */
+  async search (searchTerm = '') {
+    const isAddressSearch = searchTerm.substring(0, 2).toLowerCase() === '0x'
+    const identities = await this.identityCache.getAll()
+    const results = Object.entries(identities)
+      .filter(
+        ([address, { name }]) =>
+          (isAddressSearch &&
+            searchTerm.length > 3 &&
+            address.toLowerCase().indexOf(searchTerm.toLowerCase()) === 0) ||
+          name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
+      )
+      .map(([address, { name }]) => ({ name, address }))
+    return results
+  }
+
+  /**
    * Get all local identities
    *
    * @return {Promise} Resolved with an object of all identities when completed
@@ -60,11 +83,11 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
   }
 
   /**
-   * Clear the local cache
+   * Remove a single identity from the local cache
    *
    * @return {Promise} Resolved when completed
    */
-  async clear () {
-    await this.identityCache.clear()
+  async remove (address) {
+    await this.identityCache.remove(address.toLowerCase())
   }
 }
