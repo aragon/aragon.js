@@ -2,9 +2,7 @@ import test from 'ava'
 import proxyquire from 'proxyquire'
 import sinon from 'sinon'
 import { EventEmitter } from 'events'
-import Web3 from 'web3'
 
-import { externalIntent } from './external'
 import * as configurationKeys from '../../configuration/keys'
 
 test.beforeEach(t => {
@@ -15,63 +13,38 @@ test.beforeEach(t => {
     '../../configuration': configurationStub
   })
 
-  const web3 = new Web3()
-  const { keccak256, padLeft } = web3.utils
-
-  const externalContractAddress = '0xd6ae8250b8348c94847280928c79fb3b63ca453e'
-  const permissionsCreator = '0x7ffC57839B00206D1ad20c69A1981b489f772031'
-  const app = { proxyAddress: externalContractAddress }
-  const jsonInterfaceStub = [
-    {
-      type: 'function',
-      name: 'add',
-      constant: false,
-      inputs: [{ name: 'number', type: 'uint8' }]
-    }
-  ]
-  const txOpts = {
-    gasPrice: 1,
-    description: 'custom description'
-  }
-
-  const wrapper = {
-    web3,
-    applyTransactionGas: (tx) => Promise.resolve(tx),
-    performTransactionPath: sinon.stub(),
-    getAccounts: () => Promise.resolve([permissionsCreator]),
-    getExternalTransactionPath: () => Promise.resolve([txObject]),
-    getApp: (appAddress) => new Promise(resolve => {
-      if (appAddress === app.proxyAddress) resolve(app)
-      else resolve(null)
-    })
-  }
-
-  const functionSig = keccak256('add(uint8)').slice(0, 10)
-
-  const txObject = {
-    ...txOpts,
-    to: externalContractAddress,
-    from: permissionsCreator,
-    data: `${functionSig}${padLeft(permissionsCreator.slice(2), 64).toLowerCase()}`
-  }
-
   t.context = {
     external,
-    configurationStub,
-    app,
-    externalContractAddress,
-    functionSig,
-    jsonInterfaceStub,
-    permissionsCreator,
-    txOpts,
-    txObject,
-    wrapper,
-    web3
+    configurationStub
   }
 })
 
 test.afterEach.always(() => {
   sinon.restore()
+})
+
+test('should return the correct tx path from external tx intent', async t => {
+  const { external } = t.context
+  const mockAddr = '0x123'
+  const mockMethod = 'foo'
+  const mockParams = [8]
+  const mockPath = [{ to: '0x123', data: '0x456' }]
+
+  t.plan(3)
+  // arrange
+  const wrapperStub = {
+    getExternalTransactionPath: sinon.stub().returns(mockPath),
+    performTransactionPath: sinon.stub().returns(Promise.resolve())
+  }
+  const requestStub = {
+    params: [mockAddr, mockMethod, ...mockParams]
+  }
+  // act
+  const result = external.externalIntent(requestStub, null, wrapperStub)
+  // assert
+  await t.notThrowsAsync(result)
+  t.true(wrapperStub.getExternalTransactionPath.calledOnceWith(mockAddr, mockMethod, mockParams))
+  t.true(wrapperStub.performTransactionPath.calledOnceWith(mockPath))
 })
 
 test('should return an observable from the contract events', async (t) => {
@@ -94,73 +67,13 @@ test('should return an observable from the contract events', async (t) => {
     params: ['addr', 'ji', 8]
   }
   // act
-  const result = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, null, { web3: web3Stub })
   // assert
-  result.subscribe(value => {
+  events.subscribe(value => {
     t.deepEqual(value, { event: 'pay_fee', amount: 5 })
   })
 
   eventEmitter.emit('data', { event: 'pay_fee', amount: 5 })
-})
-
-test('should return the correct tx path from external tx intent', async t => {
-  t.plan(2)
-  // arrange
-  const {
-    externalContractAddress,
-    functionSig,
-    jsonInterfaceStub,
-    permissionsCreator,
-    txOpts,
-    wrapper,
-    web3
-  } = t.context
-
-  const requestFromExternalInstalledApp = {
-    jsonrpc: '2.0',
-    id: 'uuid4',
-    method: 'external_intent',
-    params: [
-      externalContractAddress,
-      jsonInterfaceStub,
-      permissionsCreator,
-      txOpts
-    ]
-  }
-
-  // request from external, non-aragon app
-  const requestFromExternalNonInstalledApp = {
-    jsonrpc: '2.0',
-    id: 'uuid4',
-    method: 'external_intent',
-    params: [
-      '0x000000',
-      jsonInterfaceStub,
-      permissionsCreator,
-      txOpts
-    ]
-  }
-  // act
-  await externalIntent(requestFromExternalInstalledApp, null, wrapper)
-  await externalIntent(requestFromExternalNonInstalledApp, null, wrapper)
-
-  const expected = {
-    ...txOpts,
-    to: externalContractAddress,
-    from: permissionsCreator,
-    data: `${functionSig}${web3.utils.padLeft(permissionsCreator.slice(2), 64).toLowerCase()}`
-  }
-
-  // assert
-  t.deepEqual(wrapper.performTransactionPath.getCall(0).args[0], [{
-    ...expected,
-    external: true
-  }])
-
-  t.deepEqual(wrapper.performTransactionPath.getCall(1).args[0], [{
-    ...expected,
-    external: true
-  }])
 })
 
 test('should not apply a delay to events if not configured', async (t) => {
@@ -185,10 +98,10 @@ test('should not apply a delay to events if not configured', async (t) => {
   // act
   // Set a delay
   configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(0)
-  const result = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, null, { web3: web3Stub })
   // assert
   const startTime = Date.now()
-  result.subscribe(value => {
+  events.subscribe(value => {
     t.deepEqual(value, { event: 'pay_fee', amount: 5 })
     // Hard to say exactly how much time this will take, but 20ms seems safe
     // (this should be immediate)
@@ -221,12 +134,12 @@ test('should apply a delay to events if configured', async (t) => {
   // act
   // Set a delay
   configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(delayTime)
-  const result = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, null, { web3: web3Stub })
   // assert
   // Since we've added the delay, we need to tell ava to wait until we're done subscribing
   return new Promise(resolve => {
     const startTime = Date.now()
-    result.subscribe(value => {
+    events.subscribe(value => {
       t.deepEqual(value, { event: 'pay_fee', amount: 5 })
       t.true((Date.now() - startTime) > delayTime)
       resolve()
