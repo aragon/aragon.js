@@ -1389,7 +1389,7 @@ export default class Aragon {
 
       try {
         const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
-        path = [this.describeTransactionPath([tx])]
+        path = this.describeTransactionPath([tx])
       } catch (_) {}
     }
 
