@@ -1,14 +1,32 @@
 import test from 'ava'
+import proxyquire from 'proxyquire'
 import sinon from 'sinon'
 
+import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
-import Cache from './index'
+import * as configurationKeys from '../configuration/keys'
+
+test.beforeEach(t => {
+  const configurationStub = {
+    getConfiguration: sinon.stub()
+  }
+  const Cache = proxyquire('./index', {
+    '../configuration': configurationStub
+  }).default
+
+  t.context = {
+    Cache,
+    configurationStub
+  }
+})
 
 test.afterEach.always(() => {
   sinon.restore()
 })
 
 test('should set the cache driver to in-memory on non-browser environments', async (t) => {
+  const { Cache } = t.context
+
   t.plan(3)
   // arrange
   const instance = new Cache('counterapp')
@@ -24,7 +42,35 @@ test('should set the cache driver to in-memory on non-browser environments', asy
   t.is(await instance.get('counter'), 5)
 })
 
+test('should prefer indexeddb driver by default', async (t) => {
+  const { Cache } = t.context
+
+  // arrange
+  const instance = new Cache('counterapp')
+  // assert
+  t.deepEqual(
+    instance.drivers,
+    [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
+  )
+})
+
+test('should downgrade to localstorage driver when requested', async (t) => {
+  const { Cache, configurationStub } = t.context
+
+  // arrange
+  configurationStub.getConfiguration.withArgs(configurationKeys.FORCE_LOCAL_STORAGE).returns(true)
+  // act
+  const instance = new Cache('counterapp')
+  // assert
+  t.deepEqual(
+    instance.drivers,
+    [localforage.LOCALSTORAGE, memoryStorageDriver]
+  )
+})
+
 test('should set to the cache and emit the change', async (t) => {
+  const { Cache } = t.context
+
   t.plan(3)
   // arrange
   const instance = new Cache('counterapp')
@@ -42,6 +88,8 @@ test('should set to the cache and emit the change', async (t) => {
 })
 
 test('should set to the cache and return all', async t => {
+  const { Cache } = t.context
+
   t.plan(3)
   // arrange
   const instance = new Cache(t.title)
@@ -66,6 +114,8 @@ test('should set to the cache and return all', async t => {
 })
 
 test('should return null when getting a non existant item', async t => {
+  const { Cache } = t.context
+
   t.plan(1)
   const instance = new Cache('counterapp')
   await instance.init()
@@ -75,6 +125,8 @@ test('should return null when getting a non existant item', async t => {
 })
 
 test('should remove from the cache and emit the change', async (t) => {
+  const { Cache } = t.context
+
   t.plan(2)
   // arrange
   const instance = new Cache('counterapp')
@@ -91,6 +143,8 @@ test('should remove from the cache and emit the change', async (t) => {
 })
 
 test('should clear from the cache and emit the change', async (t) => {
+  const { Cache } = t.context
+
   t.plan(2)
   // arrange
   const instance = new Cache('counterapp')
@@ -119,6 +173,8 @@ test('should clear from the cache and emit the change', async (t) => {
 })
 
 test('should observe the key\'s value for changes in the correct order if getItem is fast', async (t) => {
+  const { Cache } = t.context
+
   t.plan(4)
   // arrange
   const instance = new Cache()
@@ -153,6 +209,8 @@ test('should observe the key\'s value for changes in the correct order if getIte
 })
 
 test('should observe the key\'s value for changes in the correct order if getItem is slow', async (t) => {
+  const { Cache } = t.context
+
   t.plan(5)
   // arrange
   const instance = new Cache()
