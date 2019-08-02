@@ -1369,26 +1369,26 @@ export default class Aragon {
    * (not the currently running app) that invokes `method` with `params`.
    *
    * @param  {string} destination Address of the external contract
-   * @param  {string} methodAbi ABI of method to invoke
+   * @param  {object} methodJsonDescription ABI description of method to invoke (ie. it is not wrapped in an array)
    * @param  {Array<*>} params
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path.
    *   If the destination is a non-installed contract, always results in an array containing a
    *   single transaction.
    */
-  async getExternalTransactionPath (destination, methodAbi, params) {
+  async getExternalTransactionPath (destination, methodJsonDescription, params) {
     let path
 
     const installedApp = await this.getApp(destination)
     if (installedApp) {
       // Destination is an installed app; need to go through normal transaction pathing
-      path = this.getTransactionPath(destination, methodAbi.name, params)
+      path = this.getTransactionPath(destination, methodJsonDescription.name, params)
     } else {
       // Destination is not an installed app on this org, just create a direct transaction
       // with the first account
       const account = (await this.getAccounts())[0]
 
       try {
-        const tx = await createDirectTransaction(account, destination, methodAbi, params, this.web3)
+        const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
         path = [this.describeTransactionPath([tx])]
       } catch (_) {}
     }

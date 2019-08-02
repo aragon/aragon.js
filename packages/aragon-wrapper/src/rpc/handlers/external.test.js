@@ -25,9 +25,9 @@ test.afterEach.always(() => {
 
 test('should return the correct tx path from external tx intent', async t => {
   const { external } = t.context
-  const mockAddr = '0x123'
-  const mockMethod = 'foo'
-  const mockParams = [8]
+  const targetAddr = '0x123'
+  const targetMethodJsonDescription = [{ name: 'foo' }]
+  const targetParams = [8]
   const mockPath = [{ to: '0x123', data: '0x456' }]
 
   t.plan(3)
@@ -37,13 +37,13 @@ test('should return the correct tx path from external tx intent', async t => {
     performTransactionPath: sinon.stub().returns(Promise.resolve())
   }
   const requestStub = {
-    params: [mockAddr, mockMethod, ...mockParams]
+    params: [targetAddr, targetMethodJsonDescription, ...targetParams]
   }
   // act
   const result = external.externalIntent(requestStub, null, wrapperStub)
   // assert
   await t.notThrowsAsync(result)
-  t.true(wrapperStub.getExternalTransactionPath.calledOnceWith(mockAddr, mockMethod, mockParams))
+  t.true(wrapperStub.getExternalTransactionPath.calledOnceWith(targetAddr, targetMethodJsonDescription, targetParams))
   t.true(wrapperStub.performTransactionPath.calledOnceWith(mockPath))
 })
 

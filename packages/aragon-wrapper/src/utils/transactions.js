@@ -81,11 +81,11 @@ export async function applyForwardingPretransaction (forwardingTransaction, web3
   return applyPretransaction(forwardingTransaction, web3)
 }
 
-export async function createDirectTransaction (sender, destination, methodAbi, params, web3) {
+export async function createDirectTransaction (sender, destination, methodJsonDescription, params, web3) {
   let transactionOptions = {}
 
   // If an extra parameter has been provided, it is the transaction options if it is an object
-  if (methodAbi.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
+  if (methodJsonDescription.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
     const options = params.pop()
     transactionOptions = { ...transactionOptions, ...options }
   }
@@ -95,7 +95,7 @@ export async function createDirectTransaction (sender, destination, methodAbi, p
     ...transactionOptions, // Options are overwriten by the values below
     from: sender,
     to: destination,
-    data: web3.eth.abi.encodeFunctionCall(methodAbi, params)
+    data: web3.eth.abi.encodeFunctionCall(methodJsonDescription, params)
   }
 
   // Add any pretransactions specified
@@ -113,14 +113,14 @@ export async function createDirectTransactionForApp (sender, app, methodName, pa
     throw new Error(`No ABI specified in artifact for ${destination}`)
   }
 
-  const methodAbi = app.abi.find(
+  const methodJsonDescription = app.abi.find(
     (method) => method.name === methodName
   )
-  if (!methodAbi) {
+  if (!methodJsonDescription) {
     throw new Error(`${methodName} not found on ABI for ${destination}`)
   }
 
-  return createDirectTransaction(sender, destination, methodAbi, params, web3)
+  return createDirectTransaction(sender, destination, methodJsonDescription, params, web3)
 }
 
 export function createForwarderTransactionBuilder (sender, directTransaction, web3) {

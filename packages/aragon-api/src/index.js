@@ -222,7 +222,7 @@ export class AppProxy {
    * (i.e. a contract that is **not** your app's smart contract, such as a token).
    *
    * @param  {string} address The address of the external contract
-   * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
+   * @param  {Array<Object>} jsonInterface The [JSON interface](https://solidity.readthedocs.io/en/latest/abi-spec.html#abi-json) of the external contract.
    * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return a single-emission Observable that emits the value of the call.
    */
   external (address, jsonInterface) {
@@ -267,11 +267,11 @@ export class AppProxy {
     const callMethods = jsonInterface.filter(
       (item) => item.type === 'function' && item.constant
     )
-    callMethods.forEach((methodJsonInterface) => {
-      contract[methodJsonInterface.name] = (...params) => {
+    callMethods.forEach((methodJsonDescription) => {
+      contract[methodJsonDescription.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_call',
-          [address, methodJsonInterface, ...params]
+          [address, methodJsonDescription, ...params]
         ).pipe(
           pluck('result')
         )
@@ -282,11 +282,11 @@ export class AppProxy {
     const intentMethods = jsonInterface.filter(
       (item) => item.type === 'function' && !item.constant
     )
-    intentMethods.forEach((methodJsonInterface) => {
-      contract[methodJsonInterface.name] = (...params) => {
+    intentMethods.forEach((methodJsonDescription) => {
+      contract[methodJsonDescription.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_intent',
-          [address, methodJsonInterface, ...params]
+          [address, methodJsonDescription, ...params]
         ).pipe(
           pluck('result')
         )
