@@ -588,8 +588,8 @@ export default class Aragon {
       )),
 
       // Filter list of installed repos into:
-      //   - New repos we haven't seen before (so we only subscribe once to their events)
-      //   - Repos with apps that were updated in the kernel, to recalculate their current version
+      //   - New repos we haven't seen before (to begin subscribing to their version events)
+      //   - Repos we've seen before, to trigger a recalculation of the currently installed version
       map((repos) => {
         const newRepoAppIds = []
         const updatedRepoAppIds = []
@@ -633,7 +633,11 @@ export default class Aragon {
             }
           })
         ))
-          // Filter out repos we could create proxies for (they were likely due to invalid publishes)
+          // Filter out repos we couldn't create proxies for (they were likely due to publishing
+          // invalid aragonPM repos)
+          // Note that we don't need to worry about doing this for the updated repos list; if
+          // we could not create the original repo proxy when we first saw the repo, the updates
+          // won't do anything because we weren't able to fetch enough information (versions list)
           .filter((newRepos) => newRepos.repoProxy)
         return [newRepos, updatedRepoAppIds]
       }),
