@@ -15,26 +15,22 @@ export function findAppMethodFromData (app, data) {
   const methodId = data.substring(2, 10)
   const { deprecatedFunctions, functions } = app || {}
 
-  let method
-
   // First try to find the method in the current functions
   if (Array.isArray(functions)) {
-    method = functions.find(
+    return functions.find(
       method => keccak256(method.sig).substring(0, 8) === methodId
     )
   }
 
-  // Couldn't find it in current functions, try on deprecated versions
-  const hasValidDeprecatedFunctions = Object.values(deprecatedFunctions || {}).every(Array.isArray)
-  if (!method && hasValidDeprecatedFunctions) {
+  // Couldn't find it in current functions, try with deprecated versions' functions
+  const deprecatedFunctionsFromVersions = Object.values(deprecatedFunctions || {})
+  if (deprecatedFunctionsFromVersions.length && deprecatedFunctionsFromVersions.every(Array.isArray)) {
     // Flatten all the deprecated functions
-    const allDeprecatedFunctions = [].concat(...Object.values(deprecatedFunctions))
-    method = allDeprecatedFunctions.find(
+    const allDeprecatedFunctions = [].concat(...deprecatedFunctionsFromVersions)
+    return allDeprecatedFunctions.find(
       method => keccak256(method.sig).substring(0, 8) === methodId
     )
   }
-
-  return method
 }
 
 export const knownAppIds = [
