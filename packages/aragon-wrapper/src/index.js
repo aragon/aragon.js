@@ -1286,10 +1286,12 @@ export default class Aragon {
   }
 
   /**
-   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
-   * @param {boolean} external Whether the transaction path is initiating an action on an external
-   *   destination (not the currently running app)
-   * @return {Promise<string>} transaction hash
+   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each
+   *   step in the path
+   * @param {Object} [options]
+   * @param {boolean} [options.external] Whether the transaction path is initiating an action on
+   *   an external destination (not the currently running app)
+   * @return {Promise<string>} Promise that should be resolved with the sent transaction hash
    */
   performTransactionPath (transactionPath, external) {
     return new Promise((resolve, reject) => {
@@ -1366,10 +1368,11 @@ export default class Aragon {
 
   /**
    * Calculate the transaction path for a transaction to an external `destination`
-   * (not the currently running app) that invokes `method` with `params`.
+   * (not the currently running app) that invokes a method matching the
+   * `methodJsonDescription` with `params`.
    *
    * @param  {string} destination Address of the external contract
-   * @param  {object} methodJsonDescription ABI description of method to invoke (ie. it is not wrapped in an array)
+   * @param  {object} methodJsonDescription ABI description of method to invoke
    * @param  {Array<*>} params
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path.
    *   If the destination is a non-installed contract, always results in an array containing a
