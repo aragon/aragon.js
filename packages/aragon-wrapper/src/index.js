@@ -1293,11 +1293,11 @@ export default class Aragon {
    *   an external destination (not the currently running app)
    * @return {Promise<string>} Promise that should be resolved with the sent transaction hash
    */
-  performTransactionPath (transactionPath, external) {
+  performTransactionPath (transactionPath, { external } = {}) {
     return new Promise((resolve, reject) => {
       this.transactions.next({
-        external,
         resolve,
+        external: !!external,
         transaction: transactionPath[0],
         path: transactionPath,
         reject (err) {
