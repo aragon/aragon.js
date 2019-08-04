@@ -40,7 +40,7 @@ test('should return the correct tx path from external tx intent', async t => {
     params: [targetAddr, targetMethodJsonDescription, ...targetParams]
   }
   // act
-  const result = external.externalIntent(requestStub, null, wrapperStub)
+  const result = external.intent(requestStub, null, wrapperStub)
   // assert
   await t.notThrowsAsync(result)
   t.true(wrapperStub.getExternalTransactionPath.calledOnceWith(targetAddr, targetMethodJsonDescription, targetParams))

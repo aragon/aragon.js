@@ -19,7 +19,7 @@ export function call (request, proxy, wrapper) {
   return contract.methods[methodJsonDescription.name](...params).call()
 }
 
-export async function externalIntent (request, proxy, wrapper) {
+export async function intent (request, proxy, wrapper) {
   const [
     address,
     methodJsonDescription,
