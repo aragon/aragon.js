@@ -44,7 +44,7 @@ test('should return the correct tx path from external tx intent', async t => {
   // assert
   await t.notThrowsAsync(result)
   t.true(wrapperStub.getExternalTransactionPath.calledOnceWith(targetAddr, targetMethodJsonDescription, targetParams))
-  t.true(wrapperStub.performTransactionPath.calledOnceWith(mockPath))
+  t.true(wrapperStub.performTransactionPath.calledOnceWith(mockPath, { external: true }))
 })
 
 test('should return an observable from the contract events', async (t) => {
