@@ -2,6 +2,7 @@ import test from 'ava'
 import proxyquire from 'proxyquire'
 import sinon from 'sinon'
 import { EventEmitter } from 'events'
+
 import * as configurationKeys from '../../configuration/keys'
 
 test.beforeEach(t => {
@@ -20,6 +21,30 @@ test.beforeEach(t => {
 
 test.afterEach.always(() => {
   sinon.restore()
+})
+
+test('should return the correct tx path from external tx intent', async t => {
+  const { external } = t.context
+  const targetAddr = '0x123'
+  const targetMethodJsonDescription = [{ name: 'foo' }]
+  const targetParams = [8]
+  const mockPath = [{ to: '0x123', data: '0x456' }]
+
+  t.plan(3)
+  // arrange
+  const wrapperStub = {
+    getExternalTransactionPath: sinon.stub().returns(mockPath),
+    performTransactionPath: sinon.stub().returns(Promise.resolve())
+  }
+  const requestStub = {
+    params: [targetAddr, targetMethodJsonDescription, ...targetParams]
+  }
+  // act
+  const result = external.intent(requestStub, null, wrapperStub)
+  // assert
+  await t.notThrowsAsync(result)
+  t.true(wrapperStub.getExternalTransactionPath.calledOnceWith(targetAddr, targetMethodJsonDescription, targetParams))
+  t.true(wrapperStub.performTransactionPath.calledOnceWith(mockPath, { external: true }))
 })
 
 test('should return an observable from the contract events', async (t) => {
@@ -42,9 +67,9 @@ test('should return an observable from the contract events', async (t) => {
     params: ['addr', 'ji', 8]
   }
   // act
-  const result = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, null, { web3: web3Stub })
   // assert
-  result.subscribe(value => {
+  events.subscribe(value => {
     t.deepEqual(value, { event: 'pay_fee', amount: 5 })
   })
 
@@ -73,10 +98,10 @@ test('should not apply a delay to events if not configured', async (t) => {
   // act
   // Set a delay
   configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(0)
-  const result = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, null, { web3: web3Stub })
   // assert
   const startTime = Date.now()
-  result.subscribe(value => {
+  events.subscribe(value => {
     t.deepEqual(value, { event: 'pay_fee', amount: 5 })
     // Hard to say exactly how much time this will take, but 20ms seems safe
     // (this should be immediate)
@@ -109,12 +134,12 @@ test('should apply a delay to events if configured', async (t) => {
   // act
   // Set a delay
   configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(delayTime)
-  const result = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, null, { web3: web3Stub })
   // assert
   // Since we've added the delay, we need to tell ava to wait until we're done subscribing
   return new Promise(resolve => {
     const startTime = Date.now()
-    result.subscribe(value => {
+    events.subscribe(value => {
       t.deepEqual(value, { event: 'pay_fee', amount: 5 })
       t.true((Date.now() - startTime) > delayTime)
       resolve()

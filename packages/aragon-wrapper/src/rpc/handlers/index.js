@@ -58,6 +58,7 @@ export { default as signMessage } from './sign-message'
 export { default as events } from './events'
 export { default as pastEvents } from './past-events'
 
+export { intent as externalIntent } from './external'
 export { call as externalCall } from './external'
 export { events as externalEvents } from './external'
 export { pastEvents as externalPastEvents } from './external'

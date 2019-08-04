@@ -81,29 +81,11 @@ export async function applyForwardingPretransaction (forwardingTransaction, web3
   return applyPretransaction(forwardingTransaction, web3)
 }
 
-export async function createDirectTransaction (sender, app, methodName, params, web3) {
-  if (!app) {
-    throw new Error(`Could not create transaction due to missing app artifact`)
-  }
-
-  const { proxyAddress: destination } = app
-
-  const jsonInterface = app.abi
-  if (!jsonInterface) {
-    throw new Error(`No ABI specified in artifact for ${destination}`)
-  }
-
-  const methodABI = app.abi.find(
-    (method) => method.name === methodName
-  )
-  if (!methodABI) {
-    throw new Error(`${methodName} not found on ABI for ${destination}`)
-  }
-
+export async function createDirectTransaction (sender, destination, methodJsonDescription, params, web3) {
   let transactionOptions = {}
 
   // If an extra parameter has been provided, it is the transaction options if it is an object
-  if (methodABI.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
+  if (methodJsonDescription.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
     const options = params.pop()
     transactionOptions = { ...transactionOptions, ...options }
   }
@@ -113,11 +95,32 @@ export async function createDirectTransaction (sender, app, methodName, params, 
     ...transactionOptions, // Options are overwriten by the values below
     from: sender,
     to: destination,
-    data: web3.eth.abi.encodeFunctionCall(methodABI, params)
+    data: web3.eth.abi.encodeFunctionCall(methodJsonDescription, params)
   }
 
   // Add any pretransactions specified
   return applyPretransaction(directTransaction, web3)
+}
+
+export async function createDirectTransactionForApp (sender, app, methodName, params, web3) {
+  if (!app) {
+    throw new Error(`Could not create transaction due to missing app artifact`)
+  }
+
+  const { proxyAddress: destination } = app
+
+  if (!app.abi) {
+    throw new Error(`No ABI specified in artifact for ${destination}`)
+  }
+
+  const methodJsonDescription = app.abi.find(
+    (method) => method.name === methodName
+  )
+  if (!methodJsonDescription) {
+    throw new Error(`${methodName} not found on ABI for ${destination}`)
+  }
+
+  return createDirectTransaction(sender, destination, methodJsonDescription, params, web3)
 }
 
 export function createForwarderTransactionBuilder (sender, directTransaction, web3) {

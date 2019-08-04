@@ -191,26 +191,20 @@ test('should return the events observable', t => {
 })
 
 test('should return an handle for an external contract events', t => {
-  t.plan(6)
+  t.plan(3)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
   const observableEvents = of({
     id: 'uuid1',
     result: { name: 'eventA', value: 3000 }
   })
-  const observableCall = of({
-    id: 'uuid4',
-    result: 'bob was granted permission for the counter app'
-  })
   const jsonInterfaceStub = [
-    { type: 'event', name: 'SetPermission' },
-    { type: 'function', name: 'grantPermission', constant: true }
+    { type: 'event', name: 'SetPermission' }
   ]
   const instanceStub = {
     rpc: {
       // Mimic behaviour of @aragon/rpc-messenger
-      sendAndObserveResponses: createDeferredStub(observableEvents),
-      sendAndObserveResponse: createDeferredStub(observableCall)
+      sendAndObserveResponses: createDeferredStub(observableEvents)
     }
   }
   // act
@@ -226,13 +220,77 @@ test('should return an handle for an external contract events', t => {
       ['0xextContract', [jsonInterfaceStub[0]], 2]
     )
   })
+})
+
+test('should return a handle for creating external calls', t => {
+  t.plan(4)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableCall = of({
+    id: 'uuid4',
+    result: 'bob was granted permission for the counter app'
+  })
+
+  const jsonInterfaceStub = [
+    { type: 'function', name: 'grantPermission', constant: true }
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableCall)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+
+  // assert
+  t.true(typeof result.grantPermission === 'function')
+
   result.grantPermission('0xbob', '0xcounter').subscribe(value => {
     t.is(value, 'bob was granted permission for the counter app')
 
     t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_call')
     t.deepEqual(
       instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1],
-      ['0xextContract', jsonInterfaceStub[1], '0xbob', '0xcounter']
+      ['0xextContract', jsonInterfaceStub[0], '0xbob', '0xcounter']
+    )
+  })
+})
+
+test('should return a handle for creating external transaction intents', t => {
+  t.plan(4)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableIntent = of({
+    id: 'uuid4',
+    result: 10
+  })
+
+  const jsonInterfaceStub = [
+    { type: 'function', name: 'add', constant: false }
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableIntent)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+
+  // assert
+  t.true(typeof result.add === 'function')
+
+  result.add(10).subscribe(value => {
+    t.is(value, 10)
+    t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_intent')
+    t.deepEqual(
+      instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1],
+      ['0xextContract', jsonInterfaceStub[0], 10]
     )
   })
 })
