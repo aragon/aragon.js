@@ -1197,8 +1197,8 @@ export default class Aragon {
 
         // External contract handlers
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
-        handlers.createRequestHandler(request$, 'external_intent', handlers.externalIntent),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_intent', handlers.externalIntent),
         handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
 
         // Identity handlers
