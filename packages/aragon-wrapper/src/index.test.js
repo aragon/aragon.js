@@ -1464,12 +1464,12 @@ test('should init the forwarded actions correctly', async (t) => {
   // assert
   instance.forwardedActions.subscribe(value => {
     console.log('value: ', value)
-    t.deepEqual(value, [])
+    t.deepEqual(value, {})
   })
 })
 
 test('should set forwarded actions', async (t) => {
-  t.plan(3)
+  t.plan(5)
 
   // arrange
   const { Aragon } = t.context
@@ -1491,27 +1491,40 @@ test('should set forwarded actions', async (t) => {
 
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
-    t.deepEqual(value, [{
-      currentApp: '0x0',
-      actionId: '1',
-      evmScript: script,
-      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      state: 0
-    }])
+    t.deepEqual(value, { '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad': {
+      pending: [{
+        currentApp: '0x0',
+        actionId: '1',
+        evmScript: script,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      }] } })
   })
 
   // update existing entry
+  // arrange
+  const newScript = encodeCallScript([{
+    to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
+    data: '0xcafe25'
+  }, {
+    to: '0xbeefbeef03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0xbeef'
+  }, {
+    to: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+    data: '0xdeadbeef'
+  }])
   // act
-  instance.setForwardedAction('0x0', '1', '', 1)
+  instance.setForwardedAction('0x0', '1', newScript, 0)
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
-    t.deepEqual(value, [{
-      currentApp: '0x0',
-      actionId: '1',
-      evmScript: script,
-      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      state: 1
-    }])
+    t.deepEqual(value, { '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad': {
+      pending: [{
+        currentApp: '0x0',
+        actionId: '1',
+        evmScript: newScript,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      }] } })
   })
 
   // add multiple entries
@@ -1520,27 +1533,115 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction('0x0', '3', script)
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
-    t.deepEqual(value, [{
+    t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'].pending, [{
       currentApp: '0x0',
       actionId: '1',
-      evmScript: script,
+      evmScript: newScript,
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      state: 1
+      status: 0
     },
     {
       currentApp: '0x0',
       actionId: '2',
       evmScript: script,
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      state: 0
+      status: 0
     },
     {
       currentApp: '0x0',
       actionId: '3',
       evmScript: script,
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      state: 0
+      status: 0
     }])
+  })
+
+  // set entry as completed
+  // act
+  instance.setForwardedAction('0x0', '2', script, 1)
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
+      pending: [{
+        currentApp: '0x0',
+        actionId: '1',
+        evmScript: newScript,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      },
+      // entry gets deleted and repopulated in "completed":
+      /*
+      {
+        currentApp: '0x0',
+        actionId: '2',
+        evmScript: script,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      },
+      */
+      {
+        currentApp: '0x0',
+        actionId: '3',
+        evmScript: script,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      }],
+      completed: {
+        '0x0': {
+          '2': {
+            evmScript: script,
+            status: 1
+          }
+        }
+      }
+    })
+  })
+
+  // act
+  // set entry as failed
+  instance.setForwardedAction('0x0', '3', script, 2)
+  // attempt to change the completed entry back to pending
+  // this should not change any state
+  instance.setForwardedAction('0x0', '2', script, 0)
+
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
+      pending: [{
+        currentApp: '0x0',
+        actionId: '1',
+        evmScript: newScript,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      }
+      // entry gets deleted and repopulated in 'failed'
+      /*
+      {
+        currentApp: '0x0',
+        actionId: '3',
+        evmScript: script,
+        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+        status: 0
+      }
+      */
+      ],
+      completed: {
+        '0x0': {
+          '2': {
+            evmScript: script,
+            status: 1
+          }
+        }
+      },
+      failed: {
+        '0x0': {
+          '3': {
+            evmScript: script,
+            status: 2
+          }
+        }
+      }
+    })
   })
 })
 

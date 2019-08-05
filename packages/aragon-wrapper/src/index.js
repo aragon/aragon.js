@@ -867,26 +867,78 @@ export default class Aragon {
   initForwardedActions () {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
-        (actions, { currentApp, actionId, evmScript = '', state = 0 }) => {
-          const updateIndex = actions.findIndex(
+        (actions, { currentApp, actionId, evmScript, status = 0 }) => {
+          // set the last address as the target of the forwarded action
+          const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
+
+          const targetActions = actions[target] || {}
+          const completedTargetActions = targetActions.completed || {}
+          const completedTargetActionsFromCurrentApp = completedTargetActions[currentApp] || {}
+
+          const failedTargetActions = targetActions.failed || {}
+          const failedTargetActionsFromCurrentApp = failedTargetActions[currentApp] || {}
+
+          let existingAction = completedTargetActionsFromCurrentApp[actionId] ||
+                                failedTargetActionsFromCurrentApp[actionId] || {}
+
+          let pendingActions = targetActions.pending || []
+          const updateIndex = pendingActions.findIndex(
             action => action.currentApp === currentApp && action.actionId === actionId
           )
-          if (updateIndex === -1) {
-            // set the last address as the target of the forwarded action
-            const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
-            currentApp && actions.push({ currentApp, actionId, target, evmScript, state })
-            return actions
-          } else {
-            // only update any state if the state update is the latest
-            if (actions[updateIndex].state < state) {
-              actions[updateIndex].state = state
-              // only update the evmScript if it's included
-              if (evmScript !== '') actions[updateIndex].evmScript = evmScript
+
+          if (status === 1 || status === 2) {
+            if (updateIndex > -1) {
+              pendingActions.splice(updateIndex, 1)
             }
-            return actions
+            const currentAction = { evmScript, status }
+            if (status === 1) {
+              return { ...actions,
+                [target]: { ...targetActions,
+                  completed: { ...completedTargetActions,
+                    [currentApp]: { ...completedTargetActionsFromCurrentApp,
+                      [actionId]: currentAction
+                    }
+                  },
+                  pending: pendingActions
+                }
+              }
+            }
+
+            return { ...actions,
+              [target]: { ...targetActions,
+                failed: { ...failedTargetActions,
+                  [currentApp]: { ...failedTargetActionsFromCurrentApp,
+                    [actionId]: currentAction
+                  }
+                },
+                pending: pendingActions
+              }
+            }
           }
+
+          if (!existingAction.status && actionId >= 0) {
+            if (updateIndex === -1) {
+              // set the last address as the target of the forwarded action
+              pendingActions.push({ currentApp, actionId, target, evmScript, status })
+              // only update if the status of existing actions if status is the latest
+            } else if (pendingActions[updateIndex].status <= status) {
+              pendingActions[updateIndex] = {
+                ...pendingActions[updateIndex],
+                evmScript,
+                status
+              }
+            }
+
+            return { ...actions,
+              [target]: { ...targetActions,
+                pending: pendingActions
+              }
+            }
+          }
+
+          return actions
         },
-        [] // actions seed
+        {} // actions seed
       ),
       publishReplay(1)
     )
@@ -899,14 +951,14 @@ export default class Aragon {
    * @param {string} currentApp
    * @param {string} actionId
    * @param {string} evmScript
-   * @param {integer} state
+   * @param {integer} status
    */
-  setForwardedAction (currentApp, actionId, evmScript, state) {
+  setForwardedAction (currentApp, actionId, evmScript, status) {
     this.forwardedActions.next({
       currentApp,
       actionId,
       evmScript,
-      state
+      status
     })
   }
 
