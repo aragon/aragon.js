@@ -476,13 +476,13 @@ test('should update an action', t => {
   updateActionFn.call(instanceStub, '1', '0', 'testScript')
   // assert
   t.is(instanceStub.rpc.send.getCall(0).args[0], 'update_forwarded_action')
-  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['1', 'testScript', '0'])
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['1', '0', 'testScript'])
 
   // act
-  updateActionFn.call(instanceStub2, '2', '1')
+  updateActionFn.call(instanceStub2, '2', '1', 'updatedScript')
   // assert
   t.is(instanceStub2.rpc.send.getCall(0).args[0], 'update_forwarded_action')
-  t.deepEqual(instanceStub2.rpc.send.getCall(0).args[1], ['2', '', '1'])
+  t.deepEqual(instanceStub2.rpc.send.getCall(0).args[1], ['2', '1', 'updatedScript'])
 })
 
 test('should return the forwardedActions observable', t => {

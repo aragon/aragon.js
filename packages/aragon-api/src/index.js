@@ -409,6 +409,7 @@ export class AppProxy {
 
     const getCurrentEvents = (fromBlock) => merge(
       this.events(fromBlock),
+      this.getForwardedActions(),
       ...externals.map(({ contract }) => contract.events(fromBlock))
     )
 
@@ -553,7 +554,7 @@ export class AppProxy {
   }
 
   /**
-   * send a forwarded action's information to the wrapper
+   * Register a new forwarded action
    *
    * @param {string} actionId ID assigned to forwarded action in Forwarder
    * @param {string} evmScript The execution script caught by the Forwarder
@@ -567,33 +568,35 @@ export class AppProxy {
   }
 
   /**
-   * update a forwarded action's state the wrapper
+   * Update the state of a forwarded action
    *
-   * If the execution is pending, state = 0
-   * If the execution completed, state = 1
-   * If the execution failed, state = 2
+   * If the execution is pending, status = 'pending'
+   * If the execution completed, status = 'completed'
+   * If the execution failed, status = 'failed'
    *
    * @param {string} actionId ID assigned to forwarded action in Forwarder
-   * @param {integer} state The current state of the forwarded action within the forwarder
-   * @param {string} [evmScript=''] The optionally updated execution script
+   * @param {string} status The current status of the forwarded action within the forwarder
+   * @param {string} evmScript The updated execution script
    * @return {void}
    */
-  updateForwardedAction (actionId, state, evmScript = '') {
+  updateForwardedAction (actionId, evmScript, status) {
     return this.rpc.send(
       'update_forwarded_action',
-      [actionId, evmScript, state]
+      [actionId, evmScript, status]
     )
   }
 
   /**
-   * Listens for forwarded actions that target your app and emits them like contract events
+   * Subscribes to forwarded actions that target this app and emits them like contract events
    *
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of forwarded action objects
    */
   getForwardedActions () {
     return this.rpc.sendAndObserveResponses(
       'get_forwarded_actions'
-    ).pipe(pluck('result'))
+    ).pipe(
+      pluck('result')
+    )
   }
 }
 

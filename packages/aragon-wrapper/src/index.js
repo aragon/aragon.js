@@ -867,7 +867,7 @@ export default class Aragon {
   initForwardedActions () {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
-        (actions, { currentApp, actionId, evmScript, status = 0 }) => {
+        (actions, { currentApp, actionId, evmScript, status = 'pending' }) => {
           // set the last address as the target of the forwarded action
           const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
 
@@ -886,12 +886,12 @@ export default class Aragon {
             action => action.currentApp === currentApp && action.actionId === actionId
           )
 
-          if (status === 1 || status === 2) {
+          if (status === 'completed' || status === 'failed') {
             if (updateIndex > -1) {
               pendingActions.splice(updateIndex, 1)
             }
             const currentAction = { evmScript, status }
-            if (status === 1) {
+            if (status === 'completed') {
               return { ...actions,
                 [target]: { ...targetActions,
                   completed: { ...completedTargetActions,

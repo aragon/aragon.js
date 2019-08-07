@@ -1497,7 +1497,7 @@ test('should set forwarded actions', async (t) => {
         actionId: '1',
         evmScript: script,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'pending'
       }] } })
   })
 
@@ -1514,7 +1514,7 @@ test('should set forwarded actions', async (t) => {
     data: '0xdeadbeef'
   }])
   // act
-  instance.setForwardedAction('0x0', '1', newScript, 0)
+  instance.setForwardedAction('0x0', '1', newScript)
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value, { '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad': {
@@ -1523,7 +1523,7 @@ test('should set forwarded actions', async (t) => {
         actionId: '1',
         evmScript: newScript,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'pending'
       }] } })
   })
 
@@ -1538,27 +1538,27 @@ test('should set forwarded actions', async (t) => {
       actionId: '1',
       evmScript: newScript,
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      status: 0
+      status: 'pending'
     },
     {
       currentApp: '0x0',
       actionId: '2',
       evmScript: script,
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      status: 0
+      status: 'pending'
     },
     {
       currentApp: '0x0',
       actionId: '3',
       evmScript: script,
       target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      status: 0
+      status: 'pending'
     }])
   })
 
   // set entry as completed
   // act
-  instance.setForwardedAction('0x0', '2', script, 1)
+  instance.setForwardedAction('0x0', '2', script, 'completed')
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
@@ -1567,7 +1567,7 @@ test('should set forwarded actions', async (t) => {
         actionId: '1',
         evmScript: newScript,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'pending'
       },
       // entry gets deleted and repopulated in "completed":
       /*
@@ -1576,7 +1576,7 @@ test('should set forwarded actions', async (t) => {
         actionId: '2',
         evmScript: script,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'pending'
       },
       */
       {
@@ -1584,13 +1584,13 @@ test('should set forwarded actions', async (t) => {
         actionId: '3',
         evmScript: script,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'pending'
       }],
       completed: {
         '0x0': {
           '2': {
             evmScript: script,
-            status: 1
+            status: 'completed'
           }
         }
       }
@@ -1599,10 +1599,10 @@ test('should set forwarded actions', async (t) => {
 
   // act
   // set entry as failed
-  instance.setForwardedAction('0x0', '3', script, 2)
+  instance.setForwardedAction('0x0', '3', script, 'failed')
   // attempt to change the completed entry back to pending
   // this should not change any state
-  instance.setForwardedAction('0x0', '2', script, 0)
+  instance.setForwardedAction('0x0', '2', script, 'pending')
 
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
@@ -1612,7 +1612,7 @@ test('should set forwarded actions', async (t) => {
         actionId: '1',
         evmScript: newScript,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'pending'
       }
       // entry gets deleted and repopulated in 'failed'
       /*
@@ -1621,7 +1621,7 @@ test('should set forwarded actions', async (t) => {
         actionId: '3',
         evmScript: script,
         target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 0
+        status: 'failed'
       }
       */
       ],
@@ -1629,7 +1629,7 @@ test('should set forwarded actions', async (t) => {
         '0x0': {
           '2': {
             evmScript: script,
-            status: 1
+            status: 'completed'
           }
         }
       },
@@ -1637,7 +1637,7 @@ test('should set forwarded actions', async (t) => {
         '0x0': {
           '3': {
             evmScript: script,
-            status: 2
+            status: 'failed'
           }
         }
       }

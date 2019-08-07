@@ -2,14 +2,14 @@ export default function (request, proxy, wrapper) {
   const [
     actionId,
     evmScript,
-    state
+    status
   ] = request.params
 
   wrapper.setForwardedAction(
     proxy.address,
     actionId,
     evmScript,
-    state
+    status
   )
   return Promise.resolve()
 }
