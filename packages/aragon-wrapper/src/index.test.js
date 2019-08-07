@@ -1487,10 +1487,12 @@ test('should add metadata items', async (t) => {
   // assert
   instance.appMetadata.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
-      from: '0x73a',
-      dataId: 'u1',
-      cid: 'Qmrandomhash1',
-      to: ['0xdeadcafe']
+      '0x73a,u1': {
+        from: '0x73a',
+        dataId: 'u1',
+        cid: 'Qmrandomhash1',
+        to: ['0xdeadcafe']
+      }
     })
   })
 
@@ -1498,17 +1500,25 @@ test('should add metadata items', async (t) => {
   // 'to' parameter should be defaulted to '*'
   instance.registerAppMetadata(
     '0x73a',
-    'u1',
-    'Qmrandomhash1'
+    'v2',
+    'Qmrandomhash2'
   )
 
   // assert
   instance.appMetadata.pipe(first()).subscribe(value => {
     t.deepEqual(value, {
-      from: '0x73a',
-      dataId: 'u1',
-      cid: 'Qmrandomhash1',
-      to: ['*']
+      '0x73a,u1': {
+        from: '0x73a',
+        dataId: 'u1',
+        cid: 'Qmrandomhash1',
+        to: ['0xdeadcafe']
+      },
+      '0x73a,v2': {
+        from: '0x73a',
+        dataId: 'v2',
+        cid: 'Qmrandomhash2',
+        to: ['*']
+      }
     })
   })
 })

@@ -863,6 +863,20 @@ export default class Aragon {
    */
   initAppMetadata () {
     this.appMetadata = new BehaviorSubject({}).pipe(
+      scan((metadataRegistry, {from, dataId, cid, to}) => {
+          const key = from + ',' + dataId
+          if (from) {
+            metadataRegistry[key] = {
+              from,
+              dataId,
+              cid,
+              to
+            }
+          }
+          return metadataRegistry
+        },
+        {} // metadataRegistry seed
+      ),
       publishReplay(1)
     )
     this.appMetadata.connect()
@@ -872,9 +886,9 @@ export default class Aragon {
    * registers new app metadata item
    *
    * @param {string} from Address of the application generating the data
-   * @param {string} dataId internal ID assigned to the data by the originator
+   * @param {string} dataId internal ID assigned to the data by the originator (could be actionId)
    * @param {string} cid external identifier (e.g., IPFS hash)
-   * @param {<Array>string} to Optional list of addresses of the applications allowed access to the data, defaults to '*'
+   * @param {<Array>string} to Optional list of addresses of the applications intended access to the data, defaults to '*'
    */
   registerAppMetadata (from, dataId, cid, to = ['*']) {
     this.appMetadata.next({
