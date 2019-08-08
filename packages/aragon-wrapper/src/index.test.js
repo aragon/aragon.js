@@ -1469,8 +1469,6 @@ test('should init the forwarded actions correctly', async (t) => {
 })
 
 test('should set forwarded actions', async (t) => {
-  t.plan(5)
-
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
