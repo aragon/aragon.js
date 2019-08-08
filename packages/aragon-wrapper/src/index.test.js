@@ -1492,13 +1492,17 @@ test('should set forwarded actions', async (t) => {
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value, { '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad': {
-      pending: [{
-        currentApp: '0x0',
-        actionId: '1',
-        evmScript: script,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'pending'
-      }] } })
+      completedActionKeys: [],
+      failedActionKeys: [],
+      pendingActionKeys: ['0x0,1'],
+      actions: {
+        '0x0,1': {
+          currentApp: '0x0',
+          actionId: '1',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        } } } })
   })
 
   // update existing entry
@@ -1518,13 +1522,17 @@ test('should set forwarded actions', async (t) => {
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value, { '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad': {
-      pending: [{
-        currentApp: '0x0',
-        actionId: '1',
-        evmScript: newScript,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'pending'
-      }] } })
+      completedActionKeys: [],
+      failedActionKeys: [],
+      pendingActionKeys: ['0x0,1'],
+      actions: {
+        '0x0,1': {
+          currentApp: '0x0',
+          actionId: '1',
+          evmScript: newScript,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        } } } })
   })
 
   // add multiple entries
@@ -1533,27 +1541,32 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction('0x0', '3', script)
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
-    t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'].pending, [{
-      currentApp: '0x0',
-      actionId: '1',
-      evmScript: newScript,
-      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      status: 'pending'
-    },
-    {
-      currentApp: '0x0',
-      actionId: '2',
-      evmScript: script,
-      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      status: 'pending'
-    },
-    {
-      currentApp: '0x0',
-      actionId: '3',
-      evmScript: script,
-      target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-      status: 'pending'
-    }])
+    t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
+      completedActionKeys: [],
+      failedActionKeys: [],
+      pendingActionKeys: ['0x0,1', '0x0,2', '0x0,3'],
+      actions: {
+        '0x0,1': {
+          currentApp: '0x0',
+          actionId: '1',
+          evmScript: newScript,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        },
+        '0x0,2': {
+          currentApp: '0x0',
+          actionId: '2',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        },
+        '0x0,3': {
+          currentApp: '0x0',
+          actionId: '3',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        } } })
   })
 
   // set entry as completed
@@ -1562,39 +1575,31 @@ test('should set forwarded actions', async (t) => {
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
-      pending: [{
-        currentApp: '0x0',
-        actionId: '1',
-        evmScript: newScript,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'pending'
-      },
-      // entry gets deleted and repopulated in "completed":
-      /*
-      {
-        currentApp: '0x0',
-        actionId: '2',
-        evmScript: script,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'pending'
-      },
-      */
-      {
-        currentApp: '0x0',
-        actionId: '3',
-        evmScript: script,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'pending'
-      }],
-      completed: {
-        '0x0': {
-          '2': {
-            evmScript: script,
-            status: 'completed'
-          }
-        }
-      }
-    })
+      completedActionKeys: ['0x0,2'],
+      failedActionKeys: [],
+      pendingActionKeys: ['0x0,1', '0x0,3'],
+      actions: {
+        '0x0,1': {
+          currentApp: '0x0',
+          actionId: '1',
+          evmScript: newScript,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        },
+        '0x0,2': {
+          currentApp: '0x0',
+          actionId: '2',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'completed'
+        },
+        '0x0,3': {
+          currentApp: '0x0',
+          actionId: '3',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        } } })
   })
 
   // act
@@ -1607,41 +1612,31 @@ test('should set forwarded actions', async (t) => {
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
-      pending: [{
-        currentApp: '0x0',
-        actionId: '1',
-        evmScript: newScript,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'pending'
-      }
-      // entry gets deleted and repopulated in 'failed'
-      /*
-      {
-        currentApp: '0x0',
-        actionId: '3',
-        evmScript: script,
-        target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
-        status: 'failed'
-      }
-      */
-      ],
-      completed: {
-        '0x0': {
-          '2': {
-            evmScript: script,
-            status: 'completed'
-          }
-        }
-      },
-      failed: {
-        '0x0': {
-          '3': {
-            evmScript: script,
-            status: 'failed'
-          }
-        }
-      }
-    })
+      pendingActionKeys: ['0x0,1'],
+      completedActionKeys: ['0x0,2'],
+      failedActionKeys: ['0x0,3'],
+      actions: {
+        '0x0,1': {
+          currentApp: '0x0',
+          actionId: '1',
+          evmScript: newScript,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'pending'
+        },
+        '0x0,2': {
+          currentApp: '0x0',
+          actionId: '2',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'completed'
+        },
+        '0x0,3': {
+          currentApp: '0x0',
+          actionId: '3',
+          evmScript: script,
+          target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
+          status: 'failed'
+        } } })
   })
 })
 

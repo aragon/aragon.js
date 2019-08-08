@@ -868,72 +868,45 @@ export default class Aragon {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
         (actions, { currentApp, actionId, evmScript, status = 'pending' }) => {
+          if (!currentApp && !actionId && !evmScript) return actions
+
           // set the last address as the target of the forwarded action
           const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
 
-          const targetActions = actions[target] || {}
-          const completedTargetActions = targetActions.completed || {}
-          const completedTargetActionsFromCurrentApp = completedTargetActions[currentApp] || {}
-
-          const failedTargetActions = targetActions.failed || {}
-          const failedTargetActionsFromCurrentApp = failedTargetActions[currentApp] || {}
-
-          let existingAction = completedTargetActionsFromCurrentApp[actionId] ||
-                                failedTargetActionsFromCurrentApp[actionId] || {}
-
-          let pendingActions = targetActions.pending || []
-          const updateIndex = pendingActions.findIndex(
-            action => action.currentApp === currentApp && action.actionId === actionId
-          )
-
-          if (status === 'completed' || status === 'failed') {
-            if (updateIndex > -1) {
-              pendingActions.splice(updateIndex, 1)
-            }
-            const currentAction = { evmScript, status }
-            if (status === 'completed') {
-              return { ...actions,
-                [target]: { ...targetActions,
-                  completed: { ...completedTargetActions,
-                    [currentApp]: { ...completedTargetActionsFromCurrentApp,
-                      [actionId]: currentAction
-                    }
-                  },
-                  pending: pendingActions
-                }
-              }
-            }
-
-            return { ...actions,
-              [target]: { ...targetActions,
-                failed: { ...failedTargetActions,
-                  [currentApp]: { ...failedTargetActionsFromCurrentApp,
-                    [actionId]: currentAction
-                  }
-                },
-                pending: pendingActions
-              }
-            }
+          actions[target] = actions[target] || {
+            completedActionKeys: [],
+            failedActionKeys: [],
+            pendingActionKeys: [],
+            actions: {}
           }
 
-          if (!existingAction.status && actionId >= 0) {
-            if (updateIndex === -1) {
-              // set the last address as the target of the forwarded action
-              pendingActions.push({ currentApp, actionId, target, evmScript, status })
-              // only update if the status of existing actions if status is the latest
-            } else if (pendingActions[updateIndex].status <= status) {
-              pendingActions[updateIndex] = {
-                ...pendingActions[updateIndex],
-                evmScript,
-                status
-              }
-            }
+          const actionKey = `${currentApp},${actionId}`
+          const existingAction = actions[target].actions[actionKey]
 
-            return { ...actions,
-              [target]: { ...targetActions,
-                pending: pendingActions
-              }
-            }
+          // dealing with async:
+          // return early if existing action is already marked as completed or failed
+          // (if we already discovered that this action has completed or failed,
+          // we don't want to go back to pending, and there's nothing else to update)
+          if (existingAction && ['failed', 'completed'].includes(existingAction.status)) return actions
+
+          actions[target].actions[actionKey] = { actionId, currentApp, evmScript, status, target }
+
+          if (!existingAction) {
+            const statusKey = `${status}ActionKeys`
+            actions[target][statusKey] = [ ...actions[target][statusKey], actionKey ]
+            return actions
+          }
+
+          if (status !== 'pending') {
+            actions[target].pendingActionKeys = actions[target].pendingActionKeys.filter(k => k !== actionKey)
+          }
+
+          if (status === 'failed') {
+            actions[target].failedActionKeys = [ ...actions[target].failedActionKeys, actionKey ]
+          }
+
+          if (status === 'completed') {
+            actions[target].completedActionKeys = [ ...actions[target].completedActionKeys, actionKey ]
           }
 
           return actions
