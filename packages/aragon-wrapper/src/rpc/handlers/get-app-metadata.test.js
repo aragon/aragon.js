@@ -6,24 +6,24 @@ test('should receive and filter the app metadata registry', async (t) => {
   t.plan(1)
 
   const getAppMetadataObservable = from([
-    [{
+    { 'a': {
       from: '0x73a',
       to: [ '0xdeadcafe' ],
       dataId: 'u1',
       cid: 'Qmrandomhash'
     },
-    {
+    'b': {
       from: '0xfed',
       to: [ '0xcafe', '0xdeaddead' ],
       dataId: 'u2',
       cid: 'Qmrandomhash'
     },
-    {
+    'c': {
       from: '0xfed1',
       to: ['*'],
       dataId: 'u32',
       cid: 'Qmrandomhash2'
-    }]
+    } }
   ])
 
   const mockProxy = { address: '0xdeaddead' }

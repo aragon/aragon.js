@@ -569,12 +569,25 @@ export class AppProxy {
   }
 
   /**
-   * Gets data from external apps
+   * Subscribe to data from other apps
    * @return {Observable} An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an array of objects containing data from external apps
    */
   getAppMetadata () {
     return this.rpc.sendAndObserveResponses(
       'get_app_metadata'
+    ).pipe(pluck('result'))
+  }
+
+  /**
+   * Obtain a specific metadata entry
+   * @param {string} from Address of the application generating the data
+   * @param {string} dataId internal ID assigned to the data by the originator
+   * @return {Observable} A single-emission [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits an object containing the requested metata or `undefined` if no matching entry is found
+   */
+  queryAppMetadata (from, dataId) {
+    return this.rpc.sendAndObserveResponse(
+      'query_app_metadata',
+      [from, dataId]
     ).pipe(pluck('result'))
   }
 }

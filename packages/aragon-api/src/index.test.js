@@ -461,6 +461,44 @@ test('should return the registerAppMetadata observable', t => {
   t.deepEqual(instanceStub.rpc.send.getCall(1).args[1], ['0xbeef1', 'uuid2', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6GgK', ['*']])
 })
 
+test('should return individual metadata entry', t => {
+  t.plan(3)
+
+  // arrange
+  const queryAppMetadataFn = Index.AppProxy.prototype.queryAppMetadata
+
+  const observable = of({
+    id: 'uuid1',
+    result: {
+      from: '0xfed',
+      to: [ '0xcafe', '0xdeaddead' ],
+      dataId: 'u2',
+      cid: 'Qmrandomhash'
+    } })
+
+  const instanceStub = {
+    rpc: {
+      sendAndObserveResponse: createDeferredStub(observable)
+    }
+  }
+
+  // act
+  const result = queryAppMetadataFn.call(instanceStub, 'a', '1')
+
+  // assert
+  t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'query_app_metadata')
+  t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['a', '1'])
+
+  result.subscribe(value => {
+    t.deepEqual(value, {
+      from: '0xfed',
+      to: [ '0xcafe', '0xdeaddead' ],
+      dataId: 'u2',
+      cid: 'Qmrandomhash'
+    })
+  })
+})
+
 test('should return appMetadata observable', t => {
   t.plan(3)
 

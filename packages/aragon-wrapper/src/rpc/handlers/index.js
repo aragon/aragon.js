@@ -68,5 +68,6 @@ export { default as searchIdentities } from './search-identities'
 
 export { default as registerAppMetadata } from './register-app-metadata'
 export { default as getAppMetadata } from './get-app-metadata'
+export { default as queryAppMetadata } from './query-app-metadata'
 
 export { default as notifications } from './notifications'

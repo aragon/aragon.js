@@ -864,7 +864,7 @@ export default class Aragon {
   initAppMetadata () {
     this.appMetadata = new BehaviorSubject({}).pipe(
       scan((metadataRegistry, { from, dataId, cid, to }) => {
-        const key = from + ',' + dataId
+        const key = `${from},${dataId}`
         if (from) {
           metadataRegistry[key] = {
             from,
@@ -1245,9 +1245,10 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
         handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
 
-        // cross-app handlers
+        // Cross-app handlers
         handlers.createRequestHandler(request$, 'register_app_metadata', handlers.registerAppMetadata),
         handlers.createRequestHandler(request$, 'get_app_metadata', handlers.getAppMetadata),
+        handlers.createRequestHandler(request$, 'query_app_metadata', handlers.queryAppMetadata),
 
         // Etc.
         handlers.createRequestHandler(request$, 'notification', handlers.notifications)
