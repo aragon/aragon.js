@@ -863,19 +863,19 @@ export default class Aragon {
    */
   initAppMetadata () {
     this.appMetadata = new BehaviorSubject({}).pipe(
-      scan((metadataRegistry, {from, dataId, cid, to}) => {
-          const key = from + ',' + dataId
-          if (from) {
-            metadataRegistry[key] = {
-              from,
-              dataId,
-              cid,
-              to
-            }
+      scan((metadataRegistry, { from, dataId, cid, to }) => {
+        const key = from + ',' + dataId
+        if (from) {
+          metadataRegistry[key] = {
+            from,
+            dataId,
+            cid,
+            to
           }
-          return metadataRegistry
-        },
-        {} // metadataRegistry seed
+        }
+        return metadataRegistry
+      },
+      {} // metadataRegistry seed
       ),
       publishReplay(1)
     )
