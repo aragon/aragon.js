@@ -1468,6 +1468,65 @@ test('should init the forwarded actions correctly', async (t) => {
   })
 })
 
+test('should forbid forwarding action with invalid status', async (t) => {
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  const target = '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'
+  const script = encodeCallScript([{ to: target, data: '0x' }])
+  await instance.initForwardedActions()
+
+  // act & assert
+  t.throws(
+    () => instance.setForwardedAction('0x0', '1', script, 'koala'),
+    /unexpected status/
+  )
+
+  // act, circumventing best practices
+  instance.forwardedActions.next({
+    currentApp: '0x0',
+    actionId: '1',
+    evmScript: script,
+    target,
+    status: 'koala'
+  })
+
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {})
+  })
+})
+
+test('should forbid forwarding action with invalid evmScript', async (t) => {
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  await instance.initForwardedActions()
+
+  // act & assert
+  t.throws(
+    () => instance.setForwardedAction('0x0', '1'),
+    /must provide a valid evmScript/
+  )
+  t.throws(
+    () => instance.setForwardedAction('0x0', '1', 'nonsense'),
+    /Script could not be decoded/
+  )
+
+  // act, circumventing best practices
+  instance.forwardedActions.next({
+    currentApp: '0x0',
+    actionId: '1',
+    evmScript: 'lololol',
+    target: null
+  })
+
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {})
+  })
+})
+
 test('should set forwarded actions', async (t) => {
   // arrange
   const { Aragon } = t.context

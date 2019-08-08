@@ -867,11 +867,12 @@ export default class Aragon {
   initForwardedActions () {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
-        (actions, { currentApp, actionId, evmScript, status = 'pending' }) => {
-          if (!currentApp && !actionId && !evmScript) return actions
-
-          // set the last address as the target of the forwarded action
-          const target = evmScript ? this.decodeTransactionPath(evmScript).pop().to : ''
+        (actions, { currentApp, actionId, evmScript, target, status = 'pending' }) => {
+          if (
+            (!currentApp && !actionId && !evmScript && !target) ||
+            !['pending', 'failed', 'completed'].includes(status) ||
+            !target
+          ) return actions
 
           actions[target] = actions[target] || {
             completedActionKeys: [],
@@ -926,11 +927,30 @@ export default class Aragon {
    * @param {string} evmScript
    * @param {integer} status
    */
-  setForwardedAction (currentApp, actionId, evmScript, status) {
+  setForwardedAction (currentApp, actionId, evmScript, status = 'pending') {
+    if (!(['pending', 'failed', 'completed'].includes(status))) {
+      throw new Error(
+        `unexpected status for forwardedAction
+         expected one of 'pending', 'failed', 'completed'
+         got: '${status}'`
+      )
+    }
+
+    if (!evmScript) {
+      throw new Error(
+        `must provide a valid evmScript when forwarding an action;
+         got: '${evmScript}'`
+      )
+    }
+
+    // set the last address as the target of the forwarded action
+    const target = this.decodeTransactionPath(evmScript).pop().to
+
     this.forwardedActions.next({
       currentApp,
       actionId,
       evmScript,
+      target,
       status
     })
   }
