@@ -95,7 +95,7 @@ function App() {
 
 #### `appState`
 
-The app state, after having passed the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html) state through the `reducer` prop of `AragonApi`.
+The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
 
 Example:
 
