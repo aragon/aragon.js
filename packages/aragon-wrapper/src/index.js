@@ -865,56 +865,54 @@ export default class Aragon {
    * @return {void}
    */
   async initForwardedActions () {
-    this.forwardedActions = new BehaviorSubject({}).pipe(
-      scan(
-        (actions, { currentApp, actionId, evmScript, target, status = 'pending' }) => {
-          if (
-            (!currentApp && !actionId && !evmScript && !target) ||
-            !['pending', 'failed', 'completed'].includes(status) ||
-            !target
-          ) return actions
+    const initialValue = await this.cache.get('forwardedActions') || {}
+    this.forwardedActions = new BehaviorSubject(initialValue).pipe(
+      scan((actions, { currentApp, actionId, evmScript, target, status = 'pending' }) => {
+        if (
+          (!currentApp && !actionId && !evmScript && !target) ||
+          !['pending', 'failed', 'completed'].includes(status) ||
+          !target
+        ) return actions
 
-          actions[target] = actions[target] || {
-            completedActionKeys: [],
-            failedActionKeys: [],
-            pendingActionKeys: [],
-            actions: {}
+        actions[target] = actions[target] || {
+          completedActionKeys: [],
+          failedActionKeys: [],
+          pendingActionKeys: [],
+          actions: {}
+        }
+
+        const actionKey = `${currentApp},${actionId}`
+        const existingAction = actions[target].actions[actionKey]
+
+        // dealing with async:
+        // return early if existing action is already marked as completed or failed
+        // (if we already discovered that this action has completed or failed,
+        // we don't want to go back to pending, and there's nothing else to update)
+        if (existingAction && ['failed', 'completed'].includes(existingAction.status)) return actions
+
+        actions[target].actions[actionKey] = { actionId, currentApp, evmScript, status, target }
+
+        if (!existingAction) {
+          const statusKey = `${status}ActionKeys`
+          actions[target][statusKey] = [ ...actions[target][statusKey], actionKey ]
+        } else {
+          if (status !== 'pending') {
+            actions[target].pendingActionKeys = actions[target].pendingActionKeys.filter(k => k !== actionKey)
           }
 
-          const actionKey = `${currentApp},${actionId}`
-          const existingAction = actions[target].actions[actionKey]
-
-          // dealing with async:
-          // return early if existing action is already marked as completed or failed
-          // (if we already discovered that this action has completed or failed,
-          // we don't want to go back to pending, and there's nothing else to update)
-          if (existingAction && ['failed', 'completed'].includes(existingAction.status)) return actions
-
-          actions[target].actions[actionKey] = { actionId, currentApp, evmScript, status, target }
-
-          if (!existingAction) {
-            const statusKey = `${status}ActionKeys`
-            actions[target][statusKey] = [ ...actions[target][statusKey], actionKey ]
-          } else {
-            if (status !== 'pending') {
-              actions[target].pendingActionKeys = actions[target].pendingActionKeys.filter(k => k !== actionKey)
-            }
-
-            if (status === 'failed') {
-              actions[target].failedActionKeys = [ ...actions[target].failedActionKeys, actionKey ]
-            }
-
-            if (status === 'completed') {
-              actions[target].completedActionKeys = [ ...actions[target].completedActionKeys, actionKey ]
-            }
+          if (status === 'failed') {
+            actions[target].failedActionKeys = [ ...actions[target].failedActionKeys, actionKey ]
           }
 
-          this.cache.set('forwardedActions', actions)
+          if (status === 'completed') {
+            actions[target].completedActionKeys = [ ...actions[target].completedActionKeys, actionKey ]
+          }
+        }
 
-          return actions
-        },
-        await this.cache.get('forwardedActions') || {} // actions seed
-      ),
+        this.cache.set('forwardedActions', actions)
+
+        return actions
+      }),
       publishReplay(1)
     )
     this.forwardedActions.connect()
