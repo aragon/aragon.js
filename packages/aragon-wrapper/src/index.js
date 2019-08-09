@@ -873,7 +873,7 @@ export default class Aragon {
         inMemoryActions,
         {
           actionId,
-          blockNumber = Number.POSITIVE_INFINITY, // caching disabled
+          blockNumber,
           currentApp,
           evmScript,
           status = 'pending',
@@ -883,6 +883,7 @@ export default class Aragon {
         if (
           (!currentApp && !actionId && !evmScript && !target) ||
           !['pending', 'failed', 'completed'].includes(status) ||
+          !blockNumber ||
           !target
         ) return inMemoryActions
 
@@ -953,6 +954,8 @@ export default class Aragon {
     evmScript,
     status = 'pending'
   }) {
+    if (!blockNumber) throw new Error('must provide blockNumber')
+
     if (!(['pending', 'failed', 'completed'].includes(status))) {
       throw new Error(
         `unexpected status for forwardedAction

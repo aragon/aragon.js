@@ -1484,6 +1484,7 @@ test('should forbid forwarding action with invalid status', async (t) => {
     () => instance.setForwardedAction({
       currentApp: '0x0',
       actionId: '1',
+      blockNumber: Number.POSITIVE_INFINITY,
       evmScript: script,
       status: 'koala'
     }),
@@ -1494,9 +1495,44 @@ test('should forbid forwarding action with invalid status', async (t) => {
   instance.forwardedActions.next({
     currentApp: '0x0',
     actionId: '1',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script,
     target,
     status: 'koala'
+  })
+
+  // assert
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    t.deepEqual(value, {})
+  })
+})
+
+test('should forbid forwarding action without blockNumber', async (t) => {
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
+  await instance.initForwardedActions()
+  const target = '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'
+  const evmScript = encodeCallScript([{ to: target, data: '0x' }])
+
+  // act & assert
+  t.throws(
+    () => instance.setForwardedAction({
+      currentApp: '0x0',
+      actionId: '1',
+      evmScript,
+      target
+    }),
+    /must provide blockNumber/
+  )
+
+  // act, circumventing best practices
+  instance.forwardedActions.next({
+    currentApp: '0x0',
+    actionId: '1',
+    evmScript,
+    target
   })
 
   // assert
@@ -1517,7 +1553,8 @@ test('should forbid forwarding action with invalid evmScript', async (t) => {
   t.throws(
     () => instance.setForwardedAction({
       currentApp: '0x0',
-      actionId: '1'
+      actionId: '1',
+      blockNumber: Number.POSITIVE_INFINITY
     }),
     /must provide a valid evmScript/
   )
@@ -1525,6 +1562,7 @@ test('should forbid forwarding action with invalid evmScript', async (t) => {
     () => instance.setForwardedAction({
       currentApp: '0x0',
       actionId: '1',
+      blockNumber: Number.POSITIVE_INFINITY,
       evmScript: 'nonsense'
     }),
     /Script could not be decoded/
@@ -1534,6 +1572,7 @@ test('should forbid forwarding action with invalid evmScript', async (t) => {
   instance.forwardedActions.next({
     currentApp: '0x0',
     actionId: '1',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: 'lololol',
     target: null
   })
@@ -1566,6 +1605,7 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '1',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script
   })
 
@@ -1601,6 +1641,7 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '1',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: newScript
   })
   // assert
@@ -1624,11 +1665,13 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '2',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script
   })
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '3',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script
   })
   // assert
@@ -1666,6 +1709,7 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '2',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script,
     status: 'completed'
   })
@@ -1704,6 +1748,7 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '3',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script,
     status: 'failed'
   })
@@ -1712,6 +1757,7 @@ test('should set forwarded actions', async (t) => {
   instance.setForwardedAction({
     currentApp: '0x0',
     actionId: '2',
+    blockNumber: Number.POSITIVE_INFINITY,
     evmScript: script,
     status: 'pending'
   })
@@ -1775,15 +1821,6 @@ test('should cache forwarded actions', async (t) => {
 
   // act
 
-  // no caching if no blockNumber provided
-  const cacaAddress = '0xcaaaaaaaaacaaaaaaaaacaaaaaaaaacaaaaaaaaa'
-  const cacaScript = encodeCallScript([{ to: cacaAddress, data: '0x' }])
-  instance.setForwardedAction({
-    currentApp: '0x0',
-    actionId: '2',
-    evmScript: cacaScript
-  })
-
   // no caching if blockNumber ≥ cacheBlockHeight
   const dadaAddress = '0xdaaaaaaaaadaaaaaaaaadaaaaaaaaadaaaaaaaaa'
   const dadaScript = encodeCallScript([{ to: dadaAddress, data: '0x' }])
@@ -1815,22 +1852,6 @@ test('should cache forwarded actions', async (t) => {
   })
 
   // assert
-  const cacaStored = {
-    [cacaAddress]: {
-      pendingActionKeys: ['0x0,2'],
-      completedActionKeys: [],
-      failedActionKeys: [],
-      actions: {
-        '0x0,2': {
-          currentApp: '0x0',
-          actionId: '2',
-          evmScript: cacaScript,
-          target: cacaAddress,
-          status: 'pending'
-        }
-      }
-    }
-  }
   const dadaStored = {
     [dadaAddress]: {
       pendingActionKeys: ['0x0,3'],
@@ -1881,9 +1902,9 @@ test('should cache forwarded actions', async (t) => {
   }
   instance.forwardedActions.pipe(first()).subscribe(value => {
     // protect against poorly-written tests; the cache test is a false positive if this fails
-    t.notDeepEqual(babaStored, { ...babaStored, ...cacaStored, ...dadaStored, ...eaeaStored, ...fafaStored })
+    t.notDeepEqual(babaStored, { ...babaStored, ...dadaStored, ...eaeaStored, ...fafaStored })
 
-    t.deepEqual(value, { ...babaStored, ...cacaStored, ...dadaStored, ...eaeaStored, ...fafaStored })
+    t.deepEqual(value, { ...babaStored, ...dadaStored, ...eaeaStored, ...fafaStored })
     t.is(instance.cache.set.getCall(0).args[0], 'forwardedActions')
     t.deepEqual(instance.cache.set.getCall(0).args[1], { ...babaStored, ...eaeaStored, ...fafaStored })
   })
