@@ -1481,7 +1481,12 @@ test('should forbid forwarding action with invalid status', async (t) => {
 
   // act & assert
   t.throws(
-    () => instance.setForwardedAction('0x0', '1', script, 'koala'),
+    () => instance.setForwardedAction({
+      currentApp: '0x0',
+      actionId: '1',
+      evmScript: script,
+      status: 'koala'
+    }),
     /unexpected status/
   )
 
@@ -1510,11 +1515,18 @@ test('should forbid forwarding action with invalid evmScript', async (t) => {
 
   // act & assert
   t.throws(
-    () => instance.setForwardedAction('0x0', '1'),
+    () => instance.setForwardedAction({
+      currentApp: '0x0',
+      actionId: '1'
+    }),
     /must provide a valid evmScript/
   )
   t.throws(
-    () => instance.setForwardedAction('0x0', '1', 'nonsense'),
+    () => instance.setForwardedAction({
+      currentApp: '0x0',
+      actionId: '1',
+      evmScript: 'nonsense'
+    }),
     /Script could not be decoded/
   )
 
@@ -1551,7 +1563,11 @@ test('should set forwarded actions', async (t) => {
 
   // act
   await instance.initForwardedActions()
-  instance.setForwardedAction('0x0', '1', script)
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '1',
+    evmScript: script
+  })
 
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
@@ -1582,7 +1598,11 @@ test('should set forwarded actions', async (t) => {
     data: '0xdeadbeef'
   }])
   // act
-  instance.setForwardedAction('0x0', '1', newScript)
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '1',
+    evmScript: newScript
+  })
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value, { '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad': {
@@ -1601,8 +1621,16 @@ test('should set forwarded actions', async (t) => {
 
   // add multiple entries
   // act
-  instance.setForwardedAction('0x0', '2', script)
-  instance.setForwardedAction('0x0', '3', script)
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '2',
+    evmScript: script
+  })
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '3',
+    evmScript: script
+  })
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
@@ -1635,7 +1663,12 @@ test('should set forwarded actions', async (t) => {
 
   // set entry as completed
   // act
-  instance.setForwardedAction('0x0', '2', script, 'completed')
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '2',
+    evmScript: script,
+    status: 'completed'
+  })
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
     t.deepEqual(value['0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'], {
@@ -1668,10 +1701,20 @@ test('should set forwarded actions', async (t) => {
 
   // act
   // set entry as failed
-  instance.setForwardedAction('0x0', '3', script, 'failed')
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '3',
+    evmScript: script,
+    status: 'failed'
+  })
   // attempt to change the completed entry back to pending
   // this should not change any state
-  instance.setForwardedAction('0x0', '2', script, 'pending')
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '2',
+    evmScript: script,
+    status: 'pending'
+  })
 
   // assert
   instance.forwardedActions.pipe(first()).subscribe(value => {
@@ -1706,12 +1749,10 @@ test('should set forwarded actions', async (t) => {
 
 test('should cache forwarded actions', async (t) => {
   // arrange
-  const script = encodeCallScript([{
-    to: '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa',
-    data: '0x'
-  }])
-  const dada = {
-    '0xdaaaaaaaaadaaaaaaaaadaaaaaaaaadaaaaaaaaa': {
+  const babaAddress = '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa'
+  const babaScript = encodeCallScript([{ to: babaAddress, data: '0x' }])
+  const babaStored = {
+    [babaAddress]: {
       pendingActionKeys: ['0x0,1'],
       completedActionKeys: [],
       failedActionKeys: [],
@@ -1719,8 +1760,8 @@ test('should cache forwarded actions', async (t) => {
         '0x0,1': {
           currentApp: '0x0',
           actionId: '1',
-          evmScript: script,
-          target: '0xdaaaaaaaaadaaaaaaaaadaaaaaaaaadaaaaaaaaa',
+          evmScript: babaScript,
+          target: babaAddress,
           status: 'pending'
         }
       }
@@ -1728,16 +1769,44 @@ test('should cache forwarded actions', async (t) => {
   }
   const { Aragon } = t.context
   const instance = new Aragon()
-  instance.cache.get = sinon.stub().withArgs('forwardedActions').returns(dada)
+  instance.cache.get = sinon.stub().withArgs('forwardedActions').returns(babaStored)
   instance.cache.set = sinon.stub().resolves()
+  await instance.initForwardedActions({ cacheBlockHeight: 10 })
 
   // act
-  await instance.initForwardedActions()
-  instance.setForwardedAction('0x0', '2', script)
+
+  // no caching if no blockNumber provided
+  const cacaAddress = '0xcaaaaaaaaacaaaaaaaaacaaaaaaaaacaaaaaaaaa'
+  const cacaScript = encodeCallScript([{ to: cacaAddress, data: '0x' }])
+  instance.setForwardedAction({
+    currentApp: '0x0',
+    actionId: '2',
+    evmScript: cacaScript
+  })
+
+  // no caching if blockNumber ≥ cacheBlockHeight
+  const dadaAddress = '0xdaaaaaaaaadaaaaaaaaadaaaaaaaaadaaaaaaaaa'
+  const dadaScript = encodeCallScript([{ to: dadaAddress, data: '0x' }])
+  instance.setForwardedAction({
+    blockNumber: 10,
+    currentApp: '0x0',
+    actionId: '3',
+    evmScript: dadaScript
+  })
+
+  // yes, caching, if blockNumber < cacheBlockHeight
+  const fafaAddress = '0xfaaaaaaaaafaaaaaaaaafaaaaaaaaafaaaaaaaaa'
+  const fafaScript = encodeCallScript([{ to: fafaAddress, data: '0x' }])
+  instance.setForwardedAction({
+    blockNumber: 9,
+    currentApp: '0x0',
+    actionId: '4',
+    evmScript: fafaScript
+  })
 
   // assert
-  const baba = {
-    '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa': {
+  const cacaStored = {
+    [cacaAddress]: {
       pendingActionKeys: ['0x0,2'],
       completedActionKeys: [],
       failedActionKeys: [],
@@ -1745,17 +1814,49 @@ test('should cache forwarded actions', async (t) => {
         '0x0,2': {
           currentApp: '0x0',
           actionId: '2',
-          evmScript: script,
-          target: '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa',
+          evmScript: cacaScript,
+          target: cacaAddress,
+          status: 'pending'
+        }
+      }
+    }
+  }
+  const dadaStored = {
+    [dadaAddress]: {
+      pendingActionKeys: ['0x0,3'],
+      completedActionKeys: [],
+      failedActionKeys: [],
+      actions: {
+        '0x0,3': {
+          currentApp: '0x0',
+          actionId: '3',
+          evmScript: dadaScript,
+          target: dadaAddress,
+          status: 'pending'
+        }
+      }
+    }
+  }
+  const fafaStored = {
+    [fafaAddress]: {
+      pendingActionKeys: ['0x0,4'],
+      completedActionKeys: [],
+      failedActionKeys: [],
+      actions: {
+        '0x0,4': {
+          currentApp: '0x0',
+          actionId: '4',
+          evmScript: fafaScript,
+          target: fafaAddress,
           status: 'pending'
         }
       }
     }
   }
   instance.forwardedActions.pipe(first()).subscribe(async value => {
-    t.deepEqual(value, { ...dada, ...baba })
+    t.deepEqual(value, { ...babaStored, ...cacaStored, ...dadaStored, ...fafaStored })
     t.is(instance.cache.set.getCall(0).args[0], 'forwardedActions')
-    t.deepEqual(instance.cache.set.getCall(0).args[1], { ...dada, ...baba })
+    t.deepEqual(instance.cache.set.getCall(0).args[1], { ...babaStored, ...fafaStored })
   })
 })
 

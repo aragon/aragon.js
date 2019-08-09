@@ -77,6 +77,9 @@ import { LocalIdentityProvider } from './identity'
 // Interfaces
 import { getAbi } from './interfaces'
 
+// matches BLOCK_REORG_MARGIN from aragon-api
+const REORG_SAFETY_BLOCK_AGE = 100
+
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
@@ -220,17 +223,20 @@ export default class Aragon {
       throw Error(`Provided daoAddress is not a DAO`)
     }
 
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
+
     await this.cache.init()
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
-    await this.initAcl(Object.assign({ aclAddress }, options.acl))
+    await this.initAcl(Object.assign({ aclAddress, cacheBlockHeight }, options.acl))
     await this.initIdentityProviders()
     this.initApps()
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
-    this.initForwardedActions()
+    this.initForwardedActions({ cacheBlockHeight })
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -258,7 +264,7 @@ export default class Aragon {
    *
    * @return {Promise<void>}
    */
-  async initAcl ({ aclAddress } = {}) {
+  async initAcl ({ aclAddress, cacheBlockHeight } = {}) {
     if (!aclAddress) {
       aclAddress = await this.kernelProxy.call('acl')
     }
@@ -270,11 +276,6 @@ export default class Aragon {
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
 
     const ACL_CACHE_KEY = getCacheKey(aclAddress, 'acl')
-
-    const REORG_SAFETY_BLOCK_AGE = 100
-
-    const currentBlock = await this.web3.eth.getBlockNumber()
-    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
 
     // Check if we have cached ACL for this address
     // Cache object for an ACL: { permissions, blockNumber }
@@ -864,10 +865,21 @@ export default class Aragon {
    *
    * @return {void}
    */
-  async initForwardedActions () {
+  async initForwardedActions ({ cacheBlockHeight = 0 } = {}) {
     const initialValue = await this.cache.get('forwardedActions') || {}
+
     this.forwardedActions = new BehaviorSubject(initialValue).pipe(
-      scan((actions, { currentApp, actionId, evmScript, target, status = 'pending' }) => {
+      scan((
+        actions,
+        {
+          actionId,
+          blockNumber = Number.POSITIVE_INFINITY, // caching disabled
+          currentApp,
+          evmScript,
+          status = 'pending',
+          target
+        }
+      ) => {
         if (
           (!currentApp && !actionId && !evmScript && !target) ||
           !['pending', 'failed', 'completed'].includes(status) ||
@@ -909,7 +921,9 @@ export default class Aragon {
           }
         }
 
-        this.cache.set('forwardedActions', actions)
+        if (blockNumber < cacheBlockHeight) {
+          this.cache.set('forwardedActions', actions)
+        }
 
         return actions
       }),
@@ -926,7 +940,13 @@ export default class Aragon {
    * @param {string} evmScript
    * @param {integer} status
    */
-  setForwardedAction (currentApp, actionId, evmScript, status = 'pending') {
+  setForwardedAction ({
+    actionId,
+    blockNumber,
+    currentApp,
+    evmScript,
+    status = 'pending'
+  }) {
     if (!(['pending', 'failed', 'completed'].includes(status))) {
       throw new Error(
         `unexpected status for forwardedAction
@@ -946,11 +966,12 @@ export default class Aragon {
     const target = this.decodeTransactionPath(evmScript).pop().to
 
     this.forwardedActions.next({
-      currentApp,
       actionId,
+      blockNumber,
+      currentApp,
       evmScript,
-      target,
-      status
+      status,
+      target
     })
   }
 

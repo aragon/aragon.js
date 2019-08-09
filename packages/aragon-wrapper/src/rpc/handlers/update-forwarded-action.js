@@ -5,11 +5,11 @@ export default function (request, proxy, wrapper) {
     status
   ] = request.params
 
-  wrapper.setForwardedAction(
-    proxy.address,
+  wrapper.setForwardedAction({
+    currentApp: proxy.address,
     actionId,
     evmScript,
     status
-  )
+  })
   return Promise.resolve()
 }
