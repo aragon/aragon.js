@@ -1769,7 +1769,7 @@ test('should cache forwarded actions', async (t) => {
   }
   const { Aragon } = t.context
   const instance = new Aragon()
-  instance.cache.get = sinon.stub().withArgs('forwardedActions').returns(babaStored)
+  instance.cache.get = sinon.stub().withArgs('forwardedActions').returns({ ...babaStored })
   instance.cache.set = sinon.stub().resolves()
   await instance.initForwardedActions({ cacheBlockHeight: 10 })
 
@@ -1795,12 +1795,22 @@ test('should cache forwarded actions', async (t) => {
   })
 
   // yes, caching, if blockNumber < cacheBlockHeight
+  const eaeaAddress = '0xeaaaaaaaaaeaaaaaaaaaeaaaaaaaaaeaaaaaaaaa'
+  const eaeaScript = encodeCallScript([{ to: eaeaAddress, data: '0x' }])
+  instance.setForwardedAction({
+    blockNumber: 9,
+    currentApp: '0x0',
+    actionId: '4',
+    evmScript: eaeaScript
+  })
+
+  // also cached
   const fafaAddress = '0xfaaaaaaaaafaaaaaaaaafaaaaaaaaafaaaaaaaaa'
   const fafaScript = encodeCallScript([{ to: fafaAddress, data: '0x' }])
   instance.setForwardedAction({
     blockNumber: 9,
     currentApp: '0x0',
-    actionId: '4',
+    actionId: '5',
     evmScript: fafaScript
   })
 
@@ -1837,8 +1847,8 @@ test('should cache forwarded actions', async (t) => {
       }
     }
   }
-  const fafaStored = {
-    [fafaAddress]: {
+  const eaeaStored = {
+    [eaeaAddress]: {
       pendingActionKeys: ['0x0,4'],
       completedActionKeys: [],
       failedActionKeys: [],
@@ -1846,6 +1856,22 @@ test('should cache forwarded actions', async (t) => {
         '0x0,4': {
           currentApp: '0x0',
           actionId: '4',
+          evmScript: eaeaScript,
+          target: eaeaAddress,
+          status: 'pending'
+        }
+      }
+    }
+  }
+  const fafaStored = {
+    [fafaAddress]: {
+      pendingActionKeys: ['0x0,5'],
+      completedActionKeys: [],
+      failedActionKeys: [],
+      actions: {
+        '0x0,5': {
+          currentApp: '0x0',
+          actionId: '5',
           evmScript: fafaScript,
           target: fafaAddress,
           status: 'pending'
@@ -1853,10 +1879,13 @@ test('should cache forwarded actions', async (t) => {
       }
     }
   }
-  instance.forwardedActions.pipe(first()).subscribe(async value => {
-    t.deepEqual(value, { ...babaStored, ...cacaStored, ...dadaStored, ...fafaStored })
+  instance.forwardedActions.pipe(first()).subscribe(value => {
+    // protect against poorly-written tests; the cache test is a false positive if this fails
+    t.notDeepEqual(babaStored, { ...babaStored, ...cacaStored, ...dadaStored, ...eaeaStored, ...fafaStored })
+
+    t.deepEqual(value, { ...babaStored, ...cacaStored, ...dadaStored, ...eaeaStored, ...fafaStored })
     t.is(instance.cache.set.getCall(0).args[0], 'forwardedActions')
-    t.deepEqual(instance.cache.set.getCall(0).args[1], { ...babaStored, ...fafaStored })
+    t.deepEqual(instance.cache.set.getCall(0).args[1], { ...babaStored, ...eaeaStored, ...fafaStored })
   })
 })
 

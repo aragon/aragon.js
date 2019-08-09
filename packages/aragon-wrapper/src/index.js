@@ -866,11 +866,11 @@ export default class Aragon {
    * @return {void}
    */
   async initForwardedActions ({ cacheBlockHeight = 0 } = {}) {
-    const initialValue = await this.cache.get('forwardedActions') || {}
+    const cachedActions = await this.cache.get('forwardedActions')
 
-    this.forwardedActions = new BehaviorSubject(initialValue).pipe(
+    this.forwardedActions = new BehaviorSubject({ ...cachedActions }).pipe(
       scan((
-        actions,
+        inMemoryActions,
         {
           actionId,
           blockNumber = Number.POSITIVE_INFINITY, // caching disabled
@@ -884,48 +884,54 @@ export default class Aragon {
           (!currentApp && !actionId && !evmScript && !target) ||
           !['pending', 'failed', 'completed'].includes(status) ||
           !target
-        ) return actions
+        ) return inMemoryActions
 
-        actions[target] = actions[target] || {
-          completedActionKeys: [],
-          failedActionKeys: [],
-          pendingActionKeys: [],
-          actions: {}
-        }
-
-        const actionKey = `${currentApp},${actionId}`
-        const existingAction = actions[target].actions[actionKey]
-
-        // dealing with async:
-        // return early if existing action is already marked as completed or failed
-        // (if we already discovered that this action has completed or failed,
-        // we don't want to go back to pending, and there's nothing else to update)
-        if (existingAction && ['failed', 'completed'].includes(existingAction.status)) return actions
-
-        actions[target].actions[actionKey] = { actionId, currentApp, evmScript, status, target }
-
-        if (!existingAction) {
-          const statusKey = `${status}ActionKeys`
-          actions[target][statusKey] = [ ...actions[target][statusKey], actionKey ]
-        } else {
-          if (status !== 'pending') {
-            actions[target].pendingActionKeys = actions[target].pendingActionKeys.filter(k => k !== actionKey)
+        function mutate (actions) {
+          const targetActions = actions[target] || {
+            completedActionKeys: [],
+            failedActionKeys: [],
+            pendingActionKeys: [],
+            actions: {}
           }
 
-          if (status === 'failed') {
-            actions[target].failedActionKeys = [ ...actions[target].failedActionKeys, actionKey ]
-          }
+          const actionKey = `${currentApp},${actionId}`
+          const existingAction = targetActions.actions[actionKey]
 
-          if (status === 'completed') {
-            actions[target].completedActionKeys = [ ...actions[target].completedActionKeys, actionKey ]
+          // dealing with async:
+          // return early if existing action is already marked as completed or failed
+          // (if we already discovered that this action has completed or failed,
+          // we don't want to go back to pending, and there's nothing else to update)
+          if (existingAction && ['failed', 'completed'].includes(existingAction.status)) return
+
+          actions[target] = actions[target] || targetActions
+
+          actions[target].actions[actionKey] = { actionId, currentApp, evmScript, status, target }
+
+          if (!existingAction) {
+            const statusKey = `${status}ActionKeys`
+            actions[target][statusKey] = [ ...targetActions[statusKey], actionKey ]
+          } else {
+            if (status !== 'pending') {
+              actions[target].pendingActionKeys = targetActions.pendingActionKeys.filter(k => k !== actionKey)
+            }
+
+            if (status === 'failed') {
+              actions[target].failedActionKeys = [ ...targetActions.failedActionKeys, actionKey ]
+            }
+
+            if (status === 'completed') {
+              actions[target].completedActionKeys = [ ...targetActions.completedActionKeys, actionKey ]
+            }
           }
         }
 
         if (blockNumber < cacheBlockHeight) {
-          this.cache.set('forwardedActions', actions)
+          mutate(cachedActions)
+          this.cache.set('forwardedActions', cachedActions)
         }
 
-        return actions
+        mutate(inMemoryActions)
+        return inMemoryActions
       }),
       publishReplay(1)
     )
