@@ -1472,6 +1472,7 @@ test('should forbid forwarding action with invalid status', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.set = sinon.stub().resolves()
   const target = '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'
   const script = encodeCallScript([{ to: target, data: '0x' }])
   await instance.initForwardedActions()
@@ -1501,6 +1502,7 @@ test('should forbid forwarding action with invalid evmScript', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.set = sinon.stub().resolves()
   await instance.initForwardedActions()
 
   // act & assert
@@ -1531,6 +1533,7 @@ test('should set forwarded actions', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.set = sinon.stub().resolves()
   const script = encodeCallScript([{
     to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
     data: '0xcafe25'
@@ -1694,6 +1697,44 @@ test('should set forwarded actions', async (t) => {
           target: '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad',
           status: 'failed'
         } } })
+  })
+})
+
+test('should cache forwarded actions', async (t) => {
+  // arrange
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  instance.cache.set = sinon.stub().resolves()
+  const script = encodeCallScript([{
+    to: '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa',
+    data: '0x'
+  }])
+
+  // act
+  await instance.initForwardedActions()
+  instance.setForwardedAction('0x0', '1', script)
+
+  // assert
+  const expected = {
+    '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa': {
+      pendingActionKeys: ['0x0,1'],
+      completedActionKeys: [],
+      failedActionKeys: [],
+      actions: {
+        '0x0,1': {
+          currentApp: '0x0',
+          actionId: '1',
+          evmScript: script,
+          target: '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa',
+          status: 'pending'
+        }
+      }
+    }
+  }
+  instance.forwardedActions.pipe(first()).subscribe(async value => {
+    t.deepEqual(value, expected)
+    t.is(instance.cache.set.getCall(0).args[0], 'forwardedActions')
+    t.deepEqual(instance.cache.set.getCall(0).args[1], expected)
   })
 })
 

@@ -895,20 +895,21 @@ export default class Aragon {
           if (!existingAction) {
             const statusKey = `${status}ActionKeys`
             actions[target][statusKey] = [ ...actions[target][statusKey], actionKey ]
-            return actions
+          } else {
+            if (status !== 'pending') {
+              actions[target].pendingActionKeys = actions[target].pendingActionKeys.filter(k => k !== actionKey)
+            }
+
+            if (status === 'failed') {
+              actions[target].failedActionKeys = [ ...actions[target].failedActionKeys, actionKey ]
+            }
+
+            if (status === 'completed') {
+              actions[target].completedActionKeys = [ ...actions[target].completedActionKeys, actionKey ]
+            }
           }
 
-          if (status !== 'pending') {
-            actions[target].pendingActionKeys = actions[target].pendingActionKeys.filter(k => k !== actionKey)
-          }
-
-          if (status === 'failed') {
-            actions[target].failedActionKeys = [ ...actions[target].failedActionKeys, actionKey ]
-          }
-
-          if (status === 'completed') {
-            actions[target].completedActionKeys = [ ...actions[target].completedActionKeys, actionKey ]
-          }
+          this.cache.set('forwardedActions', actions)
 
           return actions
         },
