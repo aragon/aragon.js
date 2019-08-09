@@ -222,6 +222,6 @@ Returns **void**
 
 ### setForwardedActions
 
-Either create a new entry or update an existing entry in the actions array emitted by the forwardedActions Observable. If an entry with keys matching `currentApp` and `actionId` exists, it is updated with the values that are passed. Otherwise, a new entry is created.
+Either create a new entry or update an existing entry in the actions array emitted by the forwardedActions Observable. If an entry with keys matching `currentApp` and `actionId` exists, it is updated with the values that are passed. Otherwise, a new entry is created. The `blockNumber` in the event yielded by the action must also be provided.
 
 Returns **void**
