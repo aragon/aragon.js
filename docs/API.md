@@ -398,16 +398,17 @@ App contexts can be used to display specific views in your app or anything else 
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits app contexts as they are received.
 
-### newForwarededAction
+### newForwardedAction
 
 Initialize a forwarded action in the registry with state = 0.
 
-This function creates a new entry in the forwarded action registry, which is stored within the wrapper, and accessed by apps. Initialization should typically occur when the action is received by the Forwarder.
+This function creates a new entry in the forwarded action registry, which is stored within the wrapper, and accessed by apps. This should typically be called when an action is received by the Forwarder.
 
 #### Parameters
 
-- `actionId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The ID assigned to the forwarded action in the Forwarder (e.g. a vote Id)
-- `evmScript` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The raw evmScript received by the Forwarder.
+- `actionId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The ID assigned to the forwarded action in the Forwarder (e.g. a vote Id)
+- `blockNumber` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The block number in which the action was created.
+- `evmScript` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The raw EVMScript received by the Forwarder
 
 Returns **void**
 
@@ -415,25 +416,28 @@ Returns **void**
 
 Update the state of an existing forwarded action.
 
-This function accepts an existing `actionId` to look up the existing action, then updates its `state` and, if updated, the `evmScript`.
+This function accepts an existing `actionId` to look up the existing action, then updates its `status` and the `evmScript`.
 
 #### Parameters
 
 - `actionId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The ID assigned to the forwarded action in the Forwarder (e.g. a vote Id)
-- `state` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The state of the current Forwarder. 0: pending; 1: executed; 2: rejected
-- `evmScript` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The raw evmScript modified by the Forwarder. (optional, default `''`)
+- `blockNumber` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The block number in which the action was updated.
+- `evmScript` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The raw evmScript modified by the Forwarder
+- `status` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The state of the current Forwarder. 0: pending; 1: executed; 2: rejected
 
 Returns **void**
 
 ### getForwardedActions
 
-Listens for creation and changes of forwarded actions from the forwarded action registry. 
+Listens for creation and changes of forwarded actions to this app from the forwarded action registry. 
 
-Only actions targeting the listening app proxy will be exposed. On each change to any action, all actions targetting the app will be returned. Any change will send the entirety of the registry's applicable to the subscribed target.
+> **Note** <br> 
+
+>Only actions targeting the listening app proxy will be exposed. On each change to any action, all actions targeting the app will be returned. Any change will send the entirety of the registry's applicable to the subscribed target.
 
 #### Parameters
 
-Returns **Observable** An [RxJS observable](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html) that emits the current forwarded action registry contents relevant to the calling app. The emitted contents are an array of objects, each containing `actionId`, `currentApp`, `evmScript`, and `state` keys. The `currentApp` address key is the App currently containing the forwarded action. The remaining parameters are described above.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: An multi-emission observable that emits the set of forwarded actions relevant to the calling app. Each emission is an array of objects, each containing `actionId`, `blockNumber`, `currentApp`, `evmScript`, and `state` keys. The `currentApp` key is the address of the app currently containing the forwarded action. The remaining parameters are described above. The `blockNumber` is the blockNumber of the action's creation, or modification.
 
 ### notify
 

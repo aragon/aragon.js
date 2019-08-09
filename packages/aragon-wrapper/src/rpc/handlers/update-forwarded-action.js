@@ -1,15 +1,17 @@
 export default function (request, proxy, wrapper) {
   const [
     actionId,
+    blockNumber,
     evmScript,
-    state
+    status
   ] = request.params
 
-  wrapper.setForwardedAction(
-    proxy.address,
+  wrapper.setForwardedAction({
     actionId,
+    blockNumber,
+    currentApp: proxy.address,
     evmScript,
-    state
-  )
+    status
+  })
   return Promise.resolve()
 }
