@@ -864,7 +864,7 @@ export default class Aragon {
    *
    * @return {void}
    */
-  initForwardedActions () {
+  async initForwardedActions () {
     this.forwardedActions = new BehaviorSubject({}).pipe(
       scan(
         (actions, { currentApp, actionId, evmScript, target, status = 'pending' }) => {
@@ -913,7 +913,7 @@ export default class Aragon {
 
           return actions
         },
-        {} // actions seed
+        await this.cache.get('forwardedActions') || {} // actions seed
       ),
       publishReplay(1)
     )

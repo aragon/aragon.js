@@ -1459,6 +1459,7 @@ test('should init the forwarded actions correctly', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
   // act
   await instance.initForwardedActions()
   // assert
@@ -1472,6 +1473,7 @@ test('should forbid forwarding action with invalid status', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
   instance.cache.set = sinon.stub().resolves()
   const target = '0xbaaabaaa03c7e5a1c29e0aa675f8e16aee0a5fad'
   const script = encodeCallScript([{ to: target, data: '0x' }])
@@ -1502,6 +1504,7 @@ test('should forbid forwarding action with invalid evmScript', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
   instance.cache.set = sinon.stub().resolves()
   await instance.initForwardedActions()
 
@@ -1533,6 +1536,7 @@ test('should set forwarded actions', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
   instance.cache.set = sinon.stub().resolves()
   const script = encodeCallScript([{
     to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
@@ -1702,21 +1706,12 @@ test('should set forwarded actions', async (t) => {
 
 test('should cache forwarded actions', async (t) => {
   // arrange
-  const { Aragon } = t.context
-  const instance = new Aragon()
-  instance.cache.set = sinon.stub().resolves()
   const script = encodeCallScript([{
     to: '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa',
     data: '0x'
   }])
-
-  // act
-  await instance.initForwardedActions()
-  instance.setForwardedAction('0x0', '1', script)
-
-  // assert
-  const expected = {
-    '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa': {
+  const dada = {
+    '0xdaaaaaaaaadaaaaaaaaadaaaaaaaaadaaaaaaaaa': {
       pendingActionKeys: ['0x0,1'],
       completedActionKeys: [],
       failedActionKeys: [],
@@ -1725,6 +1720,32 @@ test('should cache forwarded actions', async (t) => {
           currentApp: '0x0',
           actionId: '1',
           evmScript: script,
+          target: '0xdaaaaaaaaadaaaaaaaaadaaaaaaaaadaaaaaaaaa',
+          status: 'pending'
+        }
+      }
+    }
+  }
+  const { Aragon } = t.context
+  const instance = new Aragon()
+  instance.cache.get = sinon.stub().withArgs('forwardedActions').returns(dada)
+  instance.cache.set = sinon.stub().resolves()
+
+  // act
+  await instance.initForwardedActions()
+  instance.setForwardedAction('0x0', '2', script)
+
+  // assert
+  const baba = {
+    '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa': {
+      pendingActionKeys: ['0x0,2'],
+      completedActionKeys: [],
+      failedActionKeys: [],
+      actions: {
+        '0x0,2': {
+          currentApp: '0x0',
+          actionId: '2',
+          evmScript: script,
           target: '0xbaaaaaaaaabaaaaaaaaabaaaaaaaaabaaaaaaaaa',
           status: 'pending'
         }
@@ -1732,9 +1753,9 @@ test('should cache forwarded actions', async (t) => {
     }
   }
   instance.forwardedActions.pipe(first()).subscribe(async value => {
-    t.deepEqual(value, expected)
+    t.deepEqual(value, { ...dada, ...baba })
     t.is(instance.cache.set.getCall(0).args[0], 'forwardedActions')
-    t.deepEqual(instance.cache.set.getCall(0).args[1], expected)
+    t.deepEqual(instance.cache.set.getCall(0).args[1], { ...dada, ...baba })
   })
 })
 
