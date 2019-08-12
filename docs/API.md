@@ -284,12 +284,14 @@ The reducer takes the signature `(state, event)` à la Redux. Note that it _must
 
 Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
 
-Optionally takes an array of other `Observable`s to merge with this app's events; for example you might use an external contract's Web3 events.
+Optionally takes a configuration object of an `init` function to make computations on the store's initial state and an array of `externals` - smart contracts returned by `api.external`. See below for more details.
 
 #### Parameters
 
 - `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)**: A function that reduces events to a state. This can return a Promise that resolves to a new state
-- `events` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;Observable>?** (optional, default `[empty()]`): An optional array of `Observable`s to merge in with the internal events observable
+- `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): An object that initializes the store with a specific configuration:
+    - `options.init` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** (optional): An initialization function for the state that takes the cached state as a parameter. Should return a promise that resolves to the initial state.
+    - `options.externals` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** (optional): An optional array of objects containing `contract` (as returned from `api.external`) and an optional `initializationBlock` from which to fetch events.
 
 #### Examples
 
@@ -315,15 +317,25 @@ const state$ = api.store((state, event) => {
 ```
 
 ```javascript
-// A reducer that also reduces events from an external smart contract
+// A reducer that also reduces events from an external smart contract and uses a store initialization function
 
 const token = api.external(tokenAddress, tokenJsonInterface)
+
+const initStore = async (cachedStoreState) => {
+  // do not mutate cachedStoreState
+  const initialStoreState = { ...cachedStoreState }
+  // perform computations on the store state
+  return initialStoreState
+}
 
 const state$ = api.store(
   (state, event) => {
     // ...
   },
-  [token.events()]
+  {
+    externals: { contract: token, initializationBlock: 0 },
+    init: initStore,
+  }
 )
 ```
 
