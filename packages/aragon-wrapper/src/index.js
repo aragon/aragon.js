@@ -866,7 +866,7 @@ export default class Aragon {
    * @return {void}
    */
   async initForwardedActions ({ cacheBlockHeight = 0 } = {}) {
-    const cachedActions = await this.cache.get('forwardedActions')
+    const cachedActions = (await this.cache.get('forwardedActions')) || {}
 
     this.forwardedActions = new BehaviorSubject({ ...cachedActions }).pipe(
       scan((
