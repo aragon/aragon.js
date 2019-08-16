@@ -27,7 +27,6 @@ test('should receive and filter through correct trigger events', async t => {
   ])
 
   const mockWrapper = { trigger: triggerEventObservable }
-  console.log(triggerSubscribe(null, mockProxy, mockWrapper))
   triggerSubscribe(null, mockProxy, mockWrapper).subscribe(value => {
     t.deepEqual(value, {
       event: 'TriggerTest',

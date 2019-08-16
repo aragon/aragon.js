@@ -213,3 +213,15 @@ Search identites using the highest priority provider.
 - `searchTerm` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** String to search for
 
 Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** which resolves with the found identities or an empty array.
+
+### triggerAppStore
+
+Emit an event in the designated AppProxy `store` from the frontend
+
+### ***Parameters***
+
+- `appProxy` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address of the app receiving the event
+- `eventName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Name of the event to be handled by the app
+- `returnValues` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Values passed into the handler
+
+Returns an `Observable` to the Apps subscribed to the `triggers` `Subject`

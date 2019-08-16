@@ -409,3 +409,14 @@ Send a notification.
 - `date` **[Date](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date)** (optional, default `newDate()`): An optional date that specifies when the notification originally occured
 
 Returns **void**.
+
+### trigger
+
+Trigger an event handler in the appplication's store. This can be used to periodically update the frontend with current contract information.
+
+#### Parameters
+
+- `eventName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the event to be handled within the reducer.
+- `Object` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): event data
+
+Returns **void**.

@@ -499,3 +499,19 @@ test('should send a web3Eth function request and observe the response', t => {
     t.deepEqual(value, ['accountA', 'accountB'])
   })
 })
+
+test('should send a trigger request to the wrapper', t => {
+  t.plan(2)
+  // arrange
+  const triggerFn = Index.AppProxy.prototype.trigger
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  triggerFn.call(instanceStub, 'TriggerTest', { testprop: '123abc' })
+  // assert
+  t.is(instanceStub.rpc.send.getCall(0).args[0], 'trigger')
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['TriggerTest', { testprop: '123abc' }])
+})

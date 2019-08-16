@@ -1145,6 +1145,15 @@ export default class Aragon {
     })
   }
 
+  /**
+   *
+   * Emit an event with returnValues in the appProxy's store
+   *
+   * @param {string} appProxy the app context where the event will be emitted
+   * @param {string} eventName The name of the event to be handled within the `store`
+   * @param {Object} returnValues Optional returnValues passed within the event
+   * @return {void}
+   */
   triggerAppStore (appProxy, eventName, returnValues) {
     this.trigger.next({
       origin: appProxy,
