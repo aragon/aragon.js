@@ -255,6 +255,27 @@ Currently the white-list includes:
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable with the result of the call.
 
+#### Examples
+
+```javascript
+api.web3Eth('getTransactionReceipt', trxHash).subscribe(
+  receipt => {
+    // use receipt
+  },
+  err => {
+    // handle error
+  }
+)
+```
+
+```javascript
+api.web3Eth('getBlock', blockNumber).first()
+```
+
+```javascript
+const balance = await api.web3Eth('getBalance', connectedAccount).toPromise()
+```
+
 ### cache
 
 Set a value in the application cache.
