@@ -269,7 +269,7 @@ api.web3Eth('getTransactionReceipt', trxHash).subscribe(
 ```
 
 ```javascript
-api.web3Eth('getBlock', blockNumber).first()
+const block = api.web3Eth('getBlock', blockNumber).toPromise()
 ```
 
 ```javascript
