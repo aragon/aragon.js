@@ -1805,3 +1805,25 @@ test('should be only able to decode call scripts when there are multiple nested 
     }
   ])
 })
+
+test('should create trigger events', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.trigger = new Subject()
+  instance.trigger.subscribe(value => {
+    t.deepEqual(value, {
+      origin: '0x0',
+      frontendEvent: {
+        event: 'TriggerTest',
+        returnValues: {
+          testval: 1
+        }
+      }
+    })
+  })
+  // act and assert
+  instance.triggerAppStore('0x0', 'TriggerTest', { testval: 1 })
+})

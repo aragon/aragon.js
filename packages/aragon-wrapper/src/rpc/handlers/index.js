@@ -68,3 +68,5 @@ export { default as appIdentifier } from './app-identifier'
 export { default as searchIdentities } from './search-identities'
 
 export { default as notifications } from './notifications'
+export { trigger as newTrigger } from './trigger'
+export { triggerSubscribe as getTriggers } from './trigger'

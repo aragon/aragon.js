@@ -424,7 +424,8 @@ export class AppProxy {
 
     const getCurrentEvents = (fromBlock) => merge(
       this.events(fromBlock),
-      ...externals.map(({ contract }) => contract.events(fromBlock))
+      ...externals.map(({ contract }) => contract.events(fromBlock)),
+      this.frontendTriggers()
     )
 
     // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
@@ -544,6 +545,19 @@ export class AppProxy {
     return this.rpc.send(
       'notification',
       [title, body, context, date]
+    )
+  }
+
+  trigger (eventName, returnValues = {}) {
+    return this.rpc.send(
+      'trigger',
+      [eventName, returnValues]
+    )
+  }
+
+  frontendTriggers () {
+    return this.rpc.sendAndObserveResponses(
+      'getTriggers'
     )
   }
 

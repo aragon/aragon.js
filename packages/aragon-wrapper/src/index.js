@@ -231,6 +231,7 @@ export default class Aragon {
     this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
+    this.trigger = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -1144,6 +1145,16 @@ export default class Aragon {
     })
   }
 
+  triggerAppStore (appProxy, eventName, returnValues) {
+    this.trigger.next({
+      origin: appProxy,
+      frontendEvent: {
+        event: eventName,
+        returnValues
+      }
+    })
+  }
+
   /**
    * Run an app.
    *
@@ -1219,7 +1230,9 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
 
         // Etc.
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications)
+        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'trigger', handlers.triggerAppStore),
+        handlers.createRequestHandler(request$, 'getTriggers', handlers.getTriggers)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
