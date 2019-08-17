@@ -555,16 +555,16 @@ export class AppProxy {
   /**
    * Register data for external apps
    *
-   * @param {string} from Address of the application generating the data
-   * @param {<Array>string} to Optional list of addresses of the applications allowed access to the data, defaults to '*'
+   * @param {string} blockNumber blockNumber that corresponds with the state update
    * @param {string} dataId internal ID assigned to the data by the originator
    * @param {string} cid external identifier (e.g., IPFS hash)
+   * @param {<Array>string} to Optional list of addresses of the applications allowed access to the data, defaults to '*'
    * @return {void}
    */
-  registerAppMetadata (from, dataId, cid, to = ['*']) {
+  registerAppMetadata (blockNumber, dataId, cid, to = ['*']) {
     return this.rpc.send(
       'register_app_metadata',
-      [from, dataId, cid, to]
+      [blockNumber, dataId, cid, to]
     )
   }
 

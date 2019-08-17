@@ -452,13 +452,13 @@ test('should return the registerAppMetadata observable', t => {
     }
   }
   // act
-  registerAppMetadataFn.call(instanceStub, '0xbeef', 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk', ['0xcafe'])
+  registerAppMetadataFn.call(instanceStub, '1', 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk', ['0xcafe'])
   // assert
   t.is(instanceStub.rpc.send.getCall(0).args[0], 'register_app_metadata')
-  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['0xbeef', 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk', ['0xcafe']])
+  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['1', 'uuid1', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6Ggk', ['0xcafe']])
   // act and assert default 'to'
-  registerAppMetadataFn.call(instanceStub, '0xbeef1', 'uuid2', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6GgK')
-  t.deepEqual(instanceStub.rpc.send.getCall(1).args[1], ['0xbeef1', 'uuid2', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6GgK', ['*']])
+  registerAppMetadataFn.call(instanceStub, '1', 'uuid2', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6GgK')
+  t.deepEqual(instanceStub.rpc.send.getCall(1).args[1], ['1', 'uuid2', 'QmrandomhashoceBBSBGmYiHVFQLHN8Uex6CeqExmp6GgK', ['*']])
 })
 
 test('should return individual metadata entry', t => {

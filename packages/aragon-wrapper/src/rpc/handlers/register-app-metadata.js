@@ -1,5 +1,6 @@
 export default function (request, proxy, wrapper) {
   const [
+    blockNumber,
     dataId,
     cid,
     to
@@ -7,6 +8,7 @@ export default function (request, proxy, wrapper) {
 
   wrapper.registerAppMetadata(
     proxy.address,
+    blockNumber,
     dataId,
     cid,
     to

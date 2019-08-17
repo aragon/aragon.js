@@ -77,6 +77,9 @@ import { LocalIdentityProvider } from './identity'
 // Interfaces
 import { getAbi } from './interfaces'
 
+// matches BLOCK_REORG_MARGIN from aragon-api
+const REORG_SAFETY_BLOCK_AGE = 100
+
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
   typeof web3 !== 'undefined'
@@ -220,6 +223,9 @@ export default class Aragon {
       throw Error(`Provided daoAddress is not a DAO`)
     }
 
+    const currentBlock = await this.web3.eth.getBlockNumber()
+    const cacheBlockHeight = Math.max(currentBlock - REORG_SAFETY_BLOCK_AGE, 0) // clamp to 0 for safety
+
     await this.cache.init()
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
@@ -230,6 +236,7 @@ export default class Aragon {
     this.initAppIdentifiers()
     this.initNetwork()
     this.initNotifications()
+    this.initAppMetadata({ cacheBlockHeight })
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -861,22 +868,29 @@ export default class Aragon {
   /**
    * Initialize the appMetadata observable
    */
-  initAppMetadata () {
-    this.appMetadata = new BehaviorSubject({}).pipe(
-      scan((metadataRegistry, { from, dataId, cid, to }) => {
-        const key = `${from},${dataId}`
-        if (from) {
-          metadataRegistry[key] = {
-            from,
-            dataId,
-            cid,
-            to
+  async initAppMetadata ({ cacheBlockHeight = 0 } = {}) {
+    const cachedMetadata = (await this.cache.get('appMetadata')) || {}
+    this.appMetadata = new BehaviorSubject({ ...cachedMetadata }).pipe(
+      scan((inMemoryMetadata, { from, blockNumber, dataId, cid, to }) => {
+        function mutate (metadataRegistry) {
+          const key = `${from},${dataId}`
+          if (from) {
+            metadataRegistry[key] = {
+              from,
+              dataId,
+              cid,
+              to
+            }
           }
         }
-        return metadataRegistry
-      },
-      {} // metadataRegistry seed
-      ),
+
+        if (blockNumber < cacheBlockHeight) {
+          mutate(cachedMetadata)
+          this.cache.set('appMetadata', cachedMetadata)
+        }
+        mutate(inMemoryMetadata)
+        return inMemoryMetadata
+      }),
       publishReplay(1)
     )
     this.appMetadata.connect()
@@ -886,13 +900,15 @@ export default class Aragon {
    * registers new app metadata item
    *
    * @param {string} from Address of the application generating the data
+   * @param {string} blockNumber block that trigger the metadata creation or update
    * @param {string} dataId internal ID assigned to the data by the originator (could be actionId)
    * @param {string} cid external identifier (e.g., IPFS hash)
    * @param {<Array>string} to Optional list of addresses of the applications intended access to the data, defaults to '*'
    */
-  registerAppMetadata (from, dataId, cid, to = ['*']) {
+  registerAppMetadata (from, blockNumber, dataId, cid, to = ['*']) {
     this.appMetadata.next({
       from,
+      blockNumber,
       dataId,
       cid,
       to

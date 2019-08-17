@@ -1459,6 +1459,7 @@ test('should init the appMetadata correctly', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
+  instance.cache.get = sinon.stub().returns({})
   // act
   await instance.initAppMetadata()
   // assert
@@ -1474,11 +1475,12 @@ test('should add metadata items', async (t) => {
   // arrange
   const { Aragon } = t.context
   const instance = new Aragon()
-
+  instance.cache.get = sinon.stub().returns({})
   // act
   await instance.initAppMetadata()
   instance.registerAppMetadata(
     '0x73a',
+    '10',
     'u1',
     'Qmrandomhash1',
     ['0xdeadcafe']
@@ -1500,6 +1502,7 @@ test('should add metadata items', async (t) => {
   // 'to' parameter should be defaulted to '*'
   instance.registerAppMetadata(
     '0x73a',
+    '11',
     'v2',
     'Qmrandomhash2'
   )
