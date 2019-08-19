@@ -575,7 +575,9 @@ export class AppProxy {
   getAppMetadata () {
     return this.rpc.sendAndObserveResponses(
       'get_app_metadata'
-    ).pipe(pluck('result'))
+    ).pipe(
+      pluck('result')
+    )
   }
 
   /**
@@ -588,7 +590,9 @@ export class AppProxy {
     return this.rpc.sendAndObserveResponse(
       'query_app_metadata',
       [from, dataId]
-    ).pipe(pluck('result'))
+    ).pipe(
+      pluck('result')
+    )
   }
 }
 
