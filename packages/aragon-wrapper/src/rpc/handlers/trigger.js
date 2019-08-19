@@ -4,11 +4,13 @@ export function trigger (request, proxy, wrapper) {
     eventName,
     returnValues
   ] = request.params
+
   wrapper.triggerAppStore(
     proxy.address,
     eventName,
     returnValues
   )
+  return Promise.resolve()
 }
 
 export function triggerSubscribe (request, proxy, wrapper) {

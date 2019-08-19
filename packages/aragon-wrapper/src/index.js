@@ -1240,7 +1240,7 @@ export default class Aragon {
 
         // Etc.
         handlers.createRequestHandler(request$, 'notification', handlers.notifications),
-        handlers.createRequestHandler(request$, 'trigger', handlers.triggerAppStore),
+        handlers.createRequestHandler(request$, 'trigger', handlers.newTrigger),
         handlers.createRequestHandler(request$, 'getTriggers', handlers.getTriggers)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
