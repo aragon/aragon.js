@@ -39,7 +39,7 @@ test('should send intent when the method does not exist in target', t => {
 })
 
 test('should return the network details as an observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const networkDetails = {
     id: 4,
@@ -61,15 +61,14 @@ test('should return the network details as an observable', t => {
   const result = networkFn.call(instanceStub)
   // assert
   // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('network'))
   result.subscribe(value => {
     t.deepEqual(value, networkDetails)
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'network')
 })
 
 test('should return the accounts as an observable', t => {
-  t.plan(3)
+  t.plan(2)
   // arrange
   const accountsFn = Index.AppProxy.prototype.accounts
   const observable = of({
@@ -87,11 +86,69 @@ test('should return the accounts as an observable', t => {
   const result = accountsFn.call(instanceStub)
   // assert
   // the call to sendAndObserveResponse is made before we subscribe
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.getCall(0))
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('accounts'))
   result.subscribe(value => {
     t.deepEqual(value, ['accountX', 'accountY', 'accountZ'])
   })
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'accounts')
+})
+
+test('should return the installed apps as an observable', t => {
+  t.plan(3)
+
+  const initialApps = [
+    {
+      abi: 'abi for kernel',
+      appId: 'kernel',
+      codeAddress: '0xkernel',
+      isAragonOsInternalApp: true,
+      proxyAddress: '0x123'
+    }
+  ]
+  const endApps = [].concat(initialApps, {
+    abi: 'abi for counterApp',
+    appId: 'counterApp',
+    codeAddress: '0xcounterApp',
+    isForwarder: false,
+    kernelAddress: '0x123',
+    proxyAddress: '0x456'
+  })
+
+  // arrange
+  const getAppsFn = Index.AppProxy.prototype.getApps
+  const observable = of(
+    {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: initialApps
+    }, {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: endApps
+    }
+  )
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = getAppsFn.call(instanceStub)
+  // assert
+  // the call to sendAndObserveResponses is made before we subscribe
+  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('get_apps'))
+  let emitIndex = 1
+  result.subscribe(value => {
+    if (emitIndex === 1) {
+      t.deepEqual(value, initialApps)
+    } else if (emitIndex === 2) {
+      t.deepEqual(value, endApps)
+    } else {
+      t.fail('too many emissions')
+    }
+
+    emitIndex++
+  })
 })
 
 test('should send an identify request', t => {
@@ -134,26 +191,20 @@ test('should return the events observable', t => {
 })
 
 test('should return an handle for an external contract events', t => {
-  t.plan(6)
+  t.plan(3)
   // arrange
   const externalFn = Index.AppProxy.prototype.external
   const observableEvents = of({
     id: 'uuid1',
     result: { name: 'eventA', value: 3000 }
   })
-  const observableCall = of({
-    id: 'uuid4',
-    result: 'bob was granted permission for the counter app'
-  })
   const jsonInterfaceStub = [
-    { type: 'event', name: 'SetPermission' },
-    { type: 'function', name: 'grantPermission', constant: true }
+    { type: 'event', name: 'SetPermission' }
   ]
   const instanceStub = {
     rpc: {
       // Mimic behaviour of @aragon/rpc-messenger
-      sendAndObserveResponses: createDeferredStub(observableEvents),
-      sendAndObserveResponse: createDeferredStub(observableCall)
+      sendAndObserveResponses: createDeferredStub(observableEvents)
     }
   }
   // act
@@ -169,13 +220,77 @@ test('should return an handle for an external contract events', t => {
       ['0xextContract', [jsonInterfaceStub[0]], 2]
     )
   })
+})
+
+test('should return a handle for creating external calls', t => {
+  t.plan(4)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableCall = of({
+    id: 'uuid4',
+    result: 'bob was granted permission for the counter app'
+  })
+
+  const jsonInterfaceStub = [
+    { type: 'function', name: 'grantPermission', constant: true }
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableCall)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+
+  // assert
+  t.true(typeof result.grantPermission === 'function')
+
   result.grantPermission('0xbob', '0xcounter').subscribe(value => {
     t.is(value, 'bob was granted permission for the counter app')
 
     t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_call')
     t.deepEqual(
       instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1],
-      ['0xextContract', jsonInterfaceStub[1], '0xbob', '0xcounter']
+      ['0xextContract', jsonInterfaceStub[0], '0xbob', '0xcounter']
+    )
+  })
+})
+
+test('should return a handle for creating external transaction intents', t => {
+  t.plan(4)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableIntent = of({
+    id: 'uuid4',
+    result: 10
+  })
+
+  const jsonInterfaceStub = [
+    { type: 'function', name: 'add', constant: false }
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableIntent)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+
+  // assert
+  t.true(typeof result.add === 'function')
+
+  result.add(10).subscribe(value => {
+    t.is(value, 10)
+    t.is(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[0], 'external_intent')
+    t.deepEqual(
+      instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1],
+      ['0xextContract', jsonInterfaceStub[0], 10]
     )
   })
 })

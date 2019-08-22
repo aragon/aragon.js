@@ -137,6 +137,12 @@ Get the network the app is connected to over time.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an object with the connected network's id and type every time the network changes.
 
+### getApps
+
+Get the list of installed applications on the organization that this app is installed in.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected.
+
 ### call
 
 Perform a read-only call on the app's smart contract.
@@ -168,13 +174,10 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 Creates a handle to interact with an external contract (i.e. a contract that is **not** your app's smart contract, such as a token).
 
-> **Note**<br>
-> Sending transactions to these external contracts is not yet supported as additional security and disclosure enhancements are required in frontend clients (this is a large attack vector for malicious applications to invoke dangerous functionality).
-
 #### Parameters
 
 - `address` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The address of the external contract
-- `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>**: The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract
+- `jsonInterface` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)>**: The [JSON interface](https://solidity.readthedocs.io/en/latest/abi-spec.html#abi-json) of the external contract
 
 #### Examples
 
@@ -251,6 +254,27 @@ Currently the white-list includes:
 - `params` **...any**: An optional variadic number of parameters for the function. See the [web3.eth docs](https://web3js.readthedocs.io/en/1.0/web3-eth.html) for more details.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable with the result of the call.
+
+#### Examples
+
+```javascript
+api.web3Eth('getTransactionReceipt', trxHash).subscribe(
+  receipt => {
+    // use receipt
+  },
+  err => {
+    // handle error
+  }
+)
+```
+
+```javascript
+const block = api.web3Eth('getBlock', blockNumber).toPromise()
+```
+
+```javascript
+const balance = await api.web3Eth('getBalance', connectedAccount).toPromise()
+```
 
 ### cache
 

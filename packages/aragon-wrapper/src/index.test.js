@@ -4,10 +4,12 @@ import proxyquire from 'proxyquire'
 import { empty, from, of, ReplaySubject, Subject } from 'rxjs'
 import { first } from 'rxjs/operators'
 import { signals as rpcSignals } from '@aragon/rpc-messenger'
+import * as configurationKeys from './configuration/keys'
 import { getCacheKey } from './utils'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 import * as callscriptUtils from './utils/callscript'
 import * as forwardingUtils from './utils/forwarding'
+import * as transactionsUtils from './utils/transactions'
 
 const { encodeCallScript } = callscriptUtils
 
@@ -24,6 +26,9 @@ test.beforeEach(t => {
   const apmCoreStub = {
     getApmAppInfo: sinon.stub()
   }
+  const configurationStub = {
+    setConfiguration: sinon.stub()
+  }
   const messengerConstructorStub = sinon.stub()
   messengerConstructorStub.signals = rpcSignals
   const utilsStub = {
@@ -33,13 +38,16 @@ test.beforeEach(t => {
     callscript: callscriptUtils,
     forwarding: forwardingUtils,
     makeAddressMapProxy: sinon.fake.returns({}),
-    makeProxy: sinon.stub()
+    makeProxy: sinon.stub(),
+    transactions: transactionsUtils
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/apm': sinon.stub().returns(apmStub),
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
     './core/apm': apmCoreStub,
+    './configuration': configurationStub,
+    './configuration/keys': configurationKeys,
     './utils': utilsStub
   }).default
 
@@ -48,6 +56,7 @@ test.beforeEach(t => {
     apmStub,
     aragonOSCoreStub,
     apmCoreStub,
+    configurationStub,
     messengerConstructorStub,
     utilsStub
   }
@@ -89,6 +98,63 @@ test('should throw on init if daoAddress is not a Kernel', async (t) => {
       message: `Provided daoAddress is not a DAO`
     }
   )
+})
+
+test('should set the default configuration', t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0)
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, false)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 0)
+  )
+  t.not(instance.apm, undefined)
+})
+
+test('should set the given configuration', t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0, {
+    cache: { forceLocalStorage: true },
+    events: { subscriptionEventDelay: 1000 }
+  })
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, true)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 1000)
+  )
+  t.not(instance.apm, undefined)
+})
+
+test("should set the default configuration if overriding configuration doesn't contain keys", t => {
+  const { Aragon, configurationStub } = t.context
+
+  t.plan(4)
+  // act
+  const instance = new Aragon(0x0, {
+    cache: {},
+    events: {}
+  })
+  // assert
+  t.truthy(configurationStub.setConfiguration.calledTwice)
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.FORCE_LOCAL_STORAGE, false)
+  )
+  t.truthy(
+    configurationStub.setConfiguration.calledWith(configurationKeys.SUBSCRIPTION_EVENT_DELAY, 0)
+  )
+  t.not(instance.apm, undefined)
 })
 
 test('should use provided accounts', async (t) => {
@@ -1069,6 +1135,108 @@ test('should be able to reject intent when perform transaction path', async (t) 
   ])
 })
 
+test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
+  const { Aragon } = t.context
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.permissions = of({
+    counter: {
+      add: {
+        allowedEntities: ['0x1', '0x2']
+      },
+      subtract: {
+        allowedEntities: ['0x1'],
+        manager: 'im manager'
+      }
+    }
+  })
+  instance.forwarders = of([
+    {
+      appId: 'forwarderA',
+      proxyAddress: '0x999'
+    }
+  ])
+  instance.apps = of([
+    {
+      appId: 'counterApp',
+      kernelAddress: '0x123',
+      abi: 'abi for counterApp',
+      proxyAddress: '0x456'
+    }, {
+      appId: 'votingApp',
+      kernelAddress: '0x123',
+      // abi: 'abi for votingApp',
+      proxyAddress: '0x789'
+    }
+  ])
+  // act
+  return instance.calculateTransactionPath(null, '0x789')
+    .catch(err => {
+      // assert
+      t.is(err.message, 'No ABI specified in artifact for 0x789')
+      /*
+       * Note: This test also "asserts" that the permissions object, the app object and the
+       * forwarders array does not throw any errors when they are being extracted from their observables.
+       */
+    })
+})
+
+test('should use normal transaction pathing when finding external transaction path for installed app', async (t) => {
+  const { Aragon } = t.context
+  const targetAddress = '0x123'
+  const targetMethodJsonDescription = [{ name: 'foo' }]
+  const targetParams = [8]
+  const mockPath = [{ to: '0x123', data: '0x456' }]
+
+  t.plan(2)
+  // arrange
+  const instance = new Aragon()
+  instance.accounts = of('0x00')
+  instance.apps = of([
+    {
+      appId: 'counterApp',
+      kernelAddress: '0x789',
+      abi: 'abi for counterApp',
+      proxyAddress: targetAddress
+    }
+  ])
+  instance.getTransactionPath = sinon.stub().returns(mockPath)
+  // act
+  const externalPath = await instance.getExternalTransactionPath(targetAddress, targetMethodJsonDescription, targetParams)
+  // assert
+  t.deepEqual(externalPath, mockPath)
+  t.true(instance.getTransactionPath.calledOnceWith(targetAddress, targetMethodJsonDescription.name, targetParams))
+})
+
+test('should be able to find external transaction path for non-installed app', async (t) => {
+  const { Aragon, utilsStub } = t.context
+  const targetAddress = '0x123'
+  const targetMethodJsonDescription = [{ name: 'foo' }]
+  const targetParams = [8]
+  const mockTransaction = { to: targetAddress, data: '0x123' }
+
+  t.plan(1)
+  // arrange
+  const instance = new Aragon()
+  instance.accounts = of('0x00')
+  instance.apps = of([
+    {
+      appId: 'counterApp',
+      kernelAddress: '0x789',
+      abi: 'abi for counterApp',
+      proxyAddress: '0x456'
+    }
+  ])
+  instance.describeTransactionPath = sinon.stub().returnsArg(0)
+  utilsStub.transactions.createDirectTransaction = sinon.stub().returns(mockTransaction)
+  // act
+  const externalPath = await instance.getExternalTransactionPath(targetAddress, targetMethodJsonDescription, targetParams)
+  // assert
+  t.deepEqual(externalPath, [mockTransaction])
+})
+
 test('should run the app and reply to a request', async (t) => {
   const { Aragon, messengerConstructorStub, utilsStub } = t.context
 
@@ -1296,54 +1464,6 @@ test('should get the permission manager', async (t) => {
   const result = await instance.getPermissionManager('counter', 'subtract')
   // assert
   t.is(result, 'im manager')
-})
-
-test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
-  const { Aragon } = t.context
-
-  t.plan(1)
-  // arrange
-  const instance = new Aragon()
-  instance.permissions = of({
-    counter: {
-      add: {
-        allowedEntities: ['0x1', '0x2']
-      },
-      subtract: {
-        allowedEntities: ['0x1'],
-        manager: 'im manager'
-      }
-    }
-  })
-  instance.forwarders = of([
-    {
-      appId: 'forwarderA',
-      proxyAddress: '0x999'
-    }
-  ])
-  instance.apps = of([
-    {
-      appId: 'counterApp',
-      kernelAddress: '0x123',
-      abi: 'abi for counterApp',
-      proxyAddress: '0x456'
-    }, {
-      appId: 'votingApp',
-      kernelAddress: '0x123',
-      // abi: 'abi for votingApp',
-      proxyAddress: '0x789'
-    }
-  ])
-  // act
-  return instance.calculateTransactionPath(null, '0x789')
-    .catch(err => {
-      // assert
-      t.is(err.message, 'No ABI specified in artifact for 0x789')
-      /*
-       * Note: This test also "asserts" that the permissions object, the app object and the
-       * forwarders array does not throw any errors when they are being extracted from their observables.
-       */
-    })
 })
 
 test('should be able to decode an evm call script with a single transaction', async (t) => {

@@ -32,6 +32,8 @@ const providers = require('@aragon/wrapper').providers
   - `options.provider` **any** The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider` if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws (optional)
   - `options.apm` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Primarily used to set an alternative ipfs provider (optional, default `{}`)
   - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry (optional, default `null`)
+  - `options.cache` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Cache options
+  - `options.cache.forceLocalStorage` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** On browser environments, downgrade to localStorage even if IndexedDB is available
 
 ### **Examples**
 
@@ -58,7 +60,7 @@ Initialise the wrapper.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/dev/contracts/kernel/Kernel.sol) instance
+Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/next/contracts/kernel/Kernel.sol) instance
 
 ### initAccounts
 
@@ -79,7 +81,7 @@ Initialise the ACL.
 #### **Parameters**
 
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
-  - `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/dev/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
+  - `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/next/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 

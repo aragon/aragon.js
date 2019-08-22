@@ -2,15 +2,29 @@ import { Subject, concat, race } from 'rxjs'
 import { filter, pluck } from 'rxjs/operators'
 import localforage from 'localforage'
 import memoryStorageDriver from 'localforage-memoryStorageDriver'
+import { getConfiguration } from '../configuration'
+import * as configurationKeys from '../configuration/keys'
 
 /**
- * A cache.
+ * A persistent cache on browser environments, preferring IndexedDB when available.
+ * Falls back to an in-memory cache on node environments.
+ *
+ * @param {string} prefix
+ *        String prefix to use for the cache
+ * @param {Object} [options]
+ *        Options
+ * @param {boolean} [options.forceLocalStorage]
+ *        Require the cache to downgrade to localstorage even if IndexedDB is available
  */
 export default class Cache {
   #trackedKeys = new Set()
 
   constructor (prefix) {
     this.prefix = prefix
+    const forceLocalStorage = getConfiguration(configurationKeys.FORCE_LOCAL_STORAGE)
+    this.drivers = forceLocalStorage
+      ? [localforage.LOCALSTORAGE, memoryStorageDriver]
+      : [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
   }
 
   async init () {
@@ -19,7 +33,7 @@ export default class Cache {
 
     // Set up cache DB
     this.db = localforage.createInstance({
-      driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver._driver],
+      driver: this.drivers,
       name: `localforage/${this.prefix}`
     })
 

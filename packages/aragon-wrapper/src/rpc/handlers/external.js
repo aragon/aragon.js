@@ -1,19 +1,38 @@
 import { fromEvent, from } from 'rxjs'
+import { delay } from 'rxjs/operators'
+import { getConfiguration } from '../../configuration'
+import * as configurationKeys from '../../configuration/keys'
 
 export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [
     address,
-    method,
+    methodJsonDescription,
     ...params
   ] = request.params
 
   const contract = new web3.eth.Contract(
-    [method],
+    [methodJsonDescription],
     address
   )
 
-  return contract.methods[method.name](...params).call()
+  return contract.methods[methodJsonDescription.name](...params).call()
+}
+
+export async function intent (request, proxy, wrapper) {
+  const [
+    address,
+    methodJsonDescription,
+    ...params
+  ] = request.params
+
+  const transactionPath = await wrapper.getExternalTransactionPath(
+    address,
+    methodJsonDescription,
+    params
+  )
+
+  return wrapper.performTransactionPath(transactionPath, { external: true })
 }
 
 export function events (request, proxy, wrapper) {
@@ -31,11 +50,15 @@ export function events (request, proxy, wrapper) {
     address
   )
 
-  return fromEvent(
+  const eventSource = fromEvent(
     contract.events.allEvents({
       fromBlock
     }), 'data'
   )
+
+  const eventDelay = getConfiguration(configurationKeys.SUBSCRIPTION_EVENT_DELAY) || 0
+  // Small optimization: don't pipe a delay if we don't have to
+  return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
 }
 
 export function pastEvents (request, proxy, wrapper) {
