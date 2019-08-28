@@ -429,7 +429,7 @@ test('should create a store and reduce correctly with previously cached state', 
     if (value.counter === 7) {
       t.deepEqual(value.actionHistory, [
         { event: 'Add', payload: 5 },
-        { event: 'Add', payload: 2 },
+        { event: 'Add', payload: 2 }
       ])
     }
     if (value.counter === 17) {
