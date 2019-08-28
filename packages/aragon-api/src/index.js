@@ -480,11 +480,11 @@ export class AppProxy {
         const pastEventsToBlock = Math.max(0, latestBlock - BLOCK_REORG_MARGIN)
 
         if (cachedBlock !== undefined) {
-          debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+          debug(`- store - pastEvents: block ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
         } else {
           debug(`- store - pastEvents: initialization block -> ${pastEventsToBlock} (up to ${pastEventsToBlock} blocks)`)
         }
-        debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
+        debug(`- store - currentEvents$: block ${pastEventsToBlock} -> future`)
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, initialStoreState, 1),
