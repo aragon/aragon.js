@@ -1187,7 +1187,7 @@ test('should run the app and reply to a request', async (t) => {
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
   const instance = new Aragon()
-  instance.cache.observe = sinon.stub()
+  instance.cache.get = sinon.stub()
     .withArgs('0x789.settings')
     .returns(of('user settings for the voting app'))
   instance.apps = of([
