@@ -470,7 +470,7 @@ export class AppProxy {
 
     const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
       switchMap(([cacheValue, initState, latestBlock]) => {
-        const { state: cachedState, block: cachedBlock } = cacheValue
+        const { state: cachedState = null, block: cachedBlock } = cacheValue
         const initialStoreState = init ? initState : cachedState
         debug('- store - initial store state', initialStoreState)
         debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
