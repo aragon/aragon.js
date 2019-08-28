@@ -1,11 +1,15 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { defer, from, of } from 'rxjs'
+import { defer, from, of, Subject } from 'rxjs'
 
 const Index = proxyquire.noCallThru().load('./index', {
   '@aragon/rpc-messenger': {}
 })
+
+async function sleep (time) {
+  return new Promise(resolve => setTimeout(resolve, time))
+}
 
 function createDeferredStub (observable) {
   return sinon.stub().returns(defer(() => observable))
@@ -319,83 +323,130 @@ test('should return the state from cache', t => {
   })
 })
 
-// test('should create a store reducer', async t => {
-//   t.plan(2)
-//   // arrange
-//   const storeFn = Index.AppProxy.prototype.store
-//   const observableState = from([{
-//     actionHistory: [
-//       { event: 'Add', payload: 5 }
-//     ],
-//     counter: 5
-//   }, {
-//     // this will be ignored, but recalculated correctly because we still have the event
-//     actionHistory: [
-//       { event: 'Add', payload: 5 },
-//       { event: 'Add', payload: 2 }
-//     ],
-//     counter: 7
-//   }])
-//   const observableEvents = from([
-//     { event: 'Add', payload: 2 },
-//     { event: 'Add', payload: 10 }
-//   ])
-//   const instanceStub = {
-//     // Mimic behaviour of @aragon/rpc-messenger
-//     state: createDeferredStub(observableState),
-//     events: createDeferredStub(observableEvents),
-//     cache: sinon.stub().returnsArg(1) // should return 2nd argument
-//   }
-//   const reducer = (state, action) => {
-//     if (state === null) state = { actionHistory: [], counter: 0 }
+test('should create a store and reduce correctly without previously cached state', async t => {
+  t.plan(2)
+  // arrange
+  const storeFn = Index.AppProxy.prototype.store
+  const observableEvents = new Subject()
 
-//   const accounts$ = from([
-//     ['0x0000000000000000000000000000000000000abc']
-//   ])
+  const instanceStub = {
+    accounts: () => from([
+      ['0x0000000000000000000000000000000000000abc']
+    ]),
+    cache: () => of(),
+    events: createDeferredStub(observableEvents),
+    getCache: () => from([null]),
+    pastEvents: () => of([]),
+    web3Eth: sinon.stub().withArgs('getBlockNumber').returns(from(['4385398']))
+  }
+  const reducer = (state, action) => {
+    if (state === null) state = { actionHistory: [], counter: 0 }
 
-//   const instanceStub = {
-//     accounts: () => accounts$,
-//     cache: sinon.stub().returnsArg(1), // should return 2nd argument
-//     events: () => observableB,
-//     getCache: () => from([null]),
-//     pastEvents: () => from([null]),
-//     state: () => observableA,
-//     web3Eth: () => from(['4385398'])
-//   }
-//   const reducer = (state, action) => {
-//     if (state === null) state = { actionHistory: [], counter: 0 }
+    switch (action.event) {
+      case 'Add':
+        state.actionHistory.push(action)
+        state.counter += action.payload
+        return state
+      case 'Subtract':
+        state.actionHistory.push(action)
+        state.counter -= action.payload
+        return state
+    }
+    return state
+  }
+  // act
+  const result = storeFn.call(instanceStub, reducer)
+  // assert
+  result.subscribe(value => {
+    if (value.counter === 2) {
+      t.deepEqual(value.actionHistory, [
+        { event: 'Add', payload: 2 }
+      ])
+    }
+    if (value.counter === 12) {
+      t.deepEqual(value.actionHistory, [
+        { event: 'Add', payload: 2 },
+        { event: 'Add', payload: 10 }
+      ])
+    }
+  })
+  // send events; wait to avoid grouping through debounce
+  await sleep(250)
+  observableEvents.next({ event: 'Add', payload: 2 })
+  await sleep(500)
+  observableEvents.next({ event: 'Add', payload: 10 })
+  await sleep(500)
+})
 
-//     switch (action.event) {
-//       case 'Add':
-//         state.actionHistory.push(action)
-//         state.counter += action.payload
-//         return state
-//       case 'Subtract':
-//         state.actionHistory.push(action)
-//         state.counter -= action.payload
-//         return state
-//     }
-//     return state
-//   }
-//   // act
-//   const result = storeFn.call(instanceStub, reducer)
-//   // assert
-//   result.subscribe(value => {
-//     if (value.counter === 7) {
-//       t.deepEqual(value.actionHistory, [
-//         { event: 'Add', payload: 5 },
-//         { event: 'Add', payload: 2 }
-//       ])
-//     }
-//     if (value.counter === 17) {
-//       t.deepEqual(value.actionHistory, [
-//         { event: 'Add', payload: 5 },
-//         { event: 'Add', payload: 2 },
-//         { event: 'Add', payload: 10 }
-//       ])
-//     }
-//   })
-// })
+test('should create a store and reduce correctly with previously cached state', async t => {
+  t.plan(2)
+  // arrange
+  const storeFn = Index.AppProxy.prototype.store
+  const observableEvents = new Subject()
+
+  const instanceStub = {
+    accounts: () => from([
+      ['0x0000000000000000000000000000000000000abc']
+    ]),
+    cache: () => of(),
+    events: createDeferredStub(observableEvents),
+    getCache: () => of({
+      state: {
+        actionHistory: [
+          { event: 'Add', payload: 5 }
+        ],
+        counter: 5
+      },
+      blockNumber: 1
+    }),
+    pastEvents: () => of([]),
+    web3Eth: sinon.stub().withArgs('getBlockNumber').returns(from(['4385398']))
+  }
+  const reducer = (state, action) => {
+    if (state === null) state = { actionHistory: [], counter: 0 }
+
+    switch (action.event) {
+      case 'Add':
+        state.actionHistory.push(action)
+        state.counter += action.payload
+        return state
+      case 'Subtract':
+        state.actionHistory.push(action)
+        state.counter -= action.payload
+        return state
+    }
+    return state
+  }
+  // act
+  const result = storeFn.call(instanceStub, reducer)
+  // assert
+  result.subscribe(value => {
+    if (value.counter === 5) {
+      t.deepEqual(value.actionHistory, [
+        { event: 'Add', payload: 5 }
+      ])
+    }
+    if (value.counter === 7) {
+      t.deepEqual(value.actionHistory, [
+        { event: 'Add', payload: 5 },
+        { event: 'Add', payload: 2 },
+      ])
+    }
+    if (value.counter === 17) {
+      t.deepEqual(value.actionHistory, [
+        { event: 'Add', payload: 5 },
+        { event: 'Add', payload: 2 },
+        { event: 'Add', payload: 10 }
+      ])
+    }
+  })
+  // send events; wait to avoid grouping through debounce
+  await sleep(250)
+  observableEvents.next({ event: 'Add', payload: 2 })
+  await sleep(500)
+  observableEvents.next({ event: 'Add', payload: 10 })
+  await sleep(500)
+})
 
 test('should perform a call to the contract and observe the response', t => {
   t.plan(3)
@@ -418,37 +469,6 @@ test('should perform a call to the contract and observe the response', t => {
   t.deepEqual(instanceStub.rpc.sendAndObserveResponse.getCall(0).args[1], ['transferEth', 10])
   result.subscribe(value => {
     t.deepEqual(value, 'success')
-  })
-})
-
-test('should listen for app contexts sent from the wrapper and return the first param', t => {
-  t.plan(2)
-  // arrange
-  const contextFn = Index.AppProxy.prototype.context
-  const observable = from([{
-    id: 'uuid0',
-    // this will get filtered out
-    params: ['x', 'y']
-  }, {
-    id: 'uuid1',
-    method: 'context',
-    params: ['first', 'second']
-  }, {
-    id: 'uuid4',
-    method: 'context',
-    params: [1, 2]
-  }])
-  const instanceStub = {
-    rpc: {
-      requests: sinon.stub()
-        .returns(observable)
-    }
-  }
-  // act
-  const result = contextFn.call(instanceStub)
-  // assert
-  result.subscribe(value => {
-    t.true(value === 'first' || value === 1)
   })
 })
 
