@@ -303,23 +303,35 @@ test('should return the state from cache', t => {
   t.plan(3)
   // arrange
   const stateFn = Index.AppProxy.prototype.state
-  const observable = of({
-    id: 'uuid1',
-    result: { counter: 5 }
-  })
+  const stateObservable = new Subject()
   const instanceStub = {
     rpc: {
       // Mimic behaviour of @aragon/rpc-messenger
-      sendAndObserveResponses: createDeferredStub(observable)
+      sendAndObserveResponses: createDeferredStub(stateObservable)
     }
   }
   // act
   const result = stateFn.call(instanceStub)
   // assert
-  t.is(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[0], 'cache')
-  t.deepEqual(instanceStub.rpc.sendAndObserveResponses.getCall(0).args[1], ['get', 'state'])
+  t.true(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('cache', ['observe', 'state']))
+
+  let counter = 0
   result.subscribe(value => {
-    t.deepEqual(value, { counter: 5 })
+    if (counter === 0) {
+      t.deepEqual(value, { counter: 5 })
+    } else if (counter === 1) {
+      t.deepEqual(value, { counter: 6 })
+    }
+    counter++
+  })
+  // send state events
+  stateObservable.next({
+    id: 'uuid1',
+    result: { counter: 5 }
+  })
+  stateObservable.next({
+    id: 'uuid1',
+    result: { counter: 6 }
   })
 })
 

@@ -366,7 +366,7 @@ export class AppProxy {
   state () {
     return this.rpc.sendAndObserveResponses(
       'cache',
-      ['get', 'state']
+      ['observe', 'state']
     ).pipe(
       pluck('result')
     )
