@@ -455,7 +455,12 @@ export class AppProxy {
     // init the app state with the cached state
     const initState$ = init
       ? cacheValue$.pipe(
-        switchMap(({ state }) => from(init(state))),
+        switchMap(({ state }) => {
+          // Make sure `init()` gets a new copy of the cached state so that it doesn't
+          // accidentally manipulate the observable's object
+          const initialState = state ? { ...state } : null
+          return from(init(initialState))
+        }),
         delayWhen((initState) => {
           debug('- store - init state:', initState)
           return this.cache('state', initState)
@@ -466,19 +471,23 @@ export class AppProxy {
     const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
       switchMap(([cacheValue, initState, latestBlock]) => {
         const { state: cachedState, block: cachedBlock } = cacheValue
-        debug('- store - initState', initState)
-        debug('- store - cachedState', cachedState)
+        const initialStoreState = init ? initState : cachedState
+        debug('- store - initial store state', initialStoreState)
         debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
 
         // The block up to which to fetch past events.
         // The reduced state up to this point will be cached on every load
         const pastEventsToBlock = Math.max(0, latestBlock - BLOCK_REORG_MARGIN)
 
-        debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+        if (cachedBlock !== undefined) {
+          debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+        } else {
+          debug(`- store - pastEvents: initialization block -> ${pastEventsToBlock} (up to ${pastEventsToBlock} blocks)`)
+        }
         debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
-          mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          mergeScan(wrappedReducer, initialStoreState, 1),
           // throttle to reduce rendering and caching overthead
           // must keep trailing to avoid discarded events
           throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
