@@ -207,12 +207,13 @@ A more complicated example that also includes `options.init` and `options.extern
 const token = api.external(tokenAddress, tokenJsonInterface)
 
 const initStore = async (cachedStoreState) => {
-  // Perform any re-initializations on the cached store state
-  // This is useful for updating token balances, etc. for state that may not be
-  // subscribable to via events
+  // Perform any re-initializations on the cached committed state
+  // This is useful for updating state (e.g. token balances, etc.) that may not
+  // be // dependent on events
   const reinitializedStoreState = { ...cachedStoreState }
 
-  // The state returned here will be used
+  // The state returned here will be used to start the reducer
+  // (rather than the cached state)
   return reinitializedStoreState
 }
 
