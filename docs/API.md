@@ -276,24 +276,53 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 ### store
 
-Listens for events, passes them through `reducer`, caches the resulting state and re-emits that state for easy chaining.
+Listens for events, passes them through `reducer`, caches the resulting state, and re-emits that state for easy chaining. **Should be** used as the main "event loop" in application background scripts running in a WebWorker.
 
-This is in fact sugar on top of [`state`](#state), [`events`](#events) and [`cache`](#cache).
+The store has block caching automatically applied, such that subsequent loads of the application only fetch new events from a cached ("committed") block height (rather than from `0` or the app's initialization block).
 
-The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event.
+The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event. Returning `undefined` will reset the reduced state to its initial null state.
 
 Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
 
-Optionally takes a configuration object of an `init` function to make computations on the store's initial state and an array of `externals` - smart contracts returned by `api.external`. See below for more details.
+Optionally takes a configuration object comprised of an `init` function, to re-initialize cached state, and an `externals` array for subscribing to external contract events. See below for more details.
 
 #### Parameters
 
-- `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)**: A function that reduces events to a state. This can return a Promise that resolves to a new state
+- `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)**: A function that reduces events to a state. The function is allowed to be `async` and can return a Promise that resolves to the new state.
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): An object that initializes the store with a specific configuration:
-    - `options.init` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** (optional): An initialization function for the state that takes the cached state as a parameter. Should return a promise that resolves to the initial state.
-    - `options.externals` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** (optional): An optional array of objects containing `contract` (as returned from `api.external`) and an optional `initializationBlock` from which to fetch events.
+    - `options.init` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** (optional): An initialization function for the state that takes the cached state (`null` if no cached state exists) as a parameter and returns re-initialized state. The function is allowed to be `async` and can return a Promise that resolves to the state.
+    - `options.externals` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** (optional): An array of external contracts whose events the store will also be subscribed to. Each element in the array is an object containing `contract` (an external contract handle returned from `api.external()`) and an optional `initializationBlock` number from which external events should be fetched from.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits the application state every time it changes. The type of the emitted values is application specific.
+
+#### Lifecycle
+
+A simple representation of the store's lifecycle:
+
+1. Obtain the store's initial state by fetching any cached ("committed") state for the app, else use `null` as the initial state
+1. Fetch past events from the contract and, starting with the initial state, reduce new state based on the incoming events
+  - Note that there are some "custom" built-in events at this step:
+    - `SYNC_STATUS_SYNCING`: triggered when event fetching starts
+    - `SYNC_STATUS_SYNCED`: triggered when event fetching is complete
+1. Cache the state at the end of this initial sync as the app's "committed" state to date
+1. Subscribe to new events from the contract and reduce new state based on the incoming events. Note that this state is not cached as "commited" state and will not be available on the app's next start
+  - Note that there are some "custom" built-in events at this step:
+    - `ACCOUNT_TRIGGER`: triggered whenever the currently connected account changes
+
+However, with `options.init` and `options.externals`, the lifecycle becomes a bit more complicated:
+
+1. Obtain the initial "committed" state, as before
+1. If `options.init` is available, feed the initial state into `options.init`. Use the returned state from `options.init` as the new current state.
+1. Fetch past events from the contract and any given `options.externals` contracts, reducing new state from found events. Note that new events from these contracts are **not** fetched until all past events have been found.
+1. Cache the state as "committed" state, as before
+1. Subscribe to new events from the contract and any given `options.externals` contracts, reducing new state based on the incoming events.
+
+> **Note**<br>
+> The custom events are symbols and can be fetched from the `events` export of `@aragon/api` (e.g. `import { events } from '@aragon/api'`).
 
 #### Examples
+
+A simple example:
 
 ```javascript
 // A simple reducer for a counter app
@@ -316,16 +345,22 @@ const state$ = api.store((state, event) => {
 })
 ```
 
+A more complicated example that also includes `options.init` and `options.external`
+
 ```javascript
-// A reducer that also reduces events from an external smart contract and uses a store initialization function
+// A reducer that also reduces events from an external smart contract and uses
+// an initialization function
 
 const token = api.external(tokenAddress, tokenJsonInterface)
 
 const initStore = async (cachedStoreState) => {
-  // do not mutate cachedStoreState
-  const initialStoreState = { ...cachedStoreState }
-  // perform computations on the store state
-  return initialStoreState
+  // Perform any re-initializations on the cached store state
+  // This is useful for updating token balances, etc. for state that may not be
+  // subscribable to via events
+  const reinitializedStoreState = { ...cachedStoreState }
+
+  // The state returned here will be used
+  return reinitializedStoreState
 }
 
 const state$ = api.store(
@@ -333,13 +368,14 @@ const state$ = api.store(
     // ...
   },
   {
-    externals: { contract: token, initializationBlock: 0 },
+    externals: {
+      contract: token,
+      initializationBlock: 0 // By default this uses the current AragonApp's initialization block
+    },
     init: initStore,
   }
 )
 ```
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable  that emits the application state every time it changes. The type of the emitted values is application specific.
 
 ### identify
 
