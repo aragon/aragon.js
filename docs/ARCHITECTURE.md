@@ -43,8 +43,6 @@ The front-end portion of Aragon applications should only read the computed state
 > **Legend**
 >
 > - ↔ Data is passed between the wrapper and the client.
-> - → Data is passed from the client to the wrapper.
-> - ← Data is passed from the wrapper to the client.
 
 ### ↔ `events`
 
@@ -90,38 +88,6 @@ If a transaction path is found, two things can happen:
 #### Response
 
 **Result**: `[txHash: string]` or an error
-
-### → `notification`
-
-Creates a notification.
-
-A notification can optionally include an application context, which will be sent back to the application if the notification is clicked (via. the `context` RPC).
-
-No response is sent back to the client.
-
-#### Request
-
-**Parameters**: `[timestamp: number, body: string, context: ?any]`
-
-#### Response
-
-_None_.
-
-### ← `context`
-
-Sends an application context to the client.
-
-The interpretation of the application context is up to the client.
-
-Application contexts can be used for shortcuts and notifications to trigger certain actions or views.
-
-#### Request
-
-_None_.
-
-#### Response
-
-**Result**: `[context: any]`
 
 ### ↔ `cache`
 

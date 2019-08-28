@@ -4,7 +4,6 @@ import {
   delayWhen,
   endWith,
   flatMap,
-  filter,
   map,
   mergeScan,
   last,
@@ -536,44 +535,6 @@ export class AppProxy {
     store$.connect()
 
     return store$
-  }
-
-  /**
-   * **NOTE: This call is not currently handled by the wrapper**
-   *
-   * Send a notification.
-   *
-   * @param {string} title The title of the notification.
-   * @param {string} body The body of the notification.
-   * @param {Object} [context={}] An optional context that will be sent back to the app if the notification is clicked.
-   * @param {Date} [date=new Date()] An optional date that specifies when the notification originally occured.
-   * @return {void}
-   */
-  notify (title, body, context = {}, date = new Date()) {
-    return this.rpc.send(
-      'notification',
-      [title, body, context, date]
-    )
-  }
-
-  /**
-   * **NOTE: The wrapper does not currently send contexts to apps**
-   *
-   * Listen for app contexts.
-   *
-   * An app context is an application specific message that the wrapper can send to the app.
-   *
-   * For example, if a notification or a shortcut is clicked, the context attached to either of those will be sent to the app.
-   *
-   * App contexts can be used to display specific views in your app or anything else you might find interesting.
-   *
-   * @return {Observable} Single-emisison Observable that emits app contexts as they are received.
-   */
-  context () {
-    return this.rpc.requests().pipe(
-      filter((request) => request.method === 'context'),
-      map((request) => request.params[0])
-    )
   }
 }
 

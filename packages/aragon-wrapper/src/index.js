@@ -14,11 +14,9 @@ import {
   scan,
   startWith,
   switchMap,
-  tap,
   throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
-import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
@@ -230,7 +228,6 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
-    this.initNotifications()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -1024,127 +1021,6 @@ export default class Aragon {
   }
 
   /**
-   * Initialise the notifications observable.
-   *
-   * @return {void}
-   */
-  initNotifications () {
-    // If the cached notifications doesn't exist or isn't an array, set it to an empty one
-    let cached = this.cache.get('notifications')
-    if (!Array.isArray(cached)) {
-      cached = []
-    } else {
-      // Set up acknowledge for unread notifications
-      cached.forEach(notification => {
-        if (notification && !notification.read) {
-          notification.acknowledge = () => this.acknowledgeNotification(notification.id)
-        }
-      })
-    }
-
-    this.notifications = new BehaviorSubject(cached).pipe(
-      scan((notifications, { modifier, notification }) => modifier(notifications, notification)),
-      tap((notifications) => this.cache.set('notifications', notifications)),
-      publishReplay(1)
-    )
-    this.notifications.connect()
-  }
-
-  /**
-   * Send a notification.
-   *
-   * @param {string} app   The address of the app sending the notification
-   * @param {string} title The notification title
-   * @param {string} body  The notification body
-   * @param {object} [context={}] The application context to send back if the notification is clicked
-   * @param  {Date}  [date=new Date()] The date the notification was sent
-   * @return {void}
-   */
-  sendNotification (app, title, body, context = {}, date = new Date()) {
-    const id = uuidv4()
-    const notification = {
-      app,
-      body,
-      context,
-      date,
-      id,
-      title,
-      read: false
-    }
-    this.notifications.next({
-      modifier: (notifications, notification) => {
-        // Find the first notification that's not before this new one
-        // and insert ahead of it if it exists
-        const newNotificationIndex = notifications.findIndex(
-          notification => ((new Date(notification.date)).getTime() >= date.getTime())
-        )
-        return newNotificationIndex === -1
-          ? [...notifications, notification]
-          : [
-            ...notifications.slice(0, newNotificationIndex),
-            notification,
-            ...notifications.slice(newNotificationIndex)
-          ]
-      },
-      notification: {
-        ...notification,
-        acknowledge: () => this.acknowledgeNotification(id)
-      }
-    })
-  }
-
-  /**
-   * Acknowledge a notification.
-   *
-   * @param {string} id The notification's id
-   * @return {void}
-   */
-  acknowledgeNotification (id) {
-    this.notifications.next({
-      modifier: (notifications) => {
-        const notificationIndex = notifications.findIndex(notification => notification.id === id)
-        // Copy the old notifications and replace the old notification with a read version
-        const newNotifications = [...notifications]
-        newNotifications[notificationIndex] = {
-          ...notifications[notificationIndex],
-          read: true,
-          acknowledge: () => { }
-        }
-        return newNotifications
-      }
-    })
-  }
-
-  /**
-   * Clears a notification.
-   *
-   * @param {string} id The notification's id
-   * @return {void}
-   */
-  clearNotification (id) {
-    this.notifications.next({
-      modifier: (notifications) => {
-        return notifications.pipe(
-          filter(notification => notification.id !== id)
-        )
-      }
-    })
-  }
-
-  /**
-   * Clears all notifications.
-   *
-   * @return {void}
-   */
-  clearNotifications () {
-    this.notifications.next({
-      modifier: (notifications) => {
-        return []
-      }
-    })
-  }
-
-  /**
    * Run an app.
    *
    * As there may be race conditions with losing messages from cross-context environments,
@@ -1216,18 +1092,10 @@ export default class Aragon {
         // Identity handlers
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
-        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
-
-        // Etc.
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications)
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
-
-      // App context helper function
-      function setContext (context) {
-        return messenger.send('context', [context])
-      }
 
       // The attached unsubscribe isn't automatically bound to the subscription
       const shutdown = () => handlerSubscription.unsubscribe()
@@ -1248,7 +1116,6 @@ export default class Aragon {
       }
 
       return {
-        setContext,
         shutdown,
         shutdownAndClearCache
       }

@@ -889,71 +889,6 @@ test('should init the forwarders correctly', async (t) => {
   })
 })
 
-test('should init the notifications correctly', async (t) => {
-  const { Aragon } = t.context
-
-  t.plan(7)
-  // arrange
-  const instance = new Aragon()
-  instance.cache.get = sinon.stub()
-    .withArgs('notifications').returns([
-      {
-        read: true,
-        title: 'send'
-      }, {
-        read: false,
-        title: 'receive'
-      }
-    ])
-  instance.cache.set = sinon.stub().resolves()
-  // act
-  await instance.initNotifications()
-  // assert
-  instance.notifications.subscribe(value => {
-    t.is(value[0].read, true)
-    t.is(value[0].title, 'send')
-
-    t.is(value[1].read, false)
-    t.is(value[1].title, 'receive')
-    // only the receive notification should get an acknowledge fn attached
-    t.is('acknowledge' in value[1], true)
-  })
-
-  t.is(instance.cache.set.getCall(0).args[0], 'notifications')
-  t.is(instance.cache.set.getCall(0).args[1].length, 2)
-})
-
-test('should send notifications correctly', async (t) => {
-  const { Aragon } = t.context
-
-  t.plan(12)
-  // arrange
-  const instance = new Aragon()
-  await instance.cache.init()
-  await instance.initNotifications()
-  // act
-  await instance.sendNotification('counterApp', 'add')
-  await instance.sendNotification('counterApp', 'subtract', null, null, new Date(2))
-
-  // assert
-  instance.notifications.subscribe(value => {
-    t.is(value[0].app, 'counterApp')
-    t.is(value[0].title, 'subtract')
-    t.is(value[0].read, false)
-    t.is(value[0].body, null)
-    t.is(value[0].context, null)
-    // uuidv4
-    t.is(value[0].id.length, 36)
-
-    t.is(value[1].app, 'counterApp')
-    t.is(value[1].title, 'add')
-    t.is(value[1].read, false)
-    t.is(value[1].body, undefined)
-    t.deepEqual(value[1].context, {})
-    t.is(value[1].id.length, 36)
-  })
-})
-
 test('should emit an intent when requesting message signing', async (t) => {
   const { Aragon } = t.context
   const messageToSign = 'test message'
@@ -1239,7 +1174,7 @@ test('should run the app and reply to a request', async (t) => {
   const { Aragon, messengerConstructorStub, utilsStub } = t.context
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
-  t.plan(5)
+  t.plan(4)
   // arrange
   const requestsStub = of({
     id: 'uuid1',
@@ -1275,7 +1210,6 @@ test('should run the app and reply to a request', async (t) => {
   const connect = await instance.runApp('0x789')
   const result = connect('someMessageProvider')
   // assert
-  t.true(result.setContext !== undefined)
   t.true(result.shutdown !== undefined)
   t.true(result.shutdownAndClearCache !== undefined)
   /**
