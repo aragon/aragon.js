@@ -18,7 +18,7 @@ test('should create a request handler', async (t) => {
     request: {
       id: 'uuid0',
       // this one should get filtered away
-      method: 'notifications'
+      method: 'accounts'
     }
   }, {
     request: {
