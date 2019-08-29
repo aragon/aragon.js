@@ -4,18 +4,24 @@ import sinon from 'sinon'
 import { EventEmitter } from 'events'
 
 import * as configurationKeys from '../../configuration/keys'
+import * as eventsUtils from '../../utils/events'
 
 test.beforeEach(t => {
   const configurationStub = {
     getConfiguration: sinon.stub()
   }
+  const utilsStub = {
+    events: eventsUtils
+  }
   const external = proxyquire('./external', {
-    '../../configuration': configurationStub
+    '../../configuration': configurationStub,
+    '../../utils': utilsStub
   })
 
   t.context = {
     external,
-    configurationStub
+    configurationStub,
+    utilsStub
   }
 })
 
@@ -50,12 +56,14 @@ test('should return the correct tx path from external tx intent', async t => {
 test('should return an observable from the contract events', async (t) => {
   const { external } = t.context
 
-  t.plan(1)
+  t.plan(2)
   // arrange
   const eventEmitter = new EventEmitter()
+  const proxy = {}
+  const eventsStub = sinon.stub().returns(eventEmitter)
   const contract = {
     events: {
-      'allEvents': sinon.stub().returns(eventEmitter)
+      allEvents: eventsStub
     }
   }
   const web3Stub = {
@@ -64,16 +72,200 @@ test('should return an observable from the contract events', async (t) => {
     }
   }
   const requestStub = {
-    params: ['addr', 'ji', 8]
+    params: ['addr', 'ji', 'allEvents', { fromBlock: 8 }]
   }
   // act
-  const events = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, proxy, { web3: web3Stub })
   // assert
+  t.true(eventsStub.calledOnceWith({ fromBlock: 8 }))
   events.subscribe(value => {
     t.deepEqual(value, { event: 'pay_fee', amount: 5 })
   })
 
   eventEmitter.emit('data', { event: 'pay_fee', amount: 5 })
+})
+
+test("should default fetching contract events from app's initialization block", async (t) => {
+  const { external } = t.context
+  const initBlock = 10
+
+  t.plan(2)
+  // arrange
+  const eventEmitter = new EventEmitter()
+  const proxy = { initializationBlock: initBlock }
+  const eventsStub = sinon.stub().returns(eventEmitter)
+  const contract = {
+    events: {
+      allEvents: eventsStub
+    }
+  }
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+  const requestStub = {
+    params: ['addr', 'ji', 'allEvents', {}]
+  }
+  // act
+  const events = external.events(requestStub, proxy, { web3: web3Stub })
+  // assert
+  t.true(eventsStub.calledOnceWith({ fromBlock: initBlock }))
+  events.subscribe(value => {
+    t.deepEqual(value, { event: 'pay_fee', amount: 5 })
+  })
+
+  eventEmitter.emit('data', { event: 'pay_fee', amount: 5 })
+})
+
+test('should handle events for aragonAPIv1', async (t) => {
+  const { external } = t.context
+  const fromBlock = 10
+
+  t.plan(2)
+  // arrange
+  const eventEmitter = new EventEmitter()
+  const proxy = {}
+  const eventsStub = sinon.stub().returns(eventEmitter)
+  const contract = {
+    events: {
+      allEvents: eventsStub
+    }
+  }
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+  // aragonAPIv1 only passes the fromBlock
+  const requestStub = {
+    params: ['addr', 'ji', fromBlock]
+  }
+  // act
+  const events = external.events(requestStub, proxy, { web3: web3Stub })
+  // assert
+  t.true(eventsStub.calledOnceWith({ fromBlock }))
+  events.subscribe(value => {
+    t.deepEqual(value, { event: 'pay_fee', amount: 5 })
+  })
+
+  eventEmitter.emit('data', { event: 'pay_fee', amount: 5 })
+})
+
+test('should handle events without fromBlock for aragonAPIv1', async (t) => {
+  const { external } = t.context
+  const initBlock = 10
+
+  t.plan(2)
+  // arrange
+  const eventEmitter = new EventEmitter()
+  const proxy = { initializationBlock: initBlock }
+  const eventsStub = sinon.stub().returns(eventEmitter)
+  const contract = {
+    events: {
+      allEvents: eventsStub
+    }
+  }
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().returns(contract)
+    }
+  }
+  // aragonAPIv1 does not need to pass the fromBlock
+  const requestStub = {
+    params: ['addr', 'ji']
+  }
+  // act
+  const events = external.events(requestStub, proxy, { web3: web3Stub })
+  // assert
+  t.true(eventsStub.calledOnceWith({ fromBlock: initBlock }))
+  events.subscribe(value => {
+    t.deepEqual(value, { event: 'pay_fee', amount: 5 })
+  })
+
+  eventEmitter.emit('data', { event: 'pay_fee', amount: 5 })
+})
+
+test("should return an observable from the contract's past events", async (t) => {
+  const { external } = t.context
+
+  t.plan(2)
+  // arrange
+  const proxy = {}
+  const contract = {
+    getPastEvents: sinon.stub().returns([{ event: 'pay_fee', amount: 5 }])
+  }
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().withArgs('addr', 'ji').returns(contract)
+    }
+  }
+  const requestStub = {
+    params: ['addr', 'ji', 'allEvents', { fromBlock: 8 }]
+  }
+  // act
+  const result = external.pastEvents(requestStub, proxy, { web3: web3Stub })
+  // assert
+  t.true(contract.getPastEvents.calledOnceWith('allEvents', { fromBlock: 8 }))
+  result.subscribe(value => {
+    t.deepEqual(value, { event: 'pay_fee', amount: 5 })
+  })
+})
+
+test("should default fetching past events starting from app's initialization block", async (t) => {
+  const { external } = t.context
+  const initBlock = 10
+
+  t.plan(2)
+  // arrange
+  const proxy = { initializationBlock: initBlock }
+  const contract = {
+    getPastEvents: sinon.stub().returns([{ event: 'pay_fee', amount: 5 }])
+  }
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().withArgs('addr', 'ji').returns(contract)
+    }
+  }
+  const requestStub = {
+    params: ['addr', 'ji', 'allEvents', {}]
+  }
+  // act
+  const result = external.pastEvents(requestStub, proxy, { web3: web3Stub })
+  // assert
+  t.true(contract.getPastEvents.calledOnceWith('allEvents', { fromBlock: initBlock }))
+  result.subscribe(value => {
+    t.deepEqual(value, { event: 'pay_fee', amount: 5 })
+  })
+})
+
+test('should handle past events for aragonAPIv1', async (t) => {
+  const { external } = t.context
+  const initBlock = 10
+  const toBlock = 18
+
+  t.plan(2)
+  // arrange
+  const proxy = { initializationBlock: initBlock }
+  const contract = {
+    getPastEvents: sinon.stub().returns([{ event: 'pay_fee', amount: 5 }])
+  }
+  const web3Stub = {
+    eth: {
+      Contract: sinon.stub().withArgs('addr', 'ji').returns(contract)
+    }
+  }
+  // aragonAPIv1 only passes the event options
+  const requestStub = {
+    params: ['addr', 'ji', { toBlock }]
+  }
+  // act
+  const result = external.pastEvents(requestStub, proxy, { web3: web3Stub })
+  // assert
+  t.true(contract.getPastEvents.calledOnceWith('allEvents', { fromBlock: initBlock, toBlock }))
+  result.subscribe(value => {
+    t.deepEqual(value, { event: 'pay_fee', amount: 5 })
+  })
 })
 
 test('should not apply a delay to events if not configured', async (t) => {
@@ -82,6 +274,7 @@ test('should not apply a delay to events if not configured', async (t) => {
   t.plan(2)
   // arrange
   const eventEmitter = new EventEmitter()
+  const proxy = {}
   const contract = {
     events: {
       'allEvents': sinon.stub().returns(eventEmitter)
@@ -98,7 +291,7 @@ test('should not apply a delay to events if not configured', async (t) => {
   // act
   // Set a delay
   configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(0)
-  const events = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, proxy, { web3: web3Stub })
   // assert
   const startTime = Date.now()
   events.subscribe(value => {
@@ -118,6 +311,7 @@ test('should apply a delay to events if configured', async (t) => {
   t.plan(2)
   // arrange
   const eventEmitter = new EventEmitter()
+  const proxy = {}
   const contract = {
     events: {
       'allEvents': sinon.stub().returns(eventEmitter)
@@ -134,7 +328,7 @@ test('should apply a delay to events if configured', async (t) => {
   // act
   // Set a delay
   configurationStub.getConfiguration.withArgs(configurationKeys.SUBSCRIPTION_EVENT_DELAY).returns(delayTime)
-  const events = external.events(requestStub, null, { web3: web3Stub })
+  const events = external.events(requestStub, proxy, { web3: web3Stub })
   // assert
   // Since we've added the delay, we need to tell ava to wait until we're done subscribing
   return new Promise(resolve => {

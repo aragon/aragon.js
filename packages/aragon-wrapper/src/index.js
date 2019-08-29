@@ -483,8 +483,8 @@ export default class Aragon {
     // These may modify the implementation addresses of the proxies (modifying their behaviour), so
     // we invalidate any caching we've done
     const updatedApps$ = this.kernelProxy
-      // Override events subscription with empty options to subscribe from latest block
-      .events('SetApp', {})
+      // Only need to subscribe from latest block
+      .events('SetApp', { fromBlock: 'latest' })
       .pipe(
         // Only care about changes if they're in the APP_BASE namespace
         filter(({ returnValues }) => isKernelAppCodeNamespace(returnValues.namespace)),
