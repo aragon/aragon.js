@@ -186,31 +186,32 @@ export class AppProxy {
   }
 
   /**
-   * Listens for events on your app's smart contract from the last unhandled block.
+   * Subscribe for events on your app's smart contract
    *
-   * @param  {string} fromBlock Block from which to fetch the events
+   * @param  {object} [options] web3.eth.Contract.events()' options
+   *   Unless explicitly provided, fromBlock is always defaulted to this app's initializationBlock
    * @return {Observable} Multi-emission Observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  events (fromBlock) {
+  events (options = {}) {
     return this.rpc.sendAndObserveResponses(
       'events',
-      [fromBlock]
+      ['allEvents', options]
     ).pipe(
       pluck('result')
     )
   }
 
   /**
-   * Fetch past events from your app's smart contract for requestsed range
+   * Fetch events from past blocks on your app's smart contract.
    *
-   * @param  {string} fromBlock Block from which to fetch the events
-   * @param  {string} toBlock Block up to which to fetch the events
+   * @param  {object} [options] web3.eth.Contract.events()' options
+   *   Unless explicitly provided, fromBlock is always defaulted to this app's initializationBlock
    * @return {Observable} Single-emission Observable that emits an array of [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  pastEvents (fromBlock, toBlock) {
+  pastEvents (options = {}) {
     return this.rpc.sendAndObserveResponse(
       'past_events',
-      [fromBlock, toBlock]
+      ['allEvents', options]
     ).pipe(
       pluck('result')
     )
@@ -222,40 +223,27 @@ export class AppProxy {
    *
    * @param  {string} address The address of the external contract
    * @param  {Array<Object>} jsonInterface The [JSON interface](https://solidity.readthedocs.io/en/latest/abi-spec.html#abi-json) of the external contract.
-   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return a single-emission Observable that emits the value of the call.
+   * @return {Object}  An external smart contract handle, containing the following methods:
+   *   - `events(options)`: subscribe for events on the external contract, returns a multi-emission Observable that emits events
+   *   - `pastEvents(options)`: fetch events from past blocks on the external contract, returns a single-emission Observable with an array of past events
+   *   - Calling any other method on the handle will send a call or an external intent to the smart contract and return a single-emission Observable with the result
    */
   external (address, jsonInterface) {
-    const contract = {
-      events: (fromBlock) => {
-        const eventArgs = [
-          address,
-          jsonInterface.filter(
-            (item) => item.type === 'event'
-          )
-        ]
-        if (typeof fromBlock === 'number') {
-          eventArgs.push(fromBlock)
-        }
+    const eventsInterface = jsonInterface.filter((item) => item.type === 'event')
 
+    const contract = {
+      events: (options = {}) => {
         return this.rpc.sendAndObserveResponses(
           'external_events',
-          eventArgs
+          [address, eventsInterface, 'allEvents', options]
         ).pipe(
           pluck('result')
         )
       },
       pastEvents: (options = {}) => {
-        const eventArgs = [
-          address,
-          jsonInterface.filter(
-            (item) => item.type === 'event'
-          ),
-          options
-        ]
-
         return this.rpc.sendAndObserveResponse(
           'external_past_events',
-          eventArgs
+          [address, eventsInterface, 'allEvents', options]
         ).pipe(
           pluck('result')
         )
@@ -422,16 +410,19 @@ export class AppProxy {
       )
 
     const getCurrentEvents = (fromBlock) => merge(
-      this.events(fromBlock),
-      ...externals.map(({ contract }) => contract.events(fromBlock))
+      this.events({ fromBlock }),
+      ...externals.map(({ contract }) => contract.events({ fromBlock }))
     )
 
     // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
     // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty,
     // by default they will use the current app's initialization block.
     const getPastEvents = (cachedFromBlock, toBlock) => merge(
-      this.pastEvents(cachedFromBlock, toBlock),
-      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock }))
+      this.pastEvents({ fromBlock: cachedFromBlock, toBlock }),
+      ...externals.map(
+        ({ contract, initializationBlock }) =>
+          contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock })
+      )
     ).pipe(
       // single emission array of all pastEvents -> flatten to process events
       flatMap(pastEvents => from(pastEvents)),

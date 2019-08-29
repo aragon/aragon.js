@@ -3,18 +3,24 @@ import proxyquire from 'proxyquire'
 import sinon from 'sinon'
 import { EventEmitter } from 'events'
 import * as configurationKeys from '../../configuration/keys'
+import * as eventsUtils from '../../utils/events'
 
 test.beforeEach(t => {
   const configurationStub = {
     getConfiguration: sinon.stub()
   }
+  const utilsStub = {
+    events: eventsUtils
+  }
   const ContractProxy = proxyquire('./index', {
-    '../../configuration': configurationStub
+    '../../configuration': configurationStub,
+    '../../utils': utilsStub
   }).default
 
   t.context = {
     ContractProxy,
-    configurationStub
+    configurationStub,
+    utilsStub
   }
 })
 
@@ -272,7 +278,7 @@ test('should use the correct options for requested past events with fromBlock an
   t.plan(4)
   // arrange
   const fromBlock = 10
-  const toBlock = 5
+  const toBlock = 15
 
   const pastEventsStub = sinon.stub().resolves([{ one: 1 }, { two: 2 }])
 
@@ -289,7 +295,7 @@ test('should use the correct options for requested past events with fromBlock an
   // act
   const events = instance.pastEvents(null, { fromBlock, toBlock })
   // assert
-  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock, toBlock }))
+  t.true(pastEventsStub.calledWithExactly('allEvents', { fromBlock, toBlock }))
 
   events.subscribe(events => {
     t.is(events.length, 2)
@@ -322,7 +328,7 @@ test('should use the correct options for requested past events with toBlock and 
   // act
   instance.pastEvents(null, { toBlock })
   // assert
-  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: initializationBlock, toBlock }))
+  t.true(pastEventsStub.calledWithExactly('allEvents', { fromBlock: initializationBlock, toBlock }))
 })
 
 test('should filter past events correctly when more than one eventName is passed', (t) => {
@@ -349,7 +355,7 @@ test('should filter past events correctly when more than one eventName is passed
   // act
   const events = instance.pastEvents(['Orange', 'Pear'])
   // assert
-  t.true(pastEventsStub.calledWithMatch('allEvents', { fromBlock: 0, toBlock: null }))
+  t.true(pastEventsStub.calledWith('allEvents'))
 
   events.subscribe(events => {
     t.is(events.length, 2)
