@@ -80,7 +80,7 @@ export async function tryDescribingUpgradeOrganizationBasket (intents, wrapper) 
     knownAppIds.length === upgradedKnownAppIds.length
   ) {
     return {
-      description: 'Upgrade organization to Aragon 0.7 Bella',
+      description: 'Upgrade organization to Aragon 0.8 Camino',
       from: intents[0].from,
       to: intents[0].to
     }
