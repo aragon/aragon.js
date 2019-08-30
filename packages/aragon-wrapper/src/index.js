@@ -142,11 +142,11 @@ export const setupTemplates = (from, options = {}) => {
  *        IPFS gateway apm.js will use to fetch artifacts from
  * @param {Object} [options.cache]
  *        Options for the internal cache
- * @param {boolean} [options.forceLocalStorage=false]
+ * @param {boolean} [options.cache.forceLocalStorage=false]
  *        Downgrade to localStorage even if IndexedDB is available
  * @param {Object} [options.events]
  *        Options for handling Ethereum events
- * @param {boolean} [options.subscriptionEventDelay]
+ * @param {boolean} [options.events.subscriptionEventDelay]
  *        Time in ms to delay a new event from a contract subscription
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
