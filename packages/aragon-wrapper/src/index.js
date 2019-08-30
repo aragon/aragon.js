@@ -1981,7 +1981,6 @@ export default class Aragon {
   }
 }
 
-export { isNameUsed } from './templates'
 export { resolve as ensResolve } from './ens'
 
 // Re-export the AddressIdentityProvider abstract base class

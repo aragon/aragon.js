@@ -1,7 +1,4 @@
-import { resolve as ensResolve } from '../ens'
 import { getRecommendedGasLimit } from '../utils/transactions'
-
-const zeroAddress = '0x0000000000000000000000000000000000000000'
 
 // Maybe we can even do a simple markup language that aragon/aragon interprets
 const templates = {
@@ -111,20 +108,6 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
 
       return [token, instance]
     }
-  }
-}
-
-// opts will be passed to the ethjs-ens constructor and
-// should at least contain `provider` and `registryAddress`.
-export const isNameUsed = async (name, opts = {}) => {
-  try {
-    const addr = await ensResolve(`${name}.aragonid.eth`, opts)
-    return addr !== zeroAddress
-  } catch (err) {
-    if (err.message === 'ENS name not defined.') {
-      return false
-    }
-    throw new Error(`ENS couldn’t resolve the domain: ${name}.aragonid.eth`)
   }
 }
 
