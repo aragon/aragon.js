@@ -40,6 +40,7 @@ import {
 import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
 import { setConfiguration } from './configuration'
 import * as configurationKeys from './configuration/keys'
+import ens from './ens'
 import {
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
@@ -132,14 +133,14 @@ export const setupTemplates = (from, options = {}) => {
  *        The address of the DAO.
  * @param {Object} options
  *        Wrapper options.
- * @param {Object} [options.apm]
- *        Options for apm.js (see https://github.com/aragon/apm.js)
- * @param {string} [options.apm.ensRegistryAddress]
- *        ENS registry for apm.js
+ * @param {Object} options.apm
+ *        Options for fetching information from aragonPM
+ * @param {string} options.apm.ensRegistryAddress
+ *        ENS registry for aragonPM
  * @param {Object} [options.apm.ipfs]
- *        IPFS provider config for apm.js
+ *        IPFS provider config for aragonPM
  * @param {string} [options.apm.ipfs.gateway]
- *        IPFS gateway apm.js will use to fetch artifacts from
+ *        IPFS gateway to fetch aragonPM artifacts from
  * @param {Object} [options.cache]
  *        Options for the internal cache
  * @param {boolean} [options.cache.forceLocalStorage=false]
@@ -161,8 +162,7 @@ export const setupTemplates = (from, options = {}) => {
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      apm: {},
-      defaultGasPriceFn: () => { },
+      defaultGasPriceFn: () => {},
       provider: detectProvider(),
       cache: {
         forceLocalStorage: false
@@ -188,8 +188,8 @@ export default class Aragon {
     // Set up Web3
     this.web3 = new Web3(options.provider)
 
-    // Set up APM
-    this.apm = apm(this.web3, options.apm)
+    // Set up ENS
+    this.ens = ens(options.provider, options.apm.ensRegistryAddress)
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -618,7 +618,8 @@ export default class Aragon {
       concatMap(async ([newRepoAppIds, updatedRepoAppIds]) => {
         const newRepos = await Promise.all(
           newRepoAppIds.map(async (appId) => {
-            const repoProxy = await makeRepoProxy(appId, this.apm, this.web3)
+            const repoAddress = await this.ens.resolve(appId)
+            const repoProxy = makeRepoProxy(repoAddress, this.web3)
             await repoProxy.updateInitializationBlock()
 
             return {
