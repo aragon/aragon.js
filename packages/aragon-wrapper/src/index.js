@@ -23,15 +23,12 @@ import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
 
-// APM
-import apm from '@aragon/apm'
-
 // RPC
 import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
-import { getApmAppInfo } from './core/apm'
+import apm, { getApmInternalAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
@@ -91,14 +88,14 @@ export const detectProvider = () =>
  *        The address of the account using the factory.
  * @param {Object} options
  *        Template factory options.
- * @param {Object} [options.apm]
- *        Options for apm.js (see https://github.com/aragon/apm.js)
- * @param {string} [options.apm.ensRegistryAddress]
- *        ENS registry for apm.js
+ * @param {Object} options.apm
+ *        Options for fetching information from aragonPM
+ * @param {string} options.apm.ensRegistryAddress
+ *        ENS registry for aragonPM
  * @param {Object} [options.apm.ipfs]
- *        IPFS provider config for apm.js
+ *        IPFS provider config for aragonPM
  * @param {string} [options.apm.ipfs.gateway]
- *        IPFS gateway apm.js will use to fetch artifacts from
+ *        IPFS gateway to fetch aragonPM artifacts from
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
@@ -112,8 +109,7 @@ export const detectProvider = () =>
  */
 export const setupTemplates = (from, options = {}) => {
   const defaultOptions = {
-    apm: {},
-    defaultGasPriceFn: () => { },
+    defaultGasPriceFn: () => {},
     provider: detectProvider()
   }
   options = Object.assign(defaultOptions, options)
@@ -121,8 +117,9 @@ export const setupTemplates = (from, options = {}) => {
 
   return Templates(from, {
     web3,
-    apm: apm(web3, options.apm),
-    defaultGasPriceFn: options.defaultGasPriceFn
+    apm: apm(web3, { ipfsGateway: options.apm.ipfs && options.apm.ipfs.gateway }),
+    defaultGasPriceFn: options.defaultGasPriceFn,
+    ens: ens(options.provider, options.apm.ensRegistryAddress)
   })
 }
 
@@ -190,6 +187,9 @@ export default class Aragon {
 
     // Set up ENS
     this.ens = ens(options.provider, options.apm.ensRegistryAddress)
+
+    // Set up APM utilities
+    this.apm = apm(this.web3, { ipfsGateway: options.apm.ipfs && options.apm.ipfs.gateway })
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -393,11 +393,14 @@ export default class Aragon {
      *                            *
      ******************************/
 
-    const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
+    const applicationInfoCache = new AsyncRequestCache(async (cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
-        getApmAppInfo(appId) ||
-        this.apm.getLatestVersionForContract(appId, codeAddress)
+        getApmInternalAppInfo(appId) ||
+        this.apm.fetchLatestRepoContentForContract(
+          await this.ens.resolve(appId),
+          codeAddress
+        )
     })
 
     const proxyContractValueCache = new AsyncRequestCache((proxyAddress) => {
@@ -1982,6 +1985,8 @@ export default class Aragon {
   }
 }
 
+// Re-export the aragonPM and ENS utilities
+export { apm }
 export { resolve as ensResolve } from './ens'
 
 // Re-export the AddressIdentityProvider abstract base class

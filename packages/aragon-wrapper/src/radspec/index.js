@@ -1,5 +1,5 @@
 import * as radspec from 'radspec'
-import { makeRepoProxy } from '../core/apm/repo'
+import { getRepoLatestVersionForContract, makeRepoProxy } from '../core/apm/repo'
 import { findAppMethodFromData, knownAppIds } from '../utils/apps'
 import { filterAndDecodeAppUpgradeIntents } from '../utils/intents'
 
@@ -49,9 +49,7 @@ export async function tryDescribingUpdateAppIntent (intent, wrapper) {
   // Fetch aragonPM information
   const repoAddress = await wrapper.ens.resolve(appId)
   const repo = makeRepoProxy(repoAddress, wrapper.web3)
-  const latestVersion = (await repo.call('getLatestForContractAddress', appAddress))
-    .semanticVersion
-    .join('.')
+  const { version: latestVersion } = getRepoLatestVersionForContract(repo, appAddress)
 
   return {
     ...intent,

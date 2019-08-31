@@ -22,18 +22,20 @@ const templates = {
  * @param {Object} options
  *        Template factory options.
  * @param {Object} options.apm
- *        apm.js instance
+ *        aragonPM utilities
  * @param {Function} options.defaultGasPriceFn
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
+ * @param {Object} options.ens
+ *        ENS resolution utilities
  * @param {Object} options.web3
  *        Web3 instance
  * @return {Object} Factory object
  */
-const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
+const Templates = (from, { apm, defaultGasPriceFn, ens, web3 }) => {
   const newToken = async (template, { params, options = {} }) => {
     const [tokenName, tokenSymbol] = params
     const call = template.methods.newToken(tokenName, tokenSymbol)
@@ -92,8 +94,8 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
 
       if (!tmplObj) throw new Error('No template found for that name')
 
-      const { contractAddress, abi } = await apm.getLatestVersion(tmplObj.appId)
-
+      const templateRepoAddress = await ens.resolve(tmplObj.appId)
+      const { contractAddress, abi } = await apm.fetchLatestRepoContent(templateRepoAddress)
       if (!contractAddress) {
         throw new Error(`No contract found on APM for template '${templateName}'`)
       }

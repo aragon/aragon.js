@@ -72,10 +72,10 @@
     "production": ">2%, last 1 edge versions, not ie > 0, not op_mini all"
   },
   "dependencies": {
-    "@aragon/apm": "^3.0.0",
-    "@aragon/rpc-messenger": "^2.0.0-beta.1",
     "@aragon/os": "^4.2.1",
+    "@aragon/rpc-messenger": "^2.0.0-beta.1",
     "@babel/runtime": "^7.1.2",
+    "axios": "^0.19.0",
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",
     "ethereum-ens": "0.7.4",
