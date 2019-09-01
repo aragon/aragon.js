@@ -4,7 +4,6 @@ import {
   delayWhen,
   endWith,
   flatMap,
-  filter,
   map,
   mergeScan,
   last,
@@ -187,31 +186,32 @@ export class AppProxy {
   }
 
   /**
-   * Listens for events on your app's smart contract from the last unhandled block.
+   * Subscribe for events on your app's smart contract
    *
-   * @param  {string} fromBlock Block from which to fetch the events
+   * @param  {object} [options] web3.eth.Contract.events()' options
+   *   Unless explicitly provided, fromBlock is always defaulted to this app's initializationBlock
    * @return {Observable} Multi-emission Observable that emits [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  events (fromBlock) {
+  events (options = {}) {
     return this.rpc.sendAndObserveResponses(
       'events',
-      [fromBlock]
+      ['allEvents', options]
     ).pipe(
       pluck('result')
     )
   }
 
   /**
-   * Fetch past events from your app's smart contract for requestsed range
+   * Fetch events from past blocks on your app's smart contract.
    *
-   * @param  {string} fromBlock Block from which to fetch the events
-   * @param  {string} toBlock Block up to which to fetch the events
+   * @param  {object} [options] web3.eth.Contract.events()' options
+   *   Unless explicitly provided, fromBlock is always defaulted to this app's initializationBlock
    * @return {Observable} Single-emission Observable that emits an array of [Web3 events](https://web3js.readthedocs.io/en/1.0/glossary.html#specification).
    */
-  pastEvents (fromBlock, toBlock) {
+  pastEvents (options = {}) {
     return this.rpc.sendAndObserveResponse(
       'past_events',
-      [fromBlock, toBlock]
+      ['allEvents', options]
     ).pipe(
       pluck('result')
     )
@@ -222,41 +222,28 @@ export class AppProxy {
    * (i.e. a contract that is **not** your app's smart contract, such as a token).
    *
    * @param  {string} address The address of the external contract
-   * @param  {Array<Object>} jsonInterface The [JSON interface](https://web3js.readthedocs.io/en/1.0/glossary.html#glossary-json-interface) of the external contract.
-   * @return {Object} An external smart contract handle. Calling any function on this object will send a call to the smart contract and return a single-emission Observable that emits the value of the call.
+   * @param  {Array<Object>} jsonInterface The [JSON interface](https://solidity.readthedocs.io/en/latest/abi-spec.html#abi-json) of the external contract.
+   * @return {Object}  An external smart contract handle, containing the following methods:
+   *   - `events(options)`: subscribe for events on the external contract, returns a multi-emission Observable that emits events
+   *   - `pastEvents(options)`: fetch events from past blocks on the external contract, returns a single-emission Observable with an array of past events
+   *   - Calling any other method on the handle will send a call or an external intent to the smart contract and return a single-emission Observable with the result
    */
   external (address, jsonInterface) {
-    const contract = {
-      events: (fromBlock) => {
-        const eventArgs = [
-          address,
-          jsonInterface.filter(
-            (item) => item.type === 'event'
-          )
-        ]
-        if (typeof fromBlock === 'number') {
-          eventArgs.push(fromBlock)
-        }
+    const eventsInterface = jsonInterface.filter((item) => item.type === 'event')
 
+    const contract = {
+      events: (options = {}) => {
         return this.rpc.sendAndObserveResponses(
           'external_events',
-          eventArgs
+          [address, eventsInterface, 'allEvents', options]
         ).pipe(
           pluck('result')
         )
       },
       pastEvents: (options = {}) => {
-        const eventArgs = [
-          address,
-          jsonInterface.filter(
-            (item) => item.type === 'event'
-          ),
-          options
-        ]
-
         return this.rpc.sendAndObserveResponse(
           'external_past_events',
-          eventArgs
+          [address, eventsInterface, 'allEvents', options]
         ).pipe(
           pluck('result')
         )
@@ -267,11 +254,26 @@ export class AppProxy {
     const callMethods = jsonInterface.filter(
       (item) => item.type === 'function' && item.constant
     )
-    callMethods.forEach((methodJsonInterface) => {
-      contract[methodJsonInterface.name] = (...params) => {
+    callMethods.forEach((methodJsonDescription) => {
+      contract[methodJsonDescription.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_call',
-          [address, methodJsonInterface, ...params]
+          [address, methodJsonDescription, ...params]
+        ).pipe(
+          pluck('result')
+        )
+      }
+    })
+
+    // Bind non-call (ie. "write") methods for external intents
+    const intentMethods = jsonInterface.filter(
+      (item) => item.type === 'function' && !item.constant
+    )
+    intentMethods.forEach((methodJsonDescription) => {
+      contract[methodJsonDescription.name] = (...params) => {
+        return this.rpc.sendAndObserveResponse(
+          'external_intent',
+          [address, methodJsonDescription, ...params]
         ).pipe(
           pluck('result')
         )
@@ -352,7 +354,7 @@ export class AppProxy {
   state () {
     return this.rpc.sendAndObserveResponses(
       'cache',
-      ['get', 'state']
+      ['observe', 'state']
     ).pipe(
       pluck('result')
     )
@@ -408,16 +410,19 @@ export class AppProxy {
       )
 
     const getCurrentEvents = (fromBlock) => merge(
-      this.events(fromBlock),
-      ...externals.map(({ contract }) => contract.events(fromBlock))
+      this.events({ fromBlock }),
+      ...externals.map(({ contract }) => contract.events({ fromBlock }))
     )
 
     // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
     // External contracts can specify their own `initializationBlock` which will be used in case the cache is empty,
     // by default they will use the current app's initialization block.
     const getPastEvents = (cachedFromBlock, toBlock) => merge(
-      this.pastEvents(cachedFromBlock, toBlock),
-      ...externals.map(({ contract, initializationBlock }) => contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock }))
+      this.pastEvents({ fromBlock: cachedFromBlock, toBlock }),
+      ...externals.map(
+        ({ contract, initializationBlock }) =>
+          contract.pastEvents({ fromBlock: cachedFromBlock || initializationBlock, toBlock })
+      )
     ).pipe(
       // single emission array of all pastEvents -> flatten to process events
       flatMap(pastEvents => from(pastEvents)),
@@ -440,7 +445,12 @@ export class AppProxy {
     // init the app state with the cached state
     const initState$ = init
       ? cacheValue$.pipe(
-        switchMap(({ state }) => from(init(state))),
+        switchMap(({ state }) => {
+          // Make sure `init()` gets a new copy of the cached state so that it doesn't
+          // accidentally manipulate the observable's object
+          const initialState = state ? { ...state } : null
+          return from(init(initialState))
+        }),
         delayWhen((initState) => {
           debug('- store - init state:', initState)
           return this.cache('state', initState)
@@ -451,19 +461,23 @@ export class AppProxy {
     const store$ = forkJoin(cacheValue$, initState$, latestBlock$).pipe(
       switchMap(([cacheValue, initState, latestBlock]) => {
         const { state: cachedState, block: cachedBlock } = cacheValue
-        debug('- store - initState', initState)
-        debug('- store - cachedState', cachedState)
+        const initialStoreState = (init ? initState : cachedState) || null
+        debug('- store - initial store state', initialStoreState)
         debug(`- store - cachedBlock ${cachedBlock} | latestBlock: ${latestBlock}`)
 
         // The block up to which to fetch past events.
         // The reduced state up to this point will be cached on every load
         const pastEventsToBlock = Math.max(0, latestBlock - BLOCK_REORG_MARGIN)
 
-        debug(`- store - pastEvents: ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
-        debug(`- store - currentEvents$: from: ${pastEventsToBlock} -> future`)
+        if (cachedBlock !== undefined) {
+          debug(`- store - pastEvents: block ${cachedBlock} -> ${pastEventsToBlock} (${pastEventsToBlock - cachedBlock} blocks)`)
+        } else {
+          debug(`- store - pastEvents: initialization block -> ${pastEventsToBlock} (up to ${pastEventsToBlock} blocks)`)
+        }
+        debug(`- store - currentEvents$: block ${pastEventsToBlock} -> future`)
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
-          mergeScan(wrappedReducer, { ...cachedState, ...initState }, 1),
+          mergeScan(wrappedReducer, initialStoreState, 1),
           // throttle to reduce rendering and caching overthead
           // must keep trailing to avoid discarded events
           throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
@@ -512,44 +526,6 @@ export class AppProxy {
     store$.connect()
 
     return store$
-  }
-
-  /**
-   * **NOTE: This call is not currently handled by the wrapper**
-   *
-   * Send a notification.
-   *
-   * @param {string} title The title of the notification.
-   * @param {string} body The body of the notification.
-   * @param {Object} [context={}] An optional context that will be sent back to the app if the notification is clicked.
-   * @param {Date} [date=new Date()] An optional date that specifies when the notification originally occured.
-   * @return {void}
-   */
-  notify (title, body, context = {}, date = new Date()) {
-    return this.rpc.send(
-      'notification',
-      [title, body, context, date]
-    )
-  }
-
-  /**
-   * **NOTE: The wrapper does not currently send contexts to apps**
-   *
-   * Listen for app contexts.
-   *
-   * An app context is an application specific message that the wrapper can send to the app.
-   *
-   * For example, if a notification or a shortcut is clicked, the context attached to either of those will be sent to the app.
-   *
-   * App contexts can be used to display specific views in your app or anything else you might find interesting.
-   *
-   * @return {Observable} Single-emisison Observable that emits app contexts as they are received.
-   */
-  context () {
-    return this.rpc.requests().pipe(
-      filter((request) => request.method === 'context'),
-      map((request) => request.params[0])
-    )
   }
 }
 

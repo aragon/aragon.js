@@ -43,7 +43,7 @@ npm install --save @aragon/api @aragon/api-react
 
 Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
-It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html). If not provided, the state is passed as is.
+It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as is.
 
 #### Example
 
@@ -95,7 +95,7 @@ function App() {
 
 #### `appState`
 
-The app state, after having passed the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html) state through the `reducer` prop of `AragonApi`.
+The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
 
 Example:
 

@@ -14,11 +14,9 @@ import {
   scan,
   startWith,
   switchMap,
-  tap,
   throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
-import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
@@ -59,6 +57,7 @@ import { doIntentPathsMatch } from './utils/intents'
 import {
   applyForwardingPretransaction,
   createDirectTransaction,
+  createDirectTransactionForApp,
   createForwarderTransactionBuilder,
   getRecommendedGasLimit
 } from './utils/transactions'
@@ -229,7 +228,6 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
-    this.initNotifications()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -488,8 +486,8 @@ export default class Aragon {
     // These may modify the implementation addresses of the proxies (modifying their behaviour), so
     // we invalidate any caching we've done
     const updatedApps$ = this.kernelProxy
-      // Override events subscription with empty options to subscribe from latest block
-      .events('SetApp', {})
+      // Only need to subscribe from latest block
+      .events('SetApp', { fromBlock: 'latest' })
       .pipe(
         // Only care about changes if they're in the APP_BASE namespace
         filter(({ returnValues }) => isKernelAppCodeNamespace(returnValues.namespace)),
@@ -571,8 +569,8 @@ export default class Aragon {
       //   - No apps are lying about their appId (malicious apps _could_ masquerade as other
       //     apps by setting this value themselves)
       //   - `contractAddress`s will stay the same across all installed apps.
-      //      This is technically not true as apps could set this value themselves
-      //      (e.g. as pinned apps do), but these apps wouldn't be able to upgrade anyway
+      //     This is technically not true as apps could set this value themselves
+      //     (e.g. as pinned apps do), but these apps wouldn't be able to upgrade anyway
       //
       //  Ultimately returns an array of objects, holding the repo's:
       //    - appId
@@ -591,8 +589,8 @@ export default class Aragon {
       )),
 
       // Filter list of installed repos into:
-      //   - New repos we haven't seen before (so we only subscribe once to their events)
-      //   - Repos with apps that were updated in the kernel, to recalculate their current version
+      //   - New repos we haven't seen before (to begin subscribing to their version events)
+      //   - Repos we've seen before, to trigger a recalculation of the currently installed version
       map((repos) => {
         const newRepoAppIds = []
         const updatedRepoAppIds = []
@@ -619,18 +617,30 @@ export default class Aragon {
 
       // Project new repos into their ids and web3 proxy objects
       concatMap(async ([newRepoAppIds, updatedRepoAppIds]) => {
-        const newRepos = await Promise.all(
+        const newRepos = (await Promise.all(
           newRepoAppIds.map(async (appId) => {
-            const repoAddress = await this.ens.resolve(appId)
-            const repoProxy = makeRepoProxy(repoAddress, this.web3)
-            await repoProxy.updateInitializationBlock()
+            let repoProxy
+
+            try {
+              const repoAddress = await this.ens.resolve(appId)
+              repoProxy = makeRepoProxy(repoAddress, this.web3)
+              await repoProxy.updateInitializationBlock()
+            } catch (err) {
+              console.error(`Could not find repo for ${appId}`, err)
+            }
 
             return {
               appId,
               repoProxy
             }
           })
-        )
+        ))
+          // Filter out repos we couldn't create proxies for (they were likely due to publishing
+          // invalid aragonPM repos)
+          // Note that we don't need to worry about doing this for the updated repos list; if
+          // we could not create the original repo proxy when we first saw the repo, the updates
+          // won't do anything because we weren't able to fetch enough information (versions list)
+          .filter((newRepos) => newRepos.repoProxy)
         return [newRepos, updatedRepoAppIds]
       }),
 
@@ -1015,127 +1025,6 @@ export default class Aragon {
   }
 
   /**
-   * Initialise the notifications observable.
-   *
-   * @return {void}
-   */
-  initNotifications () {
-    // If the cached notifications doesn't exist or isn't an array, set it to an empty one
-    let cached = this.cache.get('notifications')
-    if (!Array.isArray(cached)) {
-      cached = []
-    } else {
-      // Set up acknowledge for unread notifications
-      cached.forEach(notification => {
-        if (notification && !notification.read) {
-          notification.acknowledge = () => this.acknowledgeNotification(notification.id)
-        }
-      })
-    }
-
-    this.notifications = new BehaviorSubject(cached).pipe(
-      scan((notifications, { modifier, notification }) => modifier(notifications, notification)),
-      tap((notifications) => this.cache.set('notifications', notifications)),
-      publishReplay(1)
-    )
-    this.notifications.connect()
-  }
-
-  /**
-   * Send a notification.
-   *
-   * @param {string} app   The address of the app sending the notification
-   * @param {string} title The notification title
-   * @param {string} body  The notification body
-   * @param {object} [context={}] The application context to send back if the notification is clicked
-   * @param  {Date}  [date=new Date()] The date the notification was sent
-   * @return {void}
-   */
-  sendNotification (app, title, body, context = {}, date = new Date()) {
-    const id = uuidv4()
-    const notification = {
-      app,
-      body,
-      context,
-      date,
-      id,
-      title,
-      read: false
-    }
-    this.notifications.next({
-      modifier: (notifications, notification) => {
-        // Find the first notification that's not before this new one
-        // and insert ahead of it if it exists
-        const newNotificationIndex = notifications.findIndex(
-          notification => ((new Date(notification.date)).getTime() >= date.getTime())
-        )
-        return newNotificationIndex === -1
-          ? [...notifications, notification]
-          : [
-            ...notifications.slice(0, newNotificationIndex),
-            notification,
-            ...notifications.slice(newNotificationIndex)
-          ]
-      },
-      notification: {
-        ...notification,
-        acknowledge: () => this.acknowledgeNotification(id)
-      }
-    })
-  }
-
-  /**
-   * Acknowledge a notification.
-   *
-   * @param {string} id The notification's id
-   * @return {void}
-   */
-  acknowledgeNotification (id) {
-    this.notifications.next({
-      modifier: (notifications) => {
-        const notificationIndex = notifications.findIndex(notification => notification.id === id)
-        // Copy the old notifications and replace the old notification with a read version
-        const newNotifications = [...notifications]
-        newNotifications[notificationIndex] = {
-          ...notifications[notificationIndex],
-          read: true,
-          acknowledge: () => { }
-        }
-        return newNotifications
-      }
-    })
-  }
-
-  /**
-   * Clears a notification.
-   *
-   * @param {string} id The notification's id
-   * @return {void}
-   */
-  clearNotification (id) {
-    this.notifications.next({
-      modifier: (notifications) => {
-        return notifications.pipe(
-          filter(notification => notification.id !== id)
-        )
-      }
-    })
-  }
-
-  /**
-   * Clears all notifications.
-   *
-   * @return {void}
-   */
-  clearNotifications () {
-    this.notifications.next({
-      modifier: (notifications) => {
-        return []
-      }
-    })
-  }
-
-  /**
    * Run an app.
    *
    * As there may be race conditions with losing messages from cross-context environments,
@@ -1201,23 +1090,16 @@ export default class Aragon {
         // External contract handlers
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_intent', handlers.externalIntent),
         handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
 
         // Identity handlers
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
-        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
-
-        // Etc.
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications)
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
-
-      // App context helper function
-      function setContext (context) {
-        return messenger.send('context', [context])
-      }
 
       // The attached unsubscribe isn't automatically bound to the subscription
       const shutdown = () => handlerSubscription.unsubscribe()
@@ -1238,7 +1120,6 @@ export default class Aragon {
       }
 
       return {
-        setContext,
         shutdown,
         shutdownAndClearCache
       }
@@ -1288,15 +1169,20 @@ export default class Aragon {
   }
 
   /**
-   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
-   * @return {Promise<string>} transaction hash
+   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each
+   *   step in the path
+   * @param {Object} [options]
+   * @param {boolean} [options.external] Whether the transaction path is initiating an action on
+   *   an external destination (not the currently running app)
+   * @return {Promise<string>} Promise that should be resolved with the sent transaction hash
    */
-  performTransactionPath (transactionPath) {
+  performTransactionPath (transactionPath, { external } = {}) {
     return new Promise((resolve, reject) => {
       this.transactions.next({
+        resolve,
+        external: !!external,
         transaction: transactionPath[0],
         path: transactionPath,
-        resolve,
         reject (err) {
           reject(err || new Error('The transaction was not signed'))
         }
@@ -1354,11 +1240,46 @@ export default class Aragon {
       if (path.length > 0) {
         try {
           return this.describeTransactionPath(path)
-        } catch (_) { }
+        } catch (_) {
+          return path
+        }
       }
     }
 
     return []
+  }
+
+  /**
+   * Calculate the transaction path for a transaction to an external `destination`
+   * (not the currently running app) that invokes a method matching the
+   * `methodJsonDescription` with `params`.
+   *
+   * @param  {string} destination Address of the external contract
+   * @param  {object} methodJsonDescription ABI description of method to invoke
+   * @param  {Array<*>} params
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path.
+   *   If the destination is a non-installed contract, always results in an array containing a
+   *   single transaction.
+   */
+  async getExternalTransactionPath (destination, methodJsonDescription, params) {
+    let path
+
+    const installedApp = await this.getApp(destination)
+    if (installedApp) {
+      // Destination is an installed app; need to go through normal transaction pathing
+      path = this.getTransactionPath(destination, methodJsonDescription.name, params)
+    } else {
+      // Destination is not an installed app on this org, just create a direct transaction
+      // with the first account
+      const account = (await this.getAccounts())[0]
+
+      try {
+        const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
+        path = this.describeTransactionPath([tx])
+      } catch (_) {}
+    }
+
+    return path || []
   }
 
   /**
@@ -1406,7 +1327,7 @@ export default class Aragon {
       const directTransactions = await Promise.all(
         intentBasket.map(
           async ([destination, methodName, params]) =>
-            createDirectTransaction(sender, await this.getApp(destination), methodName, params, this.web3)
+            createDirectTransactionForApp(sender, await this.getApp(destination), methodName, params, this.web3)
         )
       )
 
@@ -1783,7 +1704,7 @@ export default class Aragon {
 
     const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
-    const directTransaction = await createDirectTransaction(sender, app, methodName, params, this.web3)
+    const directTransaction = await createDirectTransactionForApp(sender, app, methodName, params, this.web3)
 
     let appsWithPermissionForMethod = []
 
