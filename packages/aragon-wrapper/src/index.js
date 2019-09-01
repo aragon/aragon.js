@@ -26,6 +26,7 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
+import AppContextPool from './apps'
 import apm, { getApmInternalAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
@@ -195,6 +196,9 @@ export default class Aragon {
 
     // Set up cache
     this.cache = new Cache(daoAddress)
+
+    // Set up app contexts
+    this.appContextPool = new AppContextPool()
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
