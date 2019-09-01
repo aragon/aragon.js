@@ -73,14 +73,14 @@ function AragonApi({
             .subscribe(accounts => setConnectedAccount(accounts[0] || '')),
 
           // apps
-          api.apps().subscribe(apps => setApps(apps || [])),
+          api.getApps().subscribe(apps => setApps(apps || [])),
 
           // network
           api.network().subscribe(network => setNetwork(network || null)),
         ]
 
         api
-          .currentApp()
+          .getCurrentApp()
           .toPromise()
           .then(currentApp => {
             if (!cancelled) {
