@@ -113,6 +113,14 @@ function App() {
 The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
 the list of apps are loaded.
 
+Each object in the array holds the following keys:
+
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `isForwarder`: whether the app is a forwarder or not
+- `kernelAddress`: the kernel address of the organization this app is installed on (always the same)
+
 Example:
 
 ```jsx
@@ -121,7 +129,7 @@ function App() {
   return (
     <div>
       {apps.map(app => (
-        <div>{app.name}</div>
+        <div>{app.appAddress}</div>
       ))}
     </div>
   )
