@@ -106,15 +106,19 @@ test('should send a getApps request for all apps and observe the response', t =>
     appAddress: '0x123',
     appId: 'kernel',
     appImplementationAddress: '0xkernel',
+    identifier: undefined,
     isForwarder: false,
-    kernelAddress: undefined
+    kernelAddress: undefined,
+    name: 'Kernel'
   }]
   const endApps = [].concat(initialApps, {
     appAddress: '0x456',
     appId: 'counterApp',
     appImplementationAddress: '0xcounterApp',
+    identifier: 'counter',
     isForwarder: false,
-    kernelAddress: '0x123'
+    kernelAddress: '0x123',
+    name: 'Counter'
   })
 
   // arrange
@@ -162,8 +166,10 @@ test('should send a getApps request for the app and observe the single response'
     appAddress: '0x456',
     appId: 'counterApp',
     appImplementationAddress: '0xcounterApp',
+    identifier: 'counter',
     isForwarder: false,
-    kernelAddress: '0x123'
+    kernelAddress: '0x123',
+    name: 'Counter'
   }
 
   // arrange

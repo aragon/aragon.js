@@ -253,19 +253,16 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 - `appAddress`: the app's contract address
 - `appId`: the app's appId
 - `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's self-declared identifier, if any
 - `isForwarder`: whether the app is a forwarder or not
 - `kernelAddress`: the kernel address of the organization this app is installed on (always the same)
+- `name`: the app's name, if available
 
 ### getCurrentApp
 
 Get information about this app (e.g. `proxyAddress`, `abi`, etc.).
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details. The details include:
-- `appAddress`: this app's contract address
-- `appId`: this app's appId
-- `appImplementationAddress`: this app's implementation contract, if any (only available if this app is a proxied AragonApp)
-- `isForwarder`: whether this app is a forwarder or not
-- `kernelAddress`: the kernel address of the organization this app is installed on
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details. The app's details include the same keys as in `getApps()`.
 
 ### call
 
