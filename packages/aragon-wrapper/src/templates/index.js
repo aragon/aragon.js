@@ -1,7 +1,4 @@
-import { resolve as ensResolve } from '../ens'
 import { getRecommendedGasLimit } from '../utils/transactions'
-
-const zeroAddress = '0x0000000000000000000000000000000000000000'
 
 // Maybe we can even do a simple markup language that aragon/aragon interprets
 const templates = {
@@ -25,18 +22,20 @@ const templates = {
  * @param {Object} options
  *        Template factory options.
  * @param {Object} options.apm
- *        apm.js instance
+ *        aragonPM utilities
  * @param {Function} options.defaultGasPriceFn
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
+ * @param {Object} options.ens
+ *        ENS resolution utilities
  * @param {Object} options.web3
  *        Web3 instance
  * @return {Object} Factory object
  */
-const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
+const Templates = (from, { apm, defaultGasPriceFn, ens, web3 }) => {
   const newToken = async (template, { params, options = {} }) => {
     const [tokenName, tokenSymbol] = params
     const call = template.methods.newToken(tokenName, tokenSymbol)
@@ -95,8 +94,8 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
 
       if (!tmplObj) throw new Error('No template found for that name')
 
-      const { contractAddress, abi } = await apm.getLatestVersion(tmplObj.appId)
-
+      const templateRepoAddress = await ens.resolve(tmplObj.appId)
+      const { contractAddress, abi } = await apm.fetchLatestRepoContent(templateRepoAddress)
       if (!contractAddress) {
         throw new Error(`No contract found on APM for template '${templateName}'`)
       }
@@ -111,20 +110,6 @@ const Templates = (from, { apm, defaultGasPriceFn, web3 }) => {
 
       return [token, instance]
     }
-  }
-}
-
-// opts will be passed to the ethjs-ens constructor and
-// should at least contain `provider` and `registryAddress`.
-export const isNameUsed = async (name, opts = {}) => {
-  try {
-    const addr = await ensResolve(`${name}.aragonid.eth`, opts)
-    return addr !== zeroAddress
-  } catch (err) {
-    if (err.message === 'ENS name not defined.') {
-      return false
-    }
-    throw new Error(`ENS couldn’t resolve the domain: ${name}.aragonid.eth`)
   }
 }
 

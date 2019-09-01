@@ -4,6 +4,7 @@ import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
 import * as configurationKeys from './configuration/keys'
+import * as apm from './core/apm'
 import { getCacheKey } from './utils'
 import AsyncRequestCache from './utils/AsyncRequestCache'
 import * as callscriptUtils from './utils/callscript'
@@ -18,15 +19,17 @@ const APP_NAMESPACE_HASH = '0xf1f3eb40f5bc1ad1344716ced8b8a0431d840b5783aea1fd01
 const CORE_NAMESPACE_HASH = '0xc681a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8'
 
 test.beforeEach(t => {
-  const apmStub = sinon.stub()
+  const apmCoreStub = {
+    getApmInternalAppInfo: sinon.stub()
+  }
   const aragonOSCoreStub = {
     getAragonOsInternalAppInfo: sinon.stub()
   }
-  const apmCoreStub = {
-    getApmAppInfo: sinon.stub()
-  }
   const configurationStub = {
     setConfiguration: sinon.stub()
+  }
+  const ensStub = {
+    resolve: sinon.stub()
   }
   const messengerConstructorStub = sinon.stub()
   const utilsStub = {
@@ -40,21 +43,32 @@ test.beforeEach(t => {
     transactions: transactionsUtils
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
-    '@aragon/apm': sinon.stub().returns(apmStub),
     '@aragon/rpc-messenger': messengerConstructorStub,
     './core/aragonOS': aragonOSCoreStub,
-    './core/apm': apmCoreStub,
+    './core/apm': Object.assign(apm, apmCoreStub),
     './configuration': configurationStub,
     './configuration/keys': configurationKeys,
+    './ens': () => ensStub,
     './utils': utilsStub
   }).default
 
+  // Helper for creating Aragon class instances
+  function createAragon (daoAddress = '0x00', options) {
+    return new Aragon(daoAddress, {
+      apm: {
+        ensRegistryAddress: '0x00'
+      },
+      ...options
+    })
+  }
+
   t.context = {
     Aragon,
-    apmStub,
-    aragonOSCoreStub,
     apmCoreStub,
+    aragonOSCoreStub,
+    createAragon,
     configurationStub,
+    ensStub,
     messengerConstructorStub,
     utilsStub
   }
@@ -65,22 +79,22 @@ test.afterEach.always(() => {
 })
 
 test('should create an Aragon instance with no options given', t => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // act
-  const app = new Aragon(0x0)
+  const app = createAragon()
   // assert
   t.not(app.apm, undefined)
 })
 
 test('should throw on init if daoAddress is not a Kernel', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
   const badDaoAddress = '0xbaddao'
-  const instance = new Aragon(badDaoAddress)
+  const instance = createAragon(badDaoAddress)
   // web3 will throw if a bad address ('0x') comes back
   const kernelProxyCallStub = sinon.stub().withArgs('acl').throws()
   instance.kernelProxy = {
@@ -99,11 +113,11 @@ test('should throw on init if daoAddress is not a Kernel', async (t) => {
 })
 
 test('should set the default configuration', t => {
-  const { Aragon, configurationStub } = t.context
+  const { createAragon, configurationStub } = t.context
 
   t.plan(4)
   // act
-  const instance = new Aragon(0x0)
+  const instance = createAragon()
   // assert
   t.truthy(configurationStub.setConfiguration.calledTwice)
   t.truthy(
@@ -116,11 +130,11 @@ test('should set the default configuration', t => {
 })
 
 test('should set the given configuration', t => {
-  const { Aragon, configurationStub } = t.context
+  const { createAragon, configurationStub } = t.context
 
   t.plan(4)
   // act
-  const instance = new Aragon(0x0, {
+  const instance = createAragon('0x00', {
     cache: { forceLocalStorage: true },
     events: { subscriptionEventDelay: 1000 }
   })
@@ -136,11 +150,11 @@ test('should set the given configuration', t => {
 })
 
 test("should set the default configuration if overriding configuration doesn't contain keys", t => {
-  const { Aragon, configurationStub } = t.context
+  const { createAragon, configurationStub } = t.context
 
   t.plan(4)
   // act
-  const instance = new Aragon(0x0, {
+  const instance = createAragon('0x00', {
     cache: {},
     events: {}
   })
@@ -156,11 +170,11 @@ test("should set the default configuration if overriding configuration doesn't c
 })
 
 test('should use provided accounts', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   // act
   await instance.initAccounts({ providedAccounts: ['0x00'] })
   const accounts = await instance.getAccounts()
@@ -169,11 +183,11 @@ test('should use provided accounts', async (t) => {
 })
 
 test('should get the accounts from web3', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.web3 = {
     eth: {
       getAccounts: sinon.stub().resolves(['0x01', '0x02'])
@@ -187,11 +201,11 @@ test('should get the accounts from web3', async (t) => {
 })
 
 test('should not fetch the accounts if not asked', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.web3 = {
     eth: {
       getAccounts: sinon.stub().resolves(['0x01', '0x02'])
@@ -205,11 +219,11 @@ test('should not fetch the accounts if not asked', async (t) => {
 })
 
 test('should get the network details from web3', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   const testNetworkId = 4
   const testNetworkType = 'rinkeby'
   instance.web3 = {
@@ -291,11 +305,11 @@ const aclEvents = from([{
 }])
 
 test('should init the ACL correctly', async (t) => {
-  const { Aragon, utilsStub } = t.context
+  const { createAragon, utilsStub } = t.context
 
   t.plan(1)
 
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.kernelProxy = {
     call: sinon.stub()
   }
@@ -330,7 +344,7 @@ test('should init the ACL correctly', async (t) => {
 })
 
 test('should init the acl with the default acl fetched from the kernel by default', async (t) => {
-  const { Aragon, utilsStub } = t.context
+  const { createAragon, utilsStub } = t.context
 
   t.plan(2)
   // arrange
@@ -348,7 +362,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
     .returns(kernelProxyStub)
     .withArgs(defaultAclAddress).returns(aclProxyStub)
 
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.cache.get = sinon.stub().returns({})
   instance.cache.set = sinon.stub().resolves()
 
@@ -360,7 +374,7 @@ test('should init the acl with the default acl fetched from the kernel by defaul
 })
 
 test('should init the acl with the provided acl', async (t) => {
-  const { Aragon, utilsStub } = t.context
+  const { createAragon, utilsStub } = t.context
 
   t.plan(3)
   // arrange
@@ -378,7 +392,7 @@ test('should init the acl with the provided acl', async (t) => {
     .returns(kernelProxyStub)
     .withArgs(givenAclAddress).returns(aclProxyStub)
 
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.cache.get = sinon.stub().returns({})
   instance.cache.set = sinon.stub().resolves()
 
@@ -412,7 +426,7 @@ const appInitTestCases = [
 ]
 appInitTestCases.forEach(([testName, permissionsObj]) => {
   test(`should init the apps correctly - ${testName}`, async (t) => {
-    const { Aragon, apmStub, aragonOSCoreStub, apmCoreStub, utilsStub } = t.context
+    const { createAragon, aragonOSCoreStub, apmCoreStub, ensStub, utilsStub } = t.context
 
     t.plan(1)
     // arrange
@@ -443,18 +457,22 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
       utilsStub.makeProxy
         .withArgs(address).returns(proxyStub)
     })
-    apmStub.getLatestVersionForContract = (appId) => Promise.resolve({
-      abi: `abi for ${appId}`
-    })
     aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
       abi: 'abi for kernel',
       isAragonOsInternalApp: true
     })
-    apmCoreStub.getApmAppInfo.withArgs(appIds['0xrepo']).returns({
+    apmCoreStub.getApmInternalAppInfo.withArgs(appIds['0xrepo']).returns({
       abi: 'abi for repo'
     })
+    // Mock ens resolution to just return the appId
+    ensStub.resolve = sinon.stub().returnsArg(0)
 
-    const instance = new Aragon()
+    const instance = createAragon()
+    instance.apm = {
+      fetchLatestRepoContentForContract: (appId) => Promise.resolve({
+        abi: `abi for ${appId}`
+      })
+    }
     instance.permissions = of(permissionsObj)
     instance.kernelProxy = {
       address: kernelAddress,
@@ -491,7 +509,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
             kernelAddress: '0x123',
             proxyAddress: '0x789'
           }, {
-            abi: 'abi for repo',
+            abi: 'abi for repoApp',
             appId: 'repoApp',
             codeAddress: '0xrepoApp',
             isForwarder: false,
@@ -506,7 +524,7 @@ appInitTestCases.forEach(([testName, permissionsObj]) => {
 })
 
 test('should update the apps correctly on SetApp', async (t) => {
-  const { Aragon, apmStub, aragonOSCoreStub, utilsStub } = t.context
+  const { createAragon, aragonOSCoreStub, ensStub, utilsStub } = t.context
   const setAppEventStub = new Subject()
 
   t.plan(4)
@@ -540,15 +558,19 @@ test('should update the apps correctly on SetApp', async (t) => {
     utilsStub.makeProxy
       .withArgs(address).returns(proxyStub)
   })
-  apmStub.getLatestVersionForContract = (appId) => Promise.resolve({
-    abi: `abi for ${appId}`
-  })
   aragonOSCoreStub.getAragonOsInternalAppInfo.withArgs(appIds[kernelAddress]).returns({
     abi: 'abi for kernel',
     isAragonOsInternalApp: true
   })
+  // Mock ens resolution to just return the appId
+  ensStub.resolve = sinon.stub().returnsArg(0)
 
-  const instance = new Aragon()
+  const instance = createAragon()
+  instance.apm = {
+    fetchLatestRepoContentForContract: (appId) => Promise.resolve({
+      abi: `abi for ${appId}`
+    })
+  }
   instance.permissions = of(permissionsObj)
   instance.kernelProxy = {
     address: kernelAddress,
@@ -719,8 +741,8 @@ test('should update the apps correctly on SetApp', async (t) => {
 test('should init the app identifiers correctly', async (t) => {
   t.plan(1)
   // arrange
-  const { Aragon } = t.context
-  const instance = new Aragon()
+  const { createAragon } = t.context
+  const instance = createAragon()
   // act
   await instance.initAppIdentifiers()
   // assert
@@ -732,8 +754,8 @@ test('should init the app identifiers correctly', async (t) => {
 test('should emit reduced app identifiers correctly', async (t) => {
   t.plan(3)
   // arrange
-  const { Aragon } = t.context
-  const instance = new Aragon()
+  const { createAragon } = t.context
+  const instance = createAragon()
   await instance.initAppIdentifiers()
 
   // act
@@ -767,11 +789,11 @@ test('should emit reduced app identifiers correctly', async (t) => {
 })
 
 test('should init the identity providers correctly', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(3)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
 
   // act
   await instance.initIdentityProviders()
@@ -782,12 +804,12 @@ test('should init the identity providers correctly', async (t) => {
 })
 
 test('should emit an intent when requesting address identity modification', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const expectedAddress = '0x123'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
 
   // act
   await instance.initIdentityProviders()
@@ -801,12 +823,12 @@ test('should emit an intent when requesting address identity modification', asyn
 })
 
 test('should be able to resolve intent when requesting address identity modification', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const expectedAddress = '0x123'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
 
   // act
   await instance.initIdentityProviders()
@@ -823,12 +845,12 @@ test('should be able to resolve intent when requesting address identity modifica
 })
 
 test('should be able to reject intent when requesting address identity modification', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const expectedAddress = '0x123'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
 
   // act
   await instance.initIdentityProviders()
@@ -862,11 +884,11 @@ test('should be able to reject intent when requesting address identity modificat
 })
 
 test('should init the forwarders correctly', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.apps = of([
     {
       appId: 'counterApp',
@@ -890,13 +912,13 @@ test('should init the forwarders correctly', async (t) => {
 })
 
 test('should emit an intent when requesting message signing', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const messageToSign = 'test message'
   const requestingApp = '0x123'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.signatures = new Subject()
 
   // act
@@ -909,13 +931,13 @@ test('should emit an intent when requesting message signing', async (t) => {
 })
 
 test('should be able to resolve intent when requesting message signing', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const messageToSign = 'test message'
   const requestingApp = '0x123'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.signatures = new Subject()
 
   // act
@@ -931,13 +953,13 @@ test('should be able to resolve intent when requesting message signing', async (
 })
 
 test('should be able to reject intent when requesting message signing', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const messageToSign = 'test message'
   const requestingApp = '0x123'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.signatures = new Subject()
 
   // act
@@ -970,13 +992,13 @@ test('should be able to reject intent when requesting message signing', async (t
 })
 
 test('should reject non-string message when requesting message signature', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const messageToSign = { key: 'this is not a string' }
   const requestingApp = '0x123'
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
 
   // act
   return t.throwsAsync(instance.signMessage(messageToSign, requestingApp),
@@ -988,13 +1010,13 @@ test('should reject non-string message when requesting message signature', async
 })
 
 test('should emit an intent when performing transaction path', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const initialAddress = '0x123'
   const targetAddress = '0x456'
 
   t.plan(3)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.transactions = new Subject()
 
   // act
@@ -1008,13 +1030,13 @@ test('should emit an intent when performing transaction path', async (t) => {
 })
 
 test('should be able to resolve intent when performing transaction path', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const initialAddress = '0x123'
   const targetAddress = '0x456'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.transactions = new Subject()
 
   // act
@@ -1030,13 +1052,13 @@ test('should be able to resolve intent when performing transaction path', async 
 })
 
 test('should be able to reject intent when perform transaction path', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const initialAddress = '0x123'
   const targetAddress = '0x456'
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.transactions = new Subject()
 
   // act
@@ -1069,11 +1091,11 @@ test('should be able to reject intent when perform transaction path', async (t) 
 })
 
 test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.permissions = of({
     counter: {
       add: {
@@ -1117,7 +1139,7 @@ test('should throw if no ABI is found, when calculating the transaction path', a
 })
 
 test('should use normal transaction pathing when finding external transaction path for installed app', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const targetAddress = '0x123'
   const targetMethodJsonDescription = [{ name: 'foo' }]
   const targetParams = [8]
@@ -1125,7 +1147,7 @@ test('should use normal transaction pathing when finding external transaction pa
 
   t.plan(2)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.accounts = of('0x00')
   instance.apps = of([
     {
@@ -1144,7 +1166,7 @@ test('should use normal transaction pathing when finding external transaction pa
 })
 
 test('should be able to find external transaction path for non-installed app', async (t) => {
-  const { Aragon, utilsStub } = t.context
+  const { createAragon, utilsStub } = t.context
   const targetAddress = '0x123'
   const targetMethodJsonDescription = [{ name: 'foo' }]
   const targetParams = [8]
@@ -1152,7 +1174,7 @@ test('should be able to find external transaction path for non-installed app', a
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.accounts = of('0x00')
   instance.apps = of([
     {
@@ -1171,7 +1193,7 @@ test('should be able to find external transaction path for non-installed app', a
 })
 
 test('should run the app and reply to a request', async (t) => {
-  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+  const { createAragon, messengerConstructorStub, utilsStub } = t.context
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
   t.plan(4)
@@ -1186,7 +1208,8 @@ test('should run the app and reply to a request', async (t) => {
     requests: () => requestsStub
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
-  const instance = new Aragon()
+
+  const instance = createAragon()
   instance.cache.get = sinon.stub()
     .withArgs('0x789.settings')
     .returns(of('user settings for the voting app'))
@@ -1221,7 +1244,7 @@ test('should run the app and reply to a request', async (t) => {
 })
 
 test('should run the app and be able to shutdown', async (t) => {
-  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+  const { createAragon, messengerConstructorStub, utilsStub } = t.context
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
   t.plan(1)
@@ -1232,7 +1255,8 @@ test('should run the app and be able to shutdown', async (t) => {
     requests: () => requestsStub
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
-  const instance = new Aragon()
+
+  const instance = createAragon()
   instance.accounts = of('0x00')
   instance.apps = of([
     {
@@ -1275,7 +1299,7 @@ test('should run the app and be able to shutdown', async (t) => {
 })
 
 test('should run the app and be able to shutdown and clear cache', async (t) => {
-  const { Aragon, messengerConstructorStub, utilsStub } = t.context
+  const { createAragon, messengerConstructorStub, utilsStub } = t.context
   const runningProxyAddress = '0x789'
 
   // Note: This is not a "real" unit test because the rpc handlers are not mocked
@@ -1287,7 +1311,8 @@ test('should run the app and be able to shutdown and clear cache', async (t) => 
     requests: () => requestsStub
   }
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
-  const instance = new Aragon()
+
+  const instance = createAragon()
   instance.accounts = of('0x00')
   instance.apps = of([
     {
@@ -1340,11 +1365,11 @@ test('should run the app and be able to shutdown and clear cache', async (t) => 
 })
 
 test('should get the app from a proxy address', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.apps = of([
     {
       appId: 'some other app with a different proxy',
@@ -1368,11 +1393,11 @@ test('should get the app from a proxy address', async (t) => {
 })
 
 test('should get the permission manager', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   instance.permissions = of({
     counter: {
       add: {
@@ -1391,11 +1416,11 @@ test('should get the permission manager', async (t) => {
 })
 
 test('should be able to decode an evm call script with a single transaction', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   const script = encodeCallScript([{
     to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
     data: '0xcafe'
@@ -1412,11 +1437,11 @@ test('should be able to decode an evm call script with a single transaction', as
 })
 
 test('should be able to decode an evm call script with multiple transactions', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   const script = encodeCallScript([{
     to: '0xcafe1a77e84698c83ca8931f54a755176ef75f2c',
     data: '0xcafe'
@@ -1445,11 +1470,11 @@ test('should be able to decode an evm call script with multiple transactions', a
 })
 
 test('should be able to decode an evm call script with multiple nested transactions', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   /* eslint-disable no-multi-spaces */
   const script = encodeCallScript([{
     to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',
@@ -1533,11 +1558,11 @@ test('should be able to decode an evm call script with multiple nested transacti
 })
 
 test('should be able to decode an evm call script with a complex nested transaction', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   /* eslint-disable no-multi-spaces */
   const nestedScript =
     encodeCallScript([{
@@ -1642,12 +1667,12 @@ test('should be able to decode an evm call script with a complex nested transact
 })
 
 test('should not decode non-call scripts', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const badSpecId = '0x00000002'
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   const script = `${badSpecId}${'123'.padStart(64, 0)}`
   // assert
   t.throws(
@@ -1660,12 +1685,12 @@ test('should not decode non-call scripts', async (t) => {
 })
 
 test('should be only able to decode call scripts when there are multiple nested transactions', async (t) => {
-  const { Aragon } = t.context
+  const { createAragon } = t.context
   const badSpecId = '0x00000002'
 
   t.plan(1)
   // arrange
-  const instance = new Aragon()
+  const instance = createAragon()
   /* eslint-disable no-multi-spaces */
   const script = encodeCallScript([{
     to: '0xbfd1f54dc1c3b50ddf2f1d5fe2f8a6b9c29bb598',

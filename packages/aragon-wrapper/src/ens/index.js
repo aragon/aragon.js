@@ -25,3 +25,9 @@ export function resolve (nameOrNode, opts = { provider: {} }) {
   debug(`Looking up ENS node ${nameOrNode}`)
   return ens.resolveAddressForNode(nameOrNode)
 }
+
+export default function (provider, registryAddress) {
+  return {
+    resolve: (name) => resolve(name, { provider, registryAddress })
+  }
+}
