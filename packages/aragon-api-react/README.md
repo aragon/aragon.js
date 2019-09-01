@@ -151,6 +151,22 @@ function App() {
 }
 ```
 
+#### `currentApp`
+
+Details about the current app. It returns a single object with the same keys as the objects in
+`apps`.
+
+Example:
+
+```jsx
+function App() {
+  const { currentApp } = useAragonApi()
+  return (
+    <div>{currentApp.appAddress}</div>
+  )
+}
+```
+
 #### `network`
 
 An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.

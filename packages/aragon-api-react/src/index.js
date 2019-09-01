@@ -23,11 +23,12 @@ function AragonApi({
   onMessage = () => {},
 }) {
   const [api, setApi] = useState(null)
+  const [appState, setAppState] = useState(null)
+  const [apps, setApps] = useState([])
+  const [currentApp, setCurrentApp] = useState(null)
   const [connectedAccount, setConnectedAccount] = useState('')
   const [network, setNetwork] = useState(null)
-  const [appState, setAppState] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
-  const [apps, setApps] = useState([])
 
   useEffect(() => {
     setApi(new Aragon(new providers.WindowMessage(window.parent)))
@@ -50,6 +51,7 @@ function AragonApi({
   useEffect(() => {
     if (!api) return
 
+    let cancelled = false
     let subscribers = []
 
     const handleMessage = ({ data }) => {
@@ -79,6 +81,15 @@ function AragonApi({
           api.network().subscribe(network => setNetwork(network || null)),
         ]
 
+        api
+          .currentApp()
+          .toPromise()
+          .then(currentApp => {
+            if (!cancelled) {
+              setCurrentApp(currentApp || null)
+            }
+          })
+
         postMessage('ready', true)
       }
 
@@ -89,6 +100,7 @@ function AragonApi({
 
     return () => {
       window.removeEventListener('message', handleMessage)
+      cancelled = true
       subscribers.forEach(subscriber => subscriber.unsubscribe())
     }
   }, [api, reducer])
@@ -101,6 +113,7 @@ function AragonApi({
       value: {
         api,
         apps,
+        currentApp,
         connectedAccount,
         network,
         displayMenuButton,
@@ -139,6 +152,7 @@ const useAppState = () => getAragonApiData('useAppState()').appState
 const useApps = () => getAragonApiData('useApps()').apps
 const useConnectedAccount = () =>
   getAragonApiData('useConnectedAccount()').connectedAccount
+const useCurrentApp = () => getAragonApiData('useCurrentApp()').currentApp
 const useMenuButton = () => {
   const { displayMenuButton, requestMenu } = getAragonApiData('useMenuButton()')
   return [displayMenuButton, requestMenu]
@@ -153,6 +167,7 @@ export {
   useApps,
   useAragonApi,
   useConnectedAccount,
+  useCurrentApp,
   useMenuButton,
   useNetwork,
 }
