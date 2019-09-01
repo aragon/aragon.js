@@ -549,15 +549,24 @@ export default class Aragon {
             //
             // We check if the app's ABI actually has `isForwarder()` declared, and if not, override
             // the isForwarder setting to false.
-            const overrideIsForwarder = Boolean(appInfo && appInfo.abi) &&
+            let isForwarderOverride = {}
+            if (
+              app.isForwarder &&
+              appInfo &&
+              Array.isArray(appInfo.abi) &&
               !appInfo.abi.some(({ type, name }) => type === 'function' && name === 'isForwarder')
+            ) {
+              isForwarderOverride = {
+                isForwarder: false
+              }
+            }
 
             return {
               ...appInfo,
               // Override the fetched appInfo with the actual app proxy's values to avoid mismatches
               ...app,
               // isForwarder override (see above)
-              isForwarder: overrideIsForwarder ? false : app.isForwarder
+              ...isForwarderOverride
             }
           })
         )
