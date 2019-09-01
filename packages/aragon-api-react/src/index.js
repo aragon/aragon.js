@@ -73,9 +73,7 @@ function AragonApi({
             .subscribe(accounts => setConnectedAccount(accounts[0] || '')),
 
           // apps
-          api
-            .apps()
-            .subscribe(apps => setApps(apps || [])),
+          api.apps().subscribe(apps => setApps(apps || [])),
 
           // network
           api.network().subscribe(network => setNetwork(network || null)),
