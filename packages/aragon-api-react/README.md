@@ -118,8 +118,10 @@ Each object in the array holds the following keys:
 - `appAddress`: the app's contract address
 - `appId`: the app's appId
 - `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
 - `isForwarder`: whether the app is a forwarder or not
 - `kernelAddress`: the kernel address of the organization this app is installed on (always the same)
+- `name`: the app's name, if available
 
 Example:
 
