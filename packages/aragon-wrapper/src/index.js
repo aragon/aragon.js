@@ -541,10 +541,23 @@ export default class Aragon {
               } catch (_) { }
             }
 
+            // This is a hack to fix web3.js and ethers not being able to detect reverts on decoding
+            // `eth_call`s (apps that implement fallbacks may revert if they haven't defined
+            // `isForwarder()`)
+            // Ideally web3.js would throw an error if it receives a revert from an `eth_call`, but
+            // as of v1.2.1, it interprets reverts as `true` :(.
+            //
+            // We check if the app's ABI actually has `isForwarder()` declared, and if not, override
+            // the isForwarder setting to false.
+            const overrideIsForwarder = Boolean(appInfo && appInfo.abi) &&
+              !appInfo.abi.some(({ type, name }) => type === 'function' && name === 'isForwarder')
+
             return {
               ...appInfo,
               // Override the fetched appInfo with the actual app proxy's values to avoid mismatches
-              ...app
+              ...app,
+              // isForwarder override (see above)
+              isForwarder: overrideIsForwarder ? false : app.isForwarder
             }
           })
         )
