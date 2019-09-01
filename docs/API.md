@@ -247,9 +247,25 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 ### getApps
 
-Get the list of installed applications on the organization that this app is installed in.
+Get the list of installed applications on the organization that this app is installed on.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected. Each app contains details about its:
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `isForwarder`: whether the app is a forwarder or not
+- `kernelAddress`: the kernel address of the organization this app is installed on (always the same)
+
+### getCurrentApp
+
+Get information about this app (e.g. `proxyAddress`, `abi`, etc.).
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details. The details include:
+- `appAddress`: this app's contract address
+- `appId`: this app's appId
+- `appImplementationAddress`: this app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `isForwarder`: whether this app is a forwarder or not
+- `kernelAddress`: the kernel address of the organization this app is installed on
 
 ### call
 

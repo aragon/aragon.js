@@ -99,7 +99,28 @@ export class AppProxy {
    */
   getApps () {
     return this.rpc.sendAndObserveResponses(
-      'get_apps'
+      'get_apps',
+      ['observe', 'all']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Get this app's information.
+   *
+   * @return {Observable} Single-emission Observable that emits the current app's information.
+   */
+  getCurrentApp () {
+    // Note that we don't use an observe here as the currently running app should never have its
+    // internal details (e.g. proxy address, kernel address) and external details (e.g. ABI, name,
+    // description, etc.) change during run time.
+    //
+    // If these details ever change, the app should instead be restarted from the client running the
+    // app.
+    return this.rpc.sendAndObserveResponse(
+      'get_apps',
+      ['get', 'current']
     ).pipe(
       pluck('result')
     )
