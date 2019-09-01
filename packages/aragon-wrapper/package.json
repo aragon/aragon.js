@@ -78,7 +78,6 @@
     "axios": "^0.19.0",
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",
-    "ethereum-ens": "0.7.4",
     "ethjs-ens": "^2.0.1",
     "homedir": "^0.6.0",
     "js-sha3": "^0.7.0",
