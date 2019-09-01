@@ -251,6 +251,12 @@ Get the list of installed applications on the organization that this app is inst
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected.
 
+### getCurrentApp
+
+Get information about this app (e.g. `proxyAddress`, `abi`, etc.).
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details.
+
 ### call
 
 Perform a read-only call on the app's smart contract.

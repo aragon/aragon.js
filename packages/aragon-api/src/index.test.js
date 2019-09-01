@@ -99,7 +99,7 @@ test('should return the accounts as an observable', t => {
   t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('accounts'))
 })
 
-test('should return the installed apps as an observable', t => {
+test('should send a getApps request for all apps and observe the response', t => {
   t.plan(3)
 
   const initialApps = [
@@ -155,7 +155,39 @@ test('should return the installed apps as an observable', t => {
     emitIndex++
   })
 
-  t.truthy(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('get_apps'))
+  t.true(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('get_apps'))
+})
+
+test('should send a getApps request for the app and observe the single response', t => {
+  t.plan(2)
+
+  const initialApp = {
+    abi: 'abi for counterApp',
+    appId: 'counterApp',
+    codeAddress: '0xcounterApp',
+    isForwarder: false,
+    kernelAddress: '0x123',
+    proxyAddress: '0x456'
+  }
+
+  // arrange
+  const getCurrentAppFn = Index.AppProxy.prototype.getCurrentApp
+  const observable = of({
+    jsonrpc: '2.0',
+    id: 'uuid1',
+    result: initialApp
+  })
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = getCurrentAppFn.call(instanceStub)
+  // assert
+  subscribe(result, value => t.deepEqual(value, initialApp))
+  t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('get_apps'))
 })
 
 test('should send an identify request', t => {
