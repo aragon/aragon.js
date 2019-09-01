@@ -3,6 +3,7 @@ import sinon from 'sinon'
 import proxyquire from 'proxyquire'
 import { Subject, empty, of, from } from 'rxjs'
 import { first } from 'rxjs/operators'
+import * as apps from './apps'
 import * as configurationKeys from './configuration/keys'
 import * as apm from './core/apm'
 import { getCacheKey } from './utils'
@@ -44,6 +45,7 @@ test.beforeEach(t => {
   }
   const Aragon = proxyquire.noCallThru().load('./index', {
     '@aragon/rpc-messenger': messengerConstructorStub,
+    './apps': apps,
     './core/aragonOS': aragonOSCoreStub,
     './core/apm': Object.assign(apm, apmCoreStub),
     './configuration': configurationStub,

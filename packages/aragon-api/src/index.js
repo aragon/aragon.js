@@ -61,19 +61,6 @@ export class AppProxy {
   }
 
   /**
-   * Get current path.
-   *
-   * @return {Observable} Multi-emission Observable that emits a path every time a change is detected.
-   */
-  path () {
-    return this.rpc.sendAndObserveResponses(
-      'path'
-    ).pipe(
-      pluck('result')
-    )
-  }
-
-  /**
    * Get the network the app is connected to over time.
    *
    * @return {Observable} Multi-emission Observable that emits an object with the connected network's id and type every time the network changes.
@@ -140,6 +127,34 @@ export class AppProxy {
   }
 
   /**
+   * Get current path for the app. Useful for in-app routing and navigation.
+   *
+   * @return {Observable} Multi-emission Observable that emits the app's current path every time a change is detected.
+   */
+  paths () {
+    return this.rpc.sendAndObserveResponses(
+      'path',
+      ['observe']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Request a new path.
+   *
+   * @return {Observable} Single-emission Observable that emits if the path request succeeded and errors if rejected
+   */
+  requestPath (path) {
+    return this.rpc.sendAndObserveResponse(
+      'path',
+      ['modify', path]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Resolve an address' identity, using the highest priority provider.
    *
    * @param  {string} address Address to resolve.
@@ -160,7 +175,7 @@ export class AppProxy {
    * The request is typically handled by the aragon client.
    *
    * @param  {string} address Address to modify.
-   * @return {Observable} Single-emission Observable that emits if the modification succeeded or cancelled by the user
+   * @return {Observable} Single-emission Observable that emits if the modification succeeded and errors if cancelled by the user
    */
   requestAddressIdentityModification (address) {
     return this.rpc.sendAndObserveResponse(

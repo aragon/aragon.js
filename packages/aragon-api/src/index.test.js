@@ -192,6 +192,68 @@ test('should send a getApps request for the app and observe the single response'
   t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('get_apps'))
 })
 
+test('should send a path request and observe the response', t => {
+  t.plan(3)
+  // arrange
+  const pathsFn = Index.AppProxy.prototype.paths
+  const observable = of(
+    {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: 'path1'
+    }, {
+      jsonrpc: '2.0',
+      id: 'uuid1',
+      result: 'path2'
+    }
+  )
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = pathsFn.call(instanceStub)
+  // assert
+  let emitIndex = 0
+  subscribe(result, value => {
+    if (emitIndex === 0) {
+      t.deepEqual(value, 'path1')
+    } else if (emitIndex === 1) {
+      t.deepEqual(value, 'path2')
+    } else {
+      t.fail('too many emissions')
+    }
+
+    emitIndex++
+  })
+  t.true(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('path', ['observe']))
+})
+
+test('should send a path modification request', t => {
+  t.plan(2)
+  // arrange
+  const path = 'new_path'
+  const requestPathFn = Index.AppProxy.prototype.requestPath
+  const observable = of({
+    jsonrpc: '2.0',
+    id: 'uuid1',
+    result: null
+  })
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = requestPathFn.call(instanceStub, path)
+  // assert
+  subscribe(result, value => t.is(value, null))
+  t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('path', ['modify', path]))
+})
+
 test('should send an identify request', t => {
   t.plan(1)
   // arrange

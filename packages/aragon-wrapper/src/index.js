@@ -232,7 +232,7 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
-    this.initPath()
+    this.pathIntents = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -996,7 +996,7 @@ export default class Aragon {
    * which listens and handles `this.identityIntents`
    *
    * @param  {string} address Address to modify
-   * @return {Promise} Reolved by the handler of identityIntents
+   * @return {Promise} Resolved by the handler of identityIntents
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
@@ -1052,23 +1052,46 @@ export default class Aragon {
   }
 
   /**
-   * Initialise the path observable.
+   * Request an app's path be changed.
    *
-   * @return {Promise<void>}
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {Promise} Succeeds if path request was allowed
    */
-  async initPath () {
-    this.path = new ReplaySubject(1)
-    this.path.next('/')
+  async requestAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    if (!await this.getApp(appAddress)) {
+      throw new Error(`Cannot request path for non-installed app: ${appAddress}`)
+    }
+
+    return new Promise((resolve, reject) => {
+      this.pathIntents.next({
+        appAddress,
+        path,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The path was rejected'))
+        }
+      })
+    })
   }
 
   /**
-   * Set the path of the current app.
+   * Set an app's path.
    *
+   * @param {string} appAddress
    * @param {string} path
    * @return {void}
    */
-  setPath (path) {
-    this.path.next(path)
+  setAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    this.appContextPool.set(appAddress, 'path', path)
   }
 
   /**
