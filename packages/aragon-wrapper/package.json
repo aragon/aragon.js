@@ -79,7 +79,6 @@
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",
     "ethjs-ens": "^2.0.1",
-    "homedir": "^0.6.0",
     "js-sha3": "^0.7.0",
     "localforage": "^1.7.3",
     "localforage-memoryStorageDriver": "^0.9.2",
