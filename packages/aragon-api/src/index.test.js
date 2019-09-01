@@ -102,22 +102,19 @@ test('should return the accounts as an observable', t => {
 test('should send a getApps request for all apps and observe the response', t => {
   t.plan(3)
 
-  const initialApps = [
-    {
-      abi: 'abi for kernel',
-      appId: 'kernel',
-      codeAddress: '0xkernel',
-      isAragonOsInternalApp: true,
-      proxyAddress: '0x123'
-    }
-  ]
-  const endApps = [].concat(initialApps, {
-    abi: 'abi for counterApp',
-    appId: 'counterApp',
-    codeAddress: '0xcounterApp',
+  const initialApps = [{
+    appAddress: '0x123',
+    appId: 'kernel',
+    appImplementationAddress: '0xkernel',
     isForwarder: false,
-    kernelAddress: '0x123',
-    proxyAddress: '0x456'
+    kernelAddress: undefined
+  }]
+  const endApps = [].concat(initialApps, {
+    appAddress: '0x456',
+    appId: 'counterApp',
+    appImplementationAddress: '0xcounterApp',
+    isForwarder: false,
+    kernelAddress: '0x123'
   })
 
   // arrange
@@ -161,13 +158,12 @@ test('should send a getApps request for all apps and observe the response', t =>
 test('should send a getApps request for the app and observe the single response', t => {
   t.plan(2)
 
-  const initialApp = {
-    abi: 'abi for counterApp',
+  const currentApp = {
+    appAddress: '0x456',
     appId: 'counterApp',
-    codeAddress: '0xcounterApp',
+    appImplementationAddress: '0xcounterApp',
     isForwarder: false,
-    kernelAddress: '0x123',
-    proxyAddress: '0x456'
+    kernelAddress: '0x123'
   }
 
   // arrange
@@ -175,7 +171,7 @@ test('should send a getApps request for the app and observe the single response'
   const observable = of({
     jsonrpc: '2.0',
     id: 'uuid1',
-    result: initialApp
+    result: currentApp
   })
   const instanceStub = {
     rpc: {
@@ -186,7 +182,7 @@ test('should send a getApps request for the app and observe the single response'
   // act
   const result = getCurrentAppFn.call(instanceStub)
   // assert
-  subscribe(result, value => t.deepEqual(value, initialApp))
+  subscribe(result, value => t.deepEqual(value, currentApp))
   t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('get_apps'))
 })
 
