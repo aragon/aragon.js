@@ -74,6 +74,56 @@ export class AppProxy {
   }
 
   /**
+   * Get this app's information.
+   *
+   * @return {Observable} Single-emission Observable that emits the current app's information.
+   */
+  currentApp () {
+    // Note that we don't use an observe here as the currently running app should never have its
+    // internal details (e.g. proxy address, kernel address) and external details (e.g. ABI, name,
+    // description, etc.) change during run time.
+    //
+    // If these details ever change, the app should instead be restarted from the client running the
+    // app.
+    return this.rpc.sendAndObserveResponse(
+      'get_apps',
+      ['get', 'current']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Get an array of the installed apps on the Kernel (organization) this app is attached to.
+   *
+   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the Kernel every time a change is detected.
+   */
+  installedApps () {
+    return this.rpc.sendAndObserveResponses(
+      'get_apps',
+      ['observe', 'all']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * DEPRECATED
+   * Get all installed apps on the Kernel
+   *
+   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the Kernel every time a change is detected.
+   *
+   */
+  getApps () {
+    return this.rpc.sendAndObserveResponses(
+      'get_apps',
+      []
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Set the app identifier.
    *
    * This identifier is used to distinguish multiple instances of your app,
@@ -89,40 +139,6 @@ export class AppProxy {
     this.rpc.send(
       'identify',
       [identifier]
-    )
-  }
-
-  /**
-   * Get an array of the organization's installed apps.
-   *
-   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the organization every time a change is detected.
-   */
-  getApps () {
-    return this.rpc.sendAndObserveResponses(
-      'get_apps',
-      ['observe', 'all']
-    ).pipe(
-      pluck('result')
-    )
-  }
-
-  /**
-   * Get this app's information.
-   *
-   * @return {Observable} Single-emission Observable that emits the current app's information.
-   */
-  getCurrentApp () {
-    // Note that we don't use an observe here as the currently running app should never have its
-    // internal details (e.g. proxy address, kernel address) and external details (e.g. ABI, name,
-    // description, etc.) change during run time.
-    //
-    // If these details ever change, the app should instead be restarted from the client running the
-    // app.
-    return this.rpc.sendAndObserveResponse(
-      'get_apps',
-      ['get', 'current']
-    ).pipe(
-      pluck('result')
     )
   }
 
