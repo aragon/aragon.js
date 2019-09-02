@@ -23,9 +23,11 @@ function AragonApi({
   onMessage = () => {},
 }) {
   const [api, setApi] = useState(null)
-  const [connectedAccount, setConnectedAccount] = useState('')
-  const [network, setNetwork] = useState(null)
   const [appState, setAppState] = useState(null)
+  const [connectedAccount, setConnectedAccount] = useState('')
+  const [currentApp, setCurrentApp] = useState(null)
+  const [installedApps, setInstalledApps] = useState([])
+  const [network, setNetwork] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
   const [path, setPath] = useState('/')
   const [requestPath, setRequestPath] = useState(null)
@@ -53,6 +55,7 @@ function AragonApi({
   useEffect(() => {
     if (!api) return
 
+    let cancelled = false
     let subscribers = []
 
     const handleMessage = ({ data } = {}) => {
@@ -77,9 +80,21 @@ function AragonApi({
           // network
           api.network().subscribe(network => setNetwork(network || null)),
 
+          // installed apps
+          api.installedApps().subscribe(apps => setInstalledApps(apps || [])),
+
           // path
           api.path().subscribe(path => setPath(path || '/')),
         ]
+
+        api
+          .currentApp()
+          .toPromise()
+          .then(currentApp => {
+            if (!cancelled) {
+              setCurrentApp(currentApp || null)
+            }
+          })
 
         postMessage('ready', true)
       }
@@ -91,6 +106,7 @@ function AragonApi({
 
     return () => {
       window.removeEventListener('message', handleMessage)
+      cancelled = true
       subscribers.forEach(subscriber => subscriber.unsubscribe())
     }
   }, [api, reducer])
@@ -103,6 +119,8 @@ function AragonApi({
       value: {
         api,
         connectedAccount,
+        currentApp,
+        installedApps,
         network,
         displayMenuButton,
         path,
@@ -141,6 +159,8 @@ const useApi = () => getAragonApiData('useApi()').api
 const useAppState = () => getAragonApiData('useAppState()').appState
 const useConnectedAccount = () =>
   getAragonApiData('useConnectedAccount()').connectedAccount
+const useCurrentApp = () => getAragonApiData('useCurrentApp()').currentApp
+const useInstalledApps = () => getAragonApiData('useInstalledApps()').installedApps
 const useMenuButton = () => [
   getAragonApiData('useMenuButton()').displayMenuButton,
   requestMenu,
@@ -158,6 +178,8 @@ export {
   useAppState,
   useAragonApi,
   useConnectedAccount,
+  useCurrentApp,
+  useInstalledApps,
   useMenuButton,
   useNetwork,
   usePath,

@@ -158,6 +158,51 @@ function App() {
 }
 ```
 
+#### `currentApp`
+
+Details about the current app. It returns a single object with the following keys:
+
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
+- `isForwarder`: whether the app is a forwarder
+- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
+- `name`: the app's name, if available
+
+Example:
+
+```jsx
+function App() {
+  const { currentApp } = useAragonApi()
+  return (
+    <div>{currentApp.appAddress}</div>
+  )
+}
+```
+
+#### `installedApps`
+
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
+the list of apps are loaded.
+
+Each object in the array holds the same keys as `currentApp`.
+
+Example:
+
+```jsx
+function App() {
+  const { installedApps } = useAragonApi()
+  return (
+    <div>
+      {installedApps.map(app => (
+        <div>{app.appAddress}</div>
+      ))}
+    </div>
+  )
+}
+```
+
 #### `network`
 
 An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
@@ -181,15 +226,19 @@ Call this function to display the Aragon menu, when hidden automatically. This s
 
 ### useApi()
 
-This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
 
 ### useAppState()
 
-This Hook returns the same data than the `appState` entry from the `useAppState()` hook.
+This Hook returns the same data as the `appState` entry from the `useAppState()` hook.
 
 ### useConnectedAccount()
 
-This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
+
+### useInstalledApps()
+
+This Hook returns the same data as the `installedApps` entry from the `useAragonApi()` hook.
 
 ### useMenuButton()
 
@@ -197,7 +246,7 @@ This Hook returns an array containing the `displayMenuButton` and the `requestMe
 
 ### useNetwork()
 
-This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
 
 ### usePath()
 
