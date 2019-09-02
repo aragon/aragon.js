@@ -249,13 +249,13 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 Get information about this app (e.g. `appAddress`, `appId`, etc.).
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details. The details include:
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details, including:
 - `appAddress`: this app's contract address
 - `appId`: this app's appId
-- `appImplementationAddress`: this app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `appImplementationAddress`: this app's implementation contract address, if any (only available if this app is a proxied AragonApp)
 - `identifier`: this app's self-declared identifier, if any
-- `isForwarder`: whether this app is a forwarder or not
-- `kernelAddress`: the kernel address (i.e. organization address) this app is attached to
+- `isForwarder`: whether this app is a forwarder
+- `kernelAddress`: this app's attached kernel address (i.e. organization address)
 - `name`: this app's name, if available
 
 ### installedApps
@@ -264,7 +264,7 @@ Get the list of installed applications on the Kernel (organization) this app is 
 
 To get information about just the current app, use `currentApp()` instead.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected. Each app contains the same details as `currentApp()`.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed applications is detected. Each object contains the same details as `currentApp()`.
 
 ### call
 
