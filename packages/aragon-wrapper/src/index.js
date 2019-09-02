@@ -26,6 +26,7 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
+import AppContextPool from './apps'
 import apm, { getApmInternalAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
@@ -196,6 +197,9 @@ export default class Aragon {
     // Set up cache
     this.cache = new Cache(daoAddress)
 
+    // Set up app contexts
+    this.appContextPool = new AppContextPool()
+
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
 
@@ -228,6 +232,7 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
+    this.pathIntents = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -991,7 +996,7 @@ export default class Aragon {
    * which listens and handles `this.identityIntents`
    *
    * @param  {string} address Address to modify
-   * @return {Promise} Reolved by the handler of identityIntents
+   * @return {Promise} Resolved by the handler of identityIntents
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
@@ -1044,6 +1049,49 @@ export default class Aragon {
       id: await this.web3.eth.net.getId(),
       type: await this.web3.eth.net.getNetworkType()
     })
+  }
+
+  /**
+   * Request an app's path be changed.
+   *
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {Promise} Succeeds if path request was allowed
+   */
+  async requestAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    if (!await this.getApp(appAddress)) {
+      throw new Error(`Cannot request path for non-installed app: ${appAddress}`)
+    }
+
+    return new Promise((resolve, reject) => {
+      this.pathIntents.next({
+        appAddress,
+        path,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The path was rejected'))
+        }
+      })
+    })
+  }
+
+  /**
+   * Set an app's path.
+   *
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {void}
+   */
+  setAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    this.appContextPool.set(appAddress, 'path', path)
   }
 
   /**
@@ -1100,6 +1148,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
         handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'path', handlers.path),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
 
         // Contract handlers

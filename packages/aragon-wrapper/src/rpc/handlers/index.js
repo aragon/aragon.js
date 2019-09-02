@@ -50,6 +50,7 @@ export { default as cache } from './cache'
 export { default as describeScript } from './describe-script'
 export { default as getApps } from './get-apps'
 export { default as network } from './network'
+export { default as path } from './path'
 export { default as web3Eth } from './web3-eth'
 
 export { default as intent } from './intent'

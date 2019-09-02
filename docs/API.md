@@ -266,6 +266,22 @@ To get information about just the current app, use `currentApp()` instead.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed applications is detected. Each object contains the same details as `currentApp()`.
 
+### path
+
+Get the current path for the app over time. Useful with `requestPath()` to request and respond to in-app navigation changes.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits a string for the app's current path every time the path changes.
+
+### requestPath
+
+Request the current app be allowed to navigate to a different path. Different clients may behave differently, such as requesting user interaction, but all clients _should_ only allow an app to change its path if it is currently visible to users.
+
+#### Parameters
+
+- `path` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The path to navigate to
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits `null` on success or an error if the path request was rejected.
+
 ### call
 
 Perform a read-only call on the app's smart contract.
@@ -346,7 +362,7 @@ Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1
 
 - `message` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The message to sign
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the result of the signature. Errors if the user chose not to sign the message.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the signature hash on success or an error if the user chose not to sign the message.
 
 #### Examples
 
