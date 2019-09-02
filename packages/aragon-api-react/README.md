@@ -108,36 +108,6 @@ function App() {
 }
 ```
 
-#### `apps`
-
-The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
-the list of apps are loaded.
-
-Each object in the array holds the following keys:
-
-- `appAddress`: the app's contract address
-- `appId`: the app's appId
-- `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
-- `identifier`: the app's identifier, if any
-- `isForwarder`: whether the app is a forwarder or not
-- `kernelAddress`: the kernel address of the organization this app is installed on (always the same)
-- `name`: the app's name, if available
-
-Example:
-
-```jsx
-function App() {
-  const { apps } = useAragonApi()
-  return (
-    <div>
-      {apps.map(app => (
-        <div>{app.appAddress}</div>
-      ))}
-    </div>
-  )
-}
-```
-
 #### `connectedAccount`
 
 The connected Ethereum account. Its value is `""` (empty string) when there is no account connected.
@@ -155,8 +125,15 @@ function App() {
 
 #### `currentApp`
 
-Details about the current app. It returns a single object with the same keys as the objects in
-`apps`.
+Details about the current app. It returns a single object with the following keys:
+
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
+- `isForwarder`: whether the app is a forwarder or not
+- `kernelAddress`: the Kernel address (i.e. organization address) this app is installed on
+- `name`: the app's name, if available
 
 Example:
 
@@ -165,6 +142,28 @@ function App() {
   const { currentApp } = useAragonApi()
   return (
     <div>{currentApp.appAddress}</div>
+  )
+}
+```
+
+#### `installedApps`
+
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
+the list of apps are loaded.
+
+Each object in the array holds the same keys as `currentApp`.
+
+Example:
+
+```jsx
+function App() {
+  const { installedApps } = useAragonApi()
+  return (
+    <div>
+      {installedApps.map(app => (
+        <div>{app.appAddress}</div>
+      ))}
+    </div>
   )
 }
 ```
@@ -194,10 +193,6 @@ Call this function to display the Aragon menu, when hidden automatically. This s
 
 This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
 
-### useApps()
-
-This Hook returns the same data as the `apps` entry from the `useAragonApi()` hook.
-
 ### useAppState()
 
 This Hook returns the same data as the `appState` entry from the `useAppState()` hook.
@@ -205,6 +200,10 @@ This Hook returns the same data as the `appState` entry from the `useAppState()`
 ### useConnectedAccount()
 
 This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
+
+### useInstalledApps()
+
+This Hook returns the same data as the `installedApps` entry from the `useAragonApi()` hook.
 
 ### useMenuButton()
 

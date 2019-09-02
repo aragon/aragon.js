@@ -24,9 +24,9 @@ function AragonApi({
 }) {
   const [api, setApi] = useState(null)
   const [appState, setAppState] = useState(null)
-  const [apps, setApps] = useState([])
-  const [currentApp, setCurrentApp] = useState(null)
   const [connectedAccount, setConnectedAccount] = useState('')
+  const [currentApp, setCurrentApp] = useState(null)
+  const [installedApps, setInstalledApps] = useState([])
   const [network, setNetwork] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
 
@@ -72,15 +72,16 @@ function AragonApi({
             .accounts()
             .subscribe(accounts => setConnectedAccount(accounts[0] || '')),
 
-          // apps
-          api.getApps().subscribe(apps => setApps(apps || [])),
-
           // network
           api.network().subscribe(network => setNetwork(network || null)),
+
+          // installed apps
+          api.installedApps().subscribe(apps => setApps(apps || [])),
+
         ]
 
         api
-          .getCurrentApp()
+          .currentApp()
           .toPromise()
           .then(currentApp => {
             if (!cancelled) {
@@ -110,9 +111,9 @@ function AragonApi({
     {
       value: {
         api,
-        apps,
-        currentApp,
         connectedAccount,
+        currentApp,
+        installedapps,
         network,
         displayMenuButton,
 
@@ -147,10 +148,10 @@ const useAragonApi = () => ({
 // direct access hooks
 const useApi = () => getAragonApiData('useApi()').api
 const useAppState = () => getAragonApiData('useAppState()').appState
-const useApps = () => getAragonApiData('useApps()').apps
 const useConnectedAccount = () =>
   getAragonApiData('useConnectedAccount()').connectedAccount
 const useCurrentApp = () => getAragonApiData('useCurrentApp()').currentApp
+const useInstalledApps = () => getAragonApiData('useInstalledApps()').installedApps
 const useMenuButton = () => {
   const { displayMenuButton, requestMenu } = getAragonApiData('useMenuButton()')
   return [displayMenuButton, requestMenu]
@@ -162,10 +163,10 @@ export {
   AragonApi,
   useApi,
   useAppState,
-  useApps,
   useAragonApi,
   useConnectedAccount,
   useCurrentApp,
+  useInstalledApps,
   useMenuButton,
   useNetwork,
 }
