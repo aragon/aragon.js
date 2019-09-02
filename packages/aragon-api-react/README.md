@@ -216,14 +216,6 @@ function App() {
 }
 ```
 
-#### `displayMenuButton`
-
-Whether or not to display the menu button (`Boolean`), depending on it being automatically hidden or not in the client.
-
-#### `requestMenu()`
-
-Call this function to display the Aragon menu, when hidden automatically. This should be called when the user clicks on the menu button.
-
 ### useApi()
 
 This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
@@ -239,10 +231,6 @@ This Hook returns the same data as the `connectedAccount` entry from the `useAra
 ### useInstalledApps()
 
 This Hook returns the same data as the `installedApps` entry from the `useAragonApi()` hook.
-
-### useMenuButton()
-
-This Hook returns an array containing the `displayMenuButton` and the `requestMenu` entries from the `useAragonApi()` hook, in that order.
 
 ### useNetwork()
 
