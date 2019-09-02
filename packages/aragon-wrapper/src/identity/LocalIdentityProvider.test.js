@@ -13,7 +13,8 @@ test.beforeEach(async t => {
 })
 
 test.afterEach(async t => {
-  t.context.localIdentityProvider.clear() // clear because its storage is global
+  // Reset cache after each test because its storage is global
+  await t.context.localIdentityProvider.identityCache.clear()
 })
 
 // The tests run serially to prevent leaks between tests
@@ -68,7 +69,6 @@ test.serial('should be case insensitive when modifying', async t => {
   const expectedName = 'vitalik'
   const overwrittenName = 'gavin'
 
-  await provider.clear()
   await provider.modify(ADDRESS_MIXED_CASE, { name: expectedName })
   await provider.modify(ADDRESS_LOWER_CASE, { name: overwrittenName })
 
@@ -88,26 +88,7 @@ test.serial('should always have createAt in metadata', async t => {
   t.truthy(identityMetadata.createdAt)
 })
 
-test.serial('clear clears the local cache', async t => {
-  t.plan(6)
-  const provider = t.context.localIdentityProvider
-  const name = 'vitalik'
-  await provider.modify(ADDRESS_MIXED_CASE, { name })
-  await provider.modify(SECOND_ADDRESS, { name })
-  await provider.modify(THIRD_ADDRESS, { name })
-
-  t.truthy(await provider.resolve(ADDRESS_MIXED_CASE))
-  t.truthy(await provider.resolve(SECOND_ADDRESS))
-  t.truthy(await provider.resolve(THIRD_ADDRESS))
-
-  await provider.clear()
-
-  t.falsy(await provider.resolve(ADDRESS_MIXED_CASE))
-  t.falsy(await provider.resolve(SECOND_ADDRESS))
-  t.falsy(await provider.resolve(THIRD_ADDRESS))
-})
-
-test.serial('remove removes selected local identities', async t => {
+test.serial('removes selected local identities', async t => {
   t.plan(4)
   const provider = t.context.localIdentityProvider
   const name = 'vitalik'

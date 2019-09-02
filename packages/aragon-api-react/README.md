@@ -1,6 +1,6 @@
 # aragonAPI for React
 
-This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md) is used under the hood, so being familiar with it can be useful.
+This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
 
 ## Usage
 
@@ -43,7 +43,7 @@ npm install --save @aragon/api @aragon/api-react
 
 Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
-It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html). If not provided, the state is passed as is.
+It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as is.
 
 #### Example
 
@@ -82,7 +82,7 @@ It returns an object containing the following entries:
 
 #### `api`
 
-This is the current [`AragonApp`](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#aragonapp) instance. Use it to call methods on the contract.
+This is the current [`AragonApp`](https://github.com/aragon/aragon.js/blob/master/docs/API.md#aragonapp) instance. Use it to call methods on the contract.
 
 Example:
 
@@ -130,7 +130,7 @@ function App() {
 
 #### `appState`
 
-The app state, after having passed the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html) state through the `reducer` prop of `AragonApi`.
+The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
 
 Example:
 
@@ -160,7 +160,7 @@ function App() {
 
 #### `network`
 
-An [object](https://github.com/aragon/aragon.js/blob/master/docs/APP.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
+An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
 
 Example:
 
