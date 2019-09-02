@@ -7,12 +7,21 @@ import {
 } from 'react'
 import Aragon, { providers } from '@aragon/api'
 
+const warn = (...params) => {
+  // Warn in dev mode only
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(...params)
+  }
+}
+
 const postMessage = (name, value) => {
   window.parent.postMessage({ from: 'app', name, value }, '*')
 }
 
 const requestMenu = () => {
-  postMessage('requestMenu', true)
+  warn(
+    'api-react: "requestMenu" is deprecated and is a noop. It can safely be removed from your codebase.'
+  )
 }
 
 const AragonApiContext = createContext()
@@ -28,7 +37,6 @@ function AragonApi({
   const [currentApp, setCurrentApp] = useState(null)
   const [installedApps, setInstalledApps] = useState([])
   const [network, setNetwork] = useState(null)
-  const [displayMenuButton, setDisplayMenuButton] = useState(false)
   const [path, setPath] = useState('/')
   const [requestPath, setRequestPath] = useState(null)
 
@@ -61,10 +69,6 @@ function AragonApi({
     const handleMessage = ({ data } = {}) => {
       if (!data || data.from !== 'wrapper') {
         return
-      }
-
-      if (data.name === 'displayMenuButton') {
-        setDisplayMenuButton(data.value)
       }
 
       if (data.name === 'ready') {
@@ -122,12 +126,14 @@ function AragonApi({
         currentApp,
         installedApps,
         network,
-        displayMenuButton,
         path,
         requestPath,
 
         // reducer(null) is called to get the initial state
         appState: appState === null ? reducer(null) : appState,
+
+        // Deprecated
+        displayMenuButton: false,
       },
     },
     children
@@ -150,8 +156,10 @@ function getAragonApiData(hookName) {
 
 const useAragonApi = () => ({
   ...getAragonApiData('useAragonApi()'),
-  requestMenu,
   _sendMessage: postMessage,
+
+  // Deprecated
+  requestMenu,
 })
 
 // direct access hooks
@@ -161,14 +169,20 @@ const useConnectedAccount = () =>
   getAragonApiData('useConnectedAccount()').connectedAccount
 const useCurrentApp = () => getAragonApiData('useCurrentApp()').currentApp
 const useInstalledApps = () => getAragonApiData('useInstalledApps()').installedApps
-const useMenuButton = () => [
-  getAragonApiData('useMenuButton()').displayMenuButton,
-  requestMenu,
-]
 const useNetwork = () => getAragonApiData('useNetwork()').network
 const usePath = () => {
   const { path, requestPath } = getAragonApiData('usePath()')
   return [path, requestPath]
+}
+
+// Deprecated
+const useMenuButton = () => {
+  warn('api-react: "useMenuButton" is deprecated. It can safely be removed from your codebase.')
+
+  return [
+    getAragonApiData('useMenuButton()').displayMenuButton,
+    requestMenu,
+  ]
 }
 
 export {
@@ -180,7 +194,9 @@ export {
   useConnectedAccount,
   useCurrentApp,
   useInstalledApps,
-  useMenuButton,
   useNetwork,
   usePath,
+
+  // Deprecated
+  useMenuButton,
 }
