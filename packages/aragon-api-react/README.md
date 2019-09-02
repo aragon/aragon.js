@@ -129,10 +129,10 @@ Details about the current app. It returns a single object with the following key
 
 - `appAddress`: the app's contract address
 - `appId`: the app's appId
-- `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
+- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
 - `identifier`: the app's identifier, if any
-- `isForwarder`: whether the app is a forwarder or not
-- `kernelAddress`: the Kernel address (i.e. organization address) this app is installed on
+- `isForwarder`: whether the app is a forwarder
+- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
 - `name`: the app's name, if available
 
 Example:
