@@ -15,10 +15,6 @@ const requestMenu = () => {
   postMessage('requestMenu', true)
 }
 
-const requestPath = (path, appId) => {
-  postMessage('requestPath', [path, appId])
-}
-
 const AragonApiContext = createContext()
 
 function AragonApi({
@@ -79,7 +75,7 @@ function AragonApi({
           api.network().subscribe(network => setNetwork(network || null)),
 
           // path
-          api.path().subscribe(path => setPath(path)),
+          api.path().subscribe(path => setPath(path || '/')),
         ]
 
         postMessage('ready', true)
@@ -107,7 +103,6 @@ function AragonApi({
         network,
         displayMenuButton,
         path,
-        setPath,
 
         // reducer(null) is called to get the initial state
         appState: appState === null ? reducer(null) : appState,
@@ -134,7 +129,6 @@ function getAragonApiData(hookName) {
 const useAragonApi = () => ({
   ...getAragonApiData('useAragonApi()'),
   requestMenu,
-  requestPath,
   _sendMessage: postMessage,
 })
 
@@ -148,7 +142,10 @@ const useMenuButton = () => [
   requestMenu,
 ]
 const useNetwork = () => getAragonApiData('useNetwork()').network
-const usePath = () => [getAragonApiData('usePath()').path, requestPath]
+const usePath = () => {
+  const { api, path } = getAragonApiData('usePath()')
+  return [path, api.requestPath]
+}
 
 export {
   AragonApi,
