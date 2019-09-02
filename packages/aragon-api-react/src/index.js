@@ -113,7 +113,7 @@ function AragonApi({
         api,
         connectedAccount,
         currentApp,
-        installedapps,
+        installedApps,
         network,
         displayMenuButton,
 
