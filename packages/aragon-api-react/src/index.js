@@ -28,9 +28,12 @@ function AragonApi({
   const [appState, setAppState] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
   const [path, setPath] = useState('/')
+  const [requestPath, setRequestPath] = useState(null)
 
   useEffect(() => {
-    setApi(new Aragon(new providers.WindowMessage(window.parent)))
+    const api = new Aragon(new providers.WindowMessage(window.parent))
+    setApi(api)
+    setRequestPath(() => api.requestPath.bind(api))
   }, [])
 
   useEffect(() => {
@@ -103,6 +106,7 @@ function AragonApi({
         network,
         displayMenuButton,
         path,
+        requestPath,
 
         // reducer(null) is called to get the initial state
         appState: appState === null ? reducer(null) : appState,
@@ -143,8 +147,8 @@ const useMenuButton = () => [
 ]
 const useNetwork = () => getAragonApiData('useNetwork()').network
 const usePath = () => {
-  const { api, path } = getAragonApiData('usePath()')
-  return [path, api.requestPath]
+  const { path, requestPath } = getAragonApiData('usePath()')
+  return [path, requestPath]
 }
 
 export {

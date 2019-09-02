@@ -93,24 +93,24 @@ function App() {
 }
 ```
 
-#### `path` / `api.requestPath()`
+#### `path` / `requestPath()`
 
 The app's current path. Its value is `"/"` by default.
 
-Use `api.requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
+Use `requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
 
 Example:
 
 ```jsx
 function App() {
-  const { api, path } = useAragonApi()
+  const { path, requestPath } = useAragonApi()
 
   // “Hello World” screen
   if (path === '/hello-world') {
     return (
       <div>
         <h1>Hello World</h1>
-        <button onClick={() => api.requestPath('/')}>
+        <button onClick={() => requestPath('/')}>
           Back
         </button>
       </div>
@@ -120,7 +120,7 @@ function App() {
   // Home
   return (
     <div>
-      <button onClick={() => api.requestPath('/hello-world')}>
+      <button onClick={() => requestPath('/hello-world')}>
         Click
       </button>
     </div>
@@ -201,7 +201,7 @@ This Hook returns the same data than the `network` entry from the `useAragonApi(
 
 ### usePath()
 
-This Hook returns an array holding two values:
+This Hook returns an array holding two values from the `useAragonApi()` hook:
 
-1. The same `path` entry from the `useAragonApi()` hook
-1. The `api.requestPath()` function
+1. `path`, and
+1. `requestPath`
