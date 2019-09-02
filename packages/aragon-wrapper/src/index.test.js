@@ -1224,7 +1224,7 @@ test('should run the app and reply to a request', async (t) => {
       proxyAddress: '0x789'
     }
   ])
-  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+  utilsStub.makeProxyFromAppABI = (proxyAddress) => ({
     address: proxyAddress,
     updateInitializationBlock: () => {}
   })
@@ -1269,7 +1269,7 @@ test('should run the app and be able to shutdown', async (t) => {
       proxyAddress: '0x789'
     }
   ])
-  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+  utilsStub.makeProxyFromAppABI = (proxyAddress) => ({
     address: proxyAddress,
     updateInitializationBlock: () => {}
   })
@@ -1326,7 +1326,7 @@ test('should run the app and be able to shutdown and clear cache', async (t) => 
     }
   ])
 
-  utilsStub.makeProxyFromABI = (proxyAddress) => ({
+  utilsStub.makeProxyFromAppABI = (proxyAddress) => ({
     address: proxyAddress,
     updateInitializationBlock: () => {}
   })
