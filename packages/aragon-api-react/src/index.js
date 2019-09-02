@@ -27,9 +27,13 @@ function AragonApi({
   const [network, setNetwork] = useState(null)
   const [appState, setAppState] = useState(null)
   const [displayMenuButton, setDisplayMenuButton] = useState(false)
+  const [path, setPath] = useState('/')
+  const [requestPath, setRequestPath] = useState(null)
 
   useEffect(() => {
-    setApi(new Aragon(new providers.WindowMessage(window.parent)))
+    const api = new Aragon(new providers.WindowMessage(window.parent))
+    setApi(api)
+    setRequestPath(() => api.requestPath.bind(api))
   }, [])
 
   useEffect(() => {
@@ -51,13 +55,15 @@ function AragonApi({
 
     let subscribers = []
 
-    const handleMessage = ({ data }) => {
-      if (data.from !== 'wrapper') {
+    const handleMessage = ({ data } = {}) => {
+      if (!data || data.from !== 'wrapper') {
         return
       }
+
       if (data.name === 'displayMenuButton') {
         setDisplayMenuButton(data.value)
       }
+
       if (data.name === 'ready') {
         subscribers = [
           // app state
@@ -70,6 +76,9 @@ function AragonApi({
 
           // network
           api.network().subscribe(network => setNetwork(network || null)),
+
+          // path
+          api.path().subscribe(path => setPath(path || '/')),
         ]
 
         postMessage('ready', true)
@@ -96,6 +105,8 @@ function AragonApi({
         connectedAccount,
         network,
         displayMenuButton,
+        path,
+        requestPath,
 
         // reducer(null) is called to get the initial state
         appState: appState === null ? reducer(null) : appState,
@@ -130,19 +141,24 @@ const useApi = () => getAragonApiData('useApi()').api
 const useAppState = () => getAragonApiData('useAppState()').appState
 const useConnectedAccount = () =>
   getAragonApiData('useConnectedAccount()').connectedAccount
-const useMenuButton = () => {
-  const { displayMenuButton, requestMenu } = getAragonApiData('useMenuButton()')
-  return [displayMenuButton, requestMenu]
-}
+const useMenuButton = () => [
+  getAragonApiData('useMenuButton()').displayMenuButton,
+  requestMenu,
+]
 const useNetwork = () => getAragonApiData('useNetwork()').network
+const usePath = () => {
+  const { path, requestPath } = getAragonApiData('usePath()')
+  return [path, requestPath]
+}
 
 export {
-  AragonApiContext as _AragonApiContext,
   AragonApi,
+  AragonApiContext as _AragonApiContext,
   useApi,
   useAppState,
   useAragonApi,
   useConnectedAccount,
   useMenuButton,
   useNetwork,
+  usePath,
 }
