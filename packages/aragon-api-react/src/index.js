@@ -76,7 +76,7 @@ function AragonApi({
           api.network().subscribe(network => setNetwork(network || null)),
 
           // installed apps
-          api.installedApps().subscribe(apps => setApps(apps || [])),
+          api.installedApps().subscribe(apps => setInstalledApps(apps || [])),
 
         ]
 
