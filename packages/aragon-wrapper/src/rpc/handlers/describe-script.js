@@ -7,9 +7,9 @@ export default async function (request, proxy, wrapper) {
     wrapper.decodeTransactionPath(script)
   )
 
-  // TODO: remove this once the app has enough information to get this information itself
-  //       (see https://github.com/aragon/aragon.js/issues/194)
   // Add name and identifier decoration
+  // TODO: deprecate this now that the app has enough information to get this information itself
+  // through getApps()
   const identifiers = await wrapper.appIdentifiers.pipe(first()).toPromise()
   return Promise.all(
     describedPath.map(async (step) => {

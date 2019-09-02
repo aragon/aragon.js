@@ -1,5 +1,5 @@
 // Externals
-import { asyncScheduler, concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
+import { asyncScheduler, concat, from, merge, of, BehaviorSubject, ReplaySubject, Subject } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -26,17 +26,19 @@ import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
 // Utilities
+import AppContextPool from './apps'
 import apm, { getApmInternalAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
   isAragonOsInternalApp
 } from './core/aragonOS'
-import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
+import { isKernelAppCodeNamespace } from './core/aragonOS/kernel'
 import { setConfiguration } from './configuration'
 import * as configurationKeys from './configuration/keys'
 import ens from './ens'
 import {
+  postprocessRadspecDescription,
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
   tryEvaluatingRadspec
@@ -47,9 +49,8 @@ import {
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
-  makeProxyFromABI,
-  AsyncRequestCache,
-  ANY_ENTITY
+  makeProxyFromAppABI,
+  AsyncRequestCache
 } from './utils'
 import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callscript'
 import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
@@ -196,6 +197,9 @@ export default class Aragon {
     // Set up cache
     this.cache = new Cache(daoAddress)
 
+    // Set up app contexts
+    this.appContextPool = new AppContextPool()
+
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
 
@@ -228,6 +232,7 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
+    this.pathIntents = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -541,10 +546,32 @@ export default class Aragon {
               } catch (_) { }
             }
 
+            // This is a hack to fix web3.js and ethers not being able to detect reverts on decoding
+            // `eth_call`s (apps that implement fallbacks may revert if they haven't defined
+            // `isForwarder()`)
+            // Ideally web3.js would throw an error if it receives a revert from an `eth_call`, but
+            // as of v1.2.1, it interprets reverts as `true` :(.
+            //
+            // We check if the app's ABI actually has `isForwarder()` declared, and if not, override
+            // the isForwarder setting to false.
+            let isForwarderOverride = {}
+            if (
+              app.isForwarder &&
+              appInfo &&
+              Array.isArray(appInfo.abi) &&
+              !appInfo.abi.some(({ type, name }) => type === 'function' && name === 'isForwarder')
+            ) {
+              isForwarderOverride = {
+                isForwarder: false
+              }
+            }
+
             return {
               ...appInfo,
               // Override the fetched appInfo with the actual app proxy's values to avoid mismatches
-              ...app
+              ...app,
+              // isForwarder override (see above)
+              ...isForwarderOverride
             }
           })
         )
@@ -969,7 +996,7 @@ export default class Aragon {
    * which listens and handles `this.identityIntents`
    *
    * @param  {string} address Address to modify
-   * @return {Promise} Reolved by the handler of identityIntents
+   * @return {Promise} Resolved by the handler of identityIntents
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
@@ -1025,6 +1052,49 @@ export default class Aragon {
   }
 
   /**
+   * Request an app's path be changed.
+   *
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {Promise} Succeeds if path request was allowed
+   */
+  async requestAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    if (!await this.getApp(appAddress)) {
+      throw new Error(`Cannot request path for non-installed app: ${appAddress}`)
+    }
+
+    return new Promise((resolve, reject) => {
+      this.pathIntents.next({
+        appAddress,
+        path,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The path was rejected'))
+        }
+      })
+    })
+  }
+
+  /**
+   * Set an app's path.
+   *
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {void}
+   */
+  setAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    this.appContextPool.set(appAddress, 'path', path)
+  }
+
+  /**
    * Run an app.
    *
    * As there may be race conditions with losing messages from cross-context environments,
@@ -1048,7 +1118,7 @@ export default class Aragon {
     const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
 
     // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-    const appProxy = makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+    const appProxy = makeProxyFromAppABI(app.proxyAddress, app.abi, this.web3)
 
     await appProxy.updateInitializationBlock()
 
@@ -1078,6 +1148,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
         handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
         handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'path', handlers.path),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
 
         // Contract handlers
@@ -1516,7 +1587,7 @@ export default class Aragon {
       if (decoratedStep) {
         if (decoratedStep.description) {
           try {
-            const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+            const processed = await postprocessRadspecDescription(decoratedStep.description, this)
             decoratedStep.description = processed.description
             decoratedStep.annotatedDescription = processed.annotatedDescription
           } catch (err) { }
@@ -1529,100 +1600,6 @@ export default class Aragon {
 
       return decoratedStep || step
     }))
-  }
-
-  /**
-   * Look for known addresses and roles in a radspec description and substitute them with a human string
-   *
-   * @param  {string} description
-   * @return {Promise<Object>} Description and annotated description
-   */
-  async postprocessRadspecDescription (description) {
-    const addressRegexStr = '0x[a-fA-F0-9]{40}'
-    const addressRegex = new RegExp(`^${addressRegexStr}$`)
-    const bytes32RegexStr = '0x[a-f0-9]{64}'
-    const bytes32Regex = new RegExp(`^${bytes32RegexStr}$`)
-    const combinedRegex = new RegExp(`\\b(${addressRegexStr}|${bytes32RegexStr})\\b`)
-
-    const tokens = description
-      .split(combinedRegex)
-      .map(token => token.trim())
-      .filter(token => token)
-
-    if (tokens.length <= 1) {
-      return { description }
-    }
-
-    const apps = await this.apps.pipe(first()).toPromise()
-    const roles = apps
-      .map(({ roles }) => roles || [])
-      .reduce((acc, roles) => acc.concat(roles), []) // flatten
-
-    const annotateAddress = (input) => {
-      if (addressesEqual(input, ANY_ENTITY)) {
-        return [input, "'Any account'", { type: 'any-account', value: ANY_ENTITY }]
-      }
-
-      const app = apps.find(
-        ({ proxyAddress }) => addressesEqual(proxyAddress, input)
-      )
-      if (app) {
-        const replacement = `${app.name}${app.identifier ? ` (${app.identifier})` : ''}`
-        return [input, `'${replacement}'`, { type: 'app', value: app }]
-      }
-
-      return [input, input, { type: 'address', value: input }]
-    }
-
-    const annotateBytes32 = (input) => {
-      const role = roles.find(({ bytes }) => bytes === input)
-
-      if (role && role.name) {
-        return [input, `'${role.name}'`, { type: 'role', value: role }]
-      }
-
-      const app = apps.find(({ appId }) => appId === input)
-
-      if (app) {
-        // return the entire app as it contains APM package details
-        return [input, `'${app.appName}'`, { type: 'apmPackage', value: app }]
-      }
-
-      const namespace = getKernelNamespace(input)
-      if (namespace) {
-        return [input, `'${namespace.name}'`, { type: 'kernelNamespace', value: namespace }]
-      }
-
-      return [input, input, { type: 'bytes32', value: input }]
-    }
-
-    const annotateText = (input) => {
-      return [input, input, { type: 'text', value: input }]
-    }
-
-    const annotatedTokens = tokens.map(token => {
-      if (addressRegex.test(token)) {
-        return annotateAddress(token)
-      }
-      if (bytes32Regex.test(token)) {
-        return annotateBytes32(token)
-      }
-      return annotateText(token)
-    })
-
-    const compiled = annotatedTokens.reduce((acc, [_, replacement, annotation]) => {
-      acc.description.push(replacement)
-      acc.annotatedDescription.push(annotation)
-      return acc
-    }, {
-      annotatedDescription: [],
-      description: []
-    })
-
-    return {
-      annotatedDescription: compiled.annotatedDescription,
-      description: compiled.description.join(' ')
-    }
   }
 
   /**

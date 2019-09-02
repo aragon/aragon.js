@@ -74,6 +74,56 @@ export class AppProxy {
   }
 
   /**
+   * Get this app's information.
+   *
+   * @return {Observable} Single-emission Observable that emits the current app's information.
+   */
+  currentApp () {
+    // Note that we don't use an observe here as the currently running app should never have its
+    // internal details (e.g. proxy address, kernel address) and external details (e.g. ABI, name,
+    // description, etc.) change during run time.
+    //
+    // If these details ever change, the app should instead be restarted from the client running the
+    // app.
+    return this.rpc.sendAndObserveResponse(
+      'get_apps',
+      ['get', 'current']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * Get an array of the installed apps on the Kernel (organization) this app is attached to.
+   *
+   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the Kernel every time a change is detected.
+   */
+  installedApps () {
+    return this.rpc.sendAndObserveResponses(
+      'get_apps',
+      ['observe', 'all']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
+   * DEPRECATED
+   * Get all installed apps on the Kernel
+   *
+   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the Kernel every time a change is detected.
+   *
+   */
+  getApps () {
+    return this.rpc.sendAndObserveResponses(
+      'get_apps',
+      []
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Set the app identifier.
    *
    * This identifier is used to distinguish multiple instances of your app,
@@ -93,34 +143,28 @@ export class AppProxy {
   }
 
   /**
-   * Get an array of the organization's installed apps.
+   * Get current path for the app. Useful for in-app routing and navigation.
    *
-   * @return {Observable} Multi-emission Observable that emits an array of installed Aragon apps on the organization every time a change is detected.
+   * @return {Observable} Multi-emission Observable that emits the app's current path every time a change is detected.
    */
-  getApps () {
+  path () {
     return this.rpc.sendAndObserveResponses(
-      'get_apps',
-      ['observe', 'all']
+      'path',
+      ['observe']
     ).pipe(
       pluck('result')
     )
   }
 
   /**
-   * Get this app's information.
+   * Request a new path.
    *
-   * @return {Observable} Single-emission Observable that emits the current app's information.
+   * @return {Observable} Single-emission Observable that emits if the path request succeeded and errors if rejected
    */
-  getCurrentApp () {
-    // Note that we don't use an observe here as the currently running app should never have its
-    // internal details (e.g. proxy address, kernel address) and external details (e.g. ABI, name,
-    // description, etc.) change during run time.
-    //
-    // If these details ever change, the app should instead be restarted from the client running the
-    // app.
+  requestPath (path) {
     return this.rpc.sendAndObserveResponse(
-      'get_apps',
-      ['get', 'current']
+      'path',
+      ['modify', path]
     ).pipe(
       pluck('result')
     )
@@ -147,7 +191,7 @@ export class AppProxy {
    * The request is typically handled by the aragon client.
    *
    * @param  {string} address Address to modify.
-   * @return {Observable} Single-emission Observable that emits if the modification succeeded or cancelled by the user
+   * @return {Observable} Single-emission Observable that emits if the modification succeeded and errors if cancelled by the user
    */
   requestAddressIdentityModification (address) {
     return this.rpc.sendAndObserveResponse(

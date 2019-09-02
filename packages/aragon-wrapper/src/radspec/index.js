@@ -1,5 +1,7 @@
+import { first } from 'rxjs/operators'
 import * as radspec from 'radspec'
 import { getRepoLatestVersionForContract, makeRepoProxy } from '../core/apm/repo'
+import { addressesEqual } from '../utils'
 import { findAppMethodFromData, knownAppIds } from '../utils/apps'
 import { filterAndDecodeAppUpgradeIntents } from '../utils/intents'
 
@@ -11,8 +13,15 @@ import { filterAndDecodeAppUpgradeIntents } from '../utils/intents'
  * @return {Promise<Object>} Decorated intent with description, if one could be made
  */
 export async function tryEvaluatingRadspec (intent, wrapper) {
-  const app = await wrapper.getApp(intent.to)
-  const method = findAppMethodFromData(app, intent.data)
+  const apps = await wrapper.apps.pipe(first()).toPromise()
+  const app = apps.find(app => addressesEqual(app.proxyAddress, intent.to))
+
+  // If the intent matches an installed app, use only that app to search for a
+  // method match, otherwise fallback to searching all installed apps
+  const appsToSearch = app ? [app] : apps
+  const method = appsToSearch.reduce((method, app) => {
+    return method || findAppMethodFromData(app, intent.data)
+  }, undefined)
 
   let evaluatedNotice
   if (method && method.notice) {
@@ -85,3 +94,5 @@ export async function tryDescribingUpgradeOrganizationBasket (intents, wrapper) 
     }
   }
 }
+
+export { postprocessRadspecDescription } from './postprocess'

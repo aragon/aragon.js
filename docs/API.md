@@ -245,27 +245,42 @@ Get the network the app is connected to over time.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an object with the connected network's id and type every time the network changes.
 
-### getApps
+### currentApp
 
-Get the list of installed applications on the organization that this app is installed on.
+Get information about this app (e.g. `appAddress`, `appId`, etc.).
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed application list is detected. Each app contains details about its:
-- `appAddress`: the app's contract address
-- `appId`: the app's appId
-- `appImplementationAddress`: the app's implementation contract, if any (only available if this app is a proxied AragonApp)
-- `isForwarder`: whether the app is a forwarder or not
-- `kernelAddress`: the kernel address of the organization this app is installed on (always the same)
-
-### getCurrentApp
-
-Get information about this app (e.g. `proxyAddress`, `abi`, etc.).
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details. The details include:
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details, including:
 - `appAddress`: this app's contract address
 - `appId`: this app's appId
-- `appImplementationAddress`: this app's implementation contract, if any (only available if this app is a proxied AragonApp)
-- `isForwarder`: whether this app is a forwarder or not
-- `kernelAddress`: the kernel address of the organization this app is installed on
+- `appImplementationAddress`: this app's implementation contract address, if any (only available if this app is a proxied AragonApp)
+- `identifier`: this app's self-declared identifier, if any
+- `isForwarder`: whether this app is a forwarder
+- `kernelAddress`: this app's attached kernel address (i.e. organization address)
+- `name`: this app's name, if available
+
+### installedApps
+
+Get the list of installed applications on the Kernel (organization) this app is attached to.
+
+To get information about just the current app, use `currentApp()` instead.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed applications is detected. Each object contains the same details as `currentApp()`.
+
+### path
+
+Get the current path for the app over time. Useful with `requestPath()` to request and respond to in-app navigation changes.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits a string for the app's current path every time the path changes.
+
+### requestPath
+
+Request the current app be allowed to navigate to a different path. Different clients may behave differently, such as requesting user interaction, but all clients _should_ only allow an app to change its path if it is currently visible to users.
+
+#### Parameters
+
+- `path` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The path to navigate to
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits `null` on success or an error if the path request was rejected.
 
 ### call
 
@@ -347,7 +362,7 @@ Perform a signature using the [personal_sign](https://web3js.readthedocs.io/en/1
 
 - `message` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The message to sign
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the result of the signature. Errors if the user chose not to sign the message.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the signature hash on success or an error if the user chose not to sign the message.
 
 #### Examples
 

@@ -93,6 +93,41 @@ function App() {
 }
 ```
 
+#### `path` / `requestPath()`
+
+The app's current path. Its value is `"/"` by default.
+
+Use `requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
+
+Example:
+
+```jsx
+function App() {
+  const { path, requestPath } = useAragonApi()
+
+  // “Hello World” screen
+  if (path === '/hello-world') {
+    return (
+      <div>
+        <h1>Hello World</h1>
+        <button onClick={() => requestPath('/')}>
+          Back
+        </button>
+      </div>
+    )
+  }
+
+  // Home
+  return (
+    <div>
+      <button onClick={() => requestPath('/hello-world')}>
+        Click
+      </button>
+    </div>
+  )
+}
+```
+
 #### `appState`
 
 The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
@@ -212,3 +247,10 @@ This Hook returns an array containing the `displayMenuButton` and the `requestMe
 ### useNetwork()
 
 This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
+
+### usePath()
+
+This Hook returns an array holding two values from the `useAragonApi()` hook:
+
+1. `path`, and
+1. `requestPath`
