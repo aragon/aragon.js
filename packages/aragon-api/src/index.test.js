@@ -195,7 +195,7 @@ test('should send a getApps request for the app and observe the single response'
 test('should send a path request and observe the response', t => {
   t.plan(3)
   // arrange
-  const pathsFn = Index.AppProxy.prototype.paths
+  const pathFn = Index.AppProxy.prototype.path
   const observable = of(
     {
       jsonrpc: '2.0',
@@ -214,7 +214,7 @@ test('should send a path request and observe the response', t => {
     }
   }
   // act
-  const result = pathsFn.call(instanceStub)
+  const result = pathFn.call(instanceStub)
   // assert
   let emitIndex = 0
   subscribe(result, value => {

@@ -131,7 +131,7 @@ export class AppProxy {
    *
    * @return {Observable} Multi-emission Observable that emits the app's current path every time a change is detected.
    */
-  paths () {
+  path () {
     return this.rpc.sendAndObserveResponses(
       'path',
       ['observe']

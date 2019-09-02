@@ -264,9 +264,9 @@ Get information about this app (e.g. `proxyAddress`, `abi`, etc.).
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details. The app's details include the same keys as in `getApps()`.
 
-### paths
+### path
 
-Get the current path for the app. Useful with `requestPath()` to request and respond to in-app navigation changes.
+Get the current path for the app over time. Useful with `requestPath()` to request and respond to in-app navigation changes.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits a string for the app's current path every time the path changes.
 
