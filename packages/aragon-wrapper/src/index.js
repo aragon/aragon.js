@@ -47,7 +47,7 @@ import {
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
-  makeProxyFromABI,
+  makeProxyFromAppABI,
   AsyncRequestCache,
   ANY_ENTITY
 } from './utils'
@@ -1070,7 +1070,7 @@ export default class Aragon {
     const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
 
     // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-    const appProxy = makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+    const appProxy = makeProxyFromAppABI(app.proxyAddress, app.abi, this.web3)
 
     await appProxy.updateInitializationBlock()
 
