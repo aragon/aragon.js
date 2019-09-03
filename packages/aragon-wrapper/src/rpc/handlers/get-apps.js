@@ -3,7 +3,7 @@ import { first, map } from 'rxjs/operators'
 import { addressesEqual } from '../../utils'
 
 // Extract just a few important details about the current app to decrease API surface area
-function transformAppInformation (app = {}, getFullPathFn) {
+function transformAppInformation (app = {}, getContentPathFn) {
   const {
     appId,
     content,
@@ -16,17 +16,15 @@ function transformAppInformation (app = {}, getFullPathFn) {
     proxyAddress
   } = app
 
-  let iconSrc
-  if (content && Array.isArray(icons)) {
-    const { src } = icons[0]
-
-    try {
-      iconSrc = getFullPathFn(content, src)
-    } catch (_) { }
-  }
+  let iconsWithBaseUrl
+  try {
+    iconsWithBaseUrl = icons.map((icon) =>
+      ({ ...icon, src: getContentPathFn(content, icon.src) })
+    )
+  } catch (_) {}
 
   return {
-    iconSrc,
+    icons: iconsWithBaseUrl,
     identifier,
     kernelAddress,
     name,
@@ -60,14 +58,14 @@ export default function (request, proxy, wrapper) {
     )
   )
 
-  const getFullPathFn = wrapper.apm.getFullPathFromContent
+  const getContentPathFn = wrapper.apm.getContentPath
   const app$ = appCategory === 'current'
     ? appWithIdentifier$.pipe(
       map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxy.address))),
-      map((app) => transformAppInformation(app, getFullPathFn))
+      map((app) => transformAppInformation(app, getContentPathFn))
     )
     : appWithIdentifier$.pipe(
-      map((apps) => apps.map((app) => transformAppInformation(app, getFullPathFn)))
+      map((apps) => apps.map((app) => transformAppInformation(app, getContentPathFn)))
     )
   if (operation === 'observe') {
     return app$

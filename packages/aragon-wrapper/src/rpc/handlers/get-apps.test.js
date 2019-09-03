@@ -20,8 +20,7 @@ test('should return a subscription for the entire app list if observing all', as
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: '0x456',
-    icons: [{ src: 'icon link' }],
-    content: {}
+    icons: [{ src: 'icon_link' }]
   }]
   const appsMock = new BehaviorSubject(initialApps)
   const identifiersMock = of({
@@ -35,7 +34,7 @@ test('should return a subscription for the entire app list if observing all', as
   const proxyStub = {}
   const wrapperStub = {
     apm: {
-      getFullPathFromContent: (content, path) => path
+      getContentPath: (content, path) => `url/${path}`
     },
     apps: appsMock,
     appIdentifiers: identifiersMock
@@ -53,7 +52,7 @@ test('should return a subscription for the entire app list if observing all', as
     isForwarder: false,
     kernelAddress: '0x123',
     name: 'Cool App',
-    iconSrc: 'icon link'
+    icons: [{ src: 'url/icon_link' }]
   }]
   const expectedEndApps = [].concat(expectedInitialApps, {
     appAddress: '0x789',
@@ -63,7 +62,7 @@ test('should return a subscription for the entire app list if observing all', as
     isForwarder: true,
     kernelAddress: '0x123',
     name: 'Voting App',
-    iconSrc: 'icon link'
+    icons: [{ src: 'url/icon_link' }]
   })
   let emitIndex = 0
   result.subscribe(value => {
@@ -88,8 +87,7 @@ test('should return a subscription for the entire app list if observing all', as
     isForwarder: true,
     name: 'Voting App',
     proxyAddress: '0x789',
-    icons: [{ src: 'icon link' }],
-    content: {}
+    icons: [{ src: 'icon_link' }]
   })
   appsMock.next(endApps)
 })
@@ -157,8 +155,7 @@ test('should return the initial value for the entire app list if getting all', a
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: '0x456',
-    icons: [{ src: 'icon link' }],
-    content: {}
+    icons: [{ src: 'icon_link' }]
   }]
   const appsMock = new BehaviorSubject(initialApps)
   const identifiersMock = of({
@@ -172,7 +169,7 @@ test('should return the initial value for the entire app list if getting all', a
   const proxyStub = {}
   const wrapperStub = {
     apm: {
-      getFullPathFromContent: (content, path) => path
+      getContentPath: (content, path) => `url/${path}`
     },
     apps: appsMock,
     appIdentifiers: identifiersMock
@@ -190,7 +187,7 @@ test('should return the initial value for the entire app list if getting all', a
     isForwarder: false,
     kernelAddress: '0x123',
     name: 'Cool App',
-    iconSrc: 'icon link'
+    icons: [{ src: 'url/icon_link' }]
   }]
   let emitIndex = 0
   result.subscribe(value => {
@@ -213,8 +210,7 @@ test('should return the initial value for the entire app list if getting all', a
     isForwarder: true,
     name: 'Voting App',
     proxyAddress: '0x789',
-    icons: [{ src: 'icon link' }],
-    content: {}
+    icons: [{ src: 'icon_link' }]
   })
   appsMock.next(endApps)
 })
@@ -232,8 +228,7 @@ test('should return a subscription for just the current app if observing current
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: currentAppAddress,
-    icons: [{ src: 'icon link' }],
-    content: {}
+    icons: [{ src: 'icon_link' }]
   }
   const appsMock = new BehaviorSubject([initialApp])
   const identifiersMock = of({
@@ -248,7 +243,7 @@ test('should return a subscription for just the current app if observing current
   }
   const wrapperStub = {
     apm: {
-      getFullPathFromContent: (content, path) => path
+      getContentPath: (content, path) => `url/${path}`
     },
     apps: appsMock,
     appIdentifiers: identifiersMock
@@ -269,7 +264,7 @@ test('should return a subscription for just the current app if observing current
         isForwarder: false,
         kernelAddress: '0x123',
         name: 'Cool App',
-        iconSrc: 'icon link'
+        icons: [{ src: 'url/icon_link' }]
       })
     } else if (emitIndex === 1) {
       t.deepEqual(value, {
@@ -280,7 +275,7 @@ test('should return a subscription for just the current app if observing current
         isForwarder: false,
         kernelAddress: '0x123',
         name: 'Cool App',
-        iconSrc: 'icon link'
+        icons: [{ src: 'url/icon_link' }]
       })
     } else {
       t.fail('too many emissions')
@@ -305,8 +300,7 @@ test('should return a subscription for just the current app if observing current
       isForwarder: true,
       name: 'Voting App',
       proxyAddress: '0x789',
-      icons: [{ src: 'icon link' }],
-      content: {}
+      icons: [{ src: 'icon_link' }]
     },
     endApp
   ])
@@ -325,8 +319,7 @@ test('should return the initial value for just the current app if getting curren
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: currentAppAddress,
-    icons: [{ src: 'icon link' }],
-    content: {}
+    icons: [{ src: 'icon_link' }]
   }
   const endApp = {
     ...initialApp,
@@ -345,7 +338,7 @@ test('should return the initial value for just the current app if getting curren
   }
   const wrapperStub = {
     apm: {
-      getFullPathFromContent: (content, path) => path
+      getContentPath: (content, path) => `url/${path}`
     },
     apps: appsMock,
     appIdentifiers: identifiersMock
@@ -366,7 +359,7 @@ test('should return the initial value for just the current app if getting curren
         isForwarder: false,
         kernelAddress: '0x123',
         name: 'Cool App',
-        iconSrc: 'icon link'
+        icons: [{ src: 'url/icon_link' }]
       })
     } else {
       t.fail('too many emissions')

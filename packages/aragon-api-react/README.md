@@ -165,11 +165,12 @@ Details about the current app. It returns a single object with the following key
 - `appAddress`: the app's contract address
 - `appId`: the app's appId
 - `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
-- `iconSrc`: a link to this app's icon asset, if any
 - `identifier`: the app's identifier, if any
 - `isForwarder`: whether the app is a forwarder
 - `kernelAddress`: the app's attached Kernel address (i.e. organization address)
 - `name`: the app's name, if available
+
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
 
 Example:
 
@@ -177,7 +178,10 @@ Example:
 function App() {
   const { currentApp } = useAragonApi()
   return (
-    <div>{currentApp.appAddress}</div>
+    <div>
+      <img width="40" height="40" src={app.icon(40)} />
+      {currentApp.appAddress}
+    </div>
   )
 }
 ```

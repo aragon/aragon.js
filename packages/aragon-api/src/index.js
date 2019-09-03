@@ -14,7 +14,7 @@ import {
   throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
-import { debug } from './utils'
+import { debug, getIconBySize } from './utils'
 
 export const events = {
   ACCOUNTS_TRIGGER: 'ACCOUNTS_TRIGGER',
@@ -37,6 +37,16 @@ export const AppProxyHandler = {
       )
     }
   }
+}
+
+function decorateAppWithIcons ({ icons = [], ...app }) {
+  app.icon = (size = -1) => {
+    const icon = getIconBySize(icons, size)
+    if (icon && icon.src) {
+      return icon.src
+    }
+  }
+  return app
 }
 
 /**
@@ -89,7 +99,8 @@ export class AppProxy {
       'get_apps',
       ['get', 'current']
     ).pipe(
-      pluck('result')
+      pluck('result'),
+      map(decorateAppWithIcons)
     )
   }
 
@@ -103,7 +114,8 @@ export class AppProxy {
       'get_apps',
       ['observe', 'all']
     ).pipe(
-      pluck('result')
+      pluck('result'),
+      map((apps) => apps.map(decorateAppWithIcons))
     )
   }
 

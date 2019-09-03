@@ -253,11 +253,12 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 - `appAddress`: this app's contract address
 - `appId`: this app's appId
 - `appImplementationAddress`: this app's implementation contract address, if any (only available if this app is a proxied AragonApp)
-- `iconSrc`: a link to this app's icon asset, if any
 - `identifier`: this app's self-declared identifier, if any
 - `isForwarder`: whether this app is a forwarder
 - `kernelAddress`: this app's attached kernel address (i.e. organization address)
 - `name`: this app's name, if available
+
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
 
 ### installedApps
 
