@@ -58,7 +58,7 @@ export async function tryDescribingUpdateAppIntent (intent, wrapper) {
   // Fetch aragonPM information
   const repoAddress = await wrapper.ens.resolve(appId)
   const repo = makeRepoProxy(repoAddress, wrapper.web3)
-  const { version: latestVersion } = getRepoLatestVersionForContract(repo, appAddress)
+  const { version: latestVersion } = await getRepoLatestVersionForContract(repo, appAddress)
 
   return {
     ...intent,
