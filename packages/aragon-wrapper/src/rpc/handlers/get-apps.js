@@ -3,10 +3,12 @@ import { first, map } from 'rxjs/operators'
 import { addressesEqual } from '../../utils'
 
 // Extract just a few important details about the current app to decrease API surface area
-function transformAppInformation (app = {}) {
+function transformAppInformation (app = {}, getFullPathFn) {
   const {
     appId,
+    content,
     contractAddress,
+    icons,
     identifier,
     isForwarder,
     kernelAddress,
@@ -14,7 +16,17 @@ function transformAppInformation (app = {}) {
     proxyAddress
   } = app
 
+  let iconSrc
+  if (content && Array.isArray(icons)) {
+    const { src } = icons[0]
+
+    try {
+      iconSrc = getFullPathFn(content, src)
+    } catch (_) { }
+  }
+
   return {
+    iconSrc,
     identifier,
     kernelAddress,
     name,
@@ -47,13 +59,15 @@ export default function (request, proxy, wrapper) {
       )
     )
   )
+
+  const getFullPathFn = wrapper.apm.getFullPathFromContent
   const app$ = appCategory === 'current'
     ? appWithIdentifier$.pipe(
       map(apps => apps.find(app => addressesEqual(app.proxyAddress, proxy.address))),
-      map((app) => transformAppInformation(app))
+      map((app) => transformAppInformation(app, getFullPathFn))
     )
     : appWithIdentifier$.pipe(
-      map((apps) => apps.map(transformAppInformation))
+      map((apps) => apps.map((app) => transformAppInformation(app, getFullPathFn)))
     )
   if (operation === 'observe') {
     return app$
