@@ -258,6 +258,8 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 - `kernelAddress`: this app's attached kernel address (i.e. organization address)
 - `name`: this app's name, if available
 
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
 ### installedApps
 
 Get the list of installed applications on the Kernel (organization) this app is attached to.

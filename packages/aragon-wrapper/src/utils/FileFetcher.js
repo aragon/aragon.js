@@ -1,5 +1,10 @@
 const axios = require('axios')
 
+function sanitizePath (path) {
+  // Disallow a path being declared for the root or navigating to sibling paths
+  return path.replace(/^[./]+/, '')
+}
+
 function sanitizeUrl (url) {
   // Sanitize url to make sure it has a protocol and ends with a /
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -21,7 +26,7 @@ export default class FileFetcher {
     }
   }
 
-  async fetch (provider, location, path) {
+  getFullPath (provider, location, path) {
     if (!this.supportsProvider(provider)) {
       throw new Error(`Provider not supported: ${provider}`)
     }
@@ -31,7 +36,11 @@ export default class FileFetcher {
       ? `${this.providers.get('ipfs').gateway}${location}`
       : location
 
-    const response = await axios(`${sanitizeUrl(baseLocation)}${path}`, {
+    return `${sanitizeUrl(baseLocation)}${sanitizePath(path)}`
+  }
+
+  async fetch (provider, location, path) {
+    const response = await axios(this.getFullPath(provider, location, path), {
       responseType: 'text',
 
       // This is needed to disable the default behavior of axios, which

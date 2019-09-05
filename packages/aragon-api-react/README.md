@@ -170,13 +170,18 @@ Details about the current app. It returns a single object with the following key
 - `kernelAddress`: the app's attached Kernel address (i.e. organization address)
 - `name`: the app's name, if available
 
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
 Example:
 
 ```jsx
 function App() {
   const { currentApp } = useAragonApi()
   return (
-    <div>{currentApp.appAddress}</div>
+    <div>
+      <img width="40" height="40" src={app.icon(40)} />
+      {currentApp.appAddress}
+    </div>
   )
 }
 ```

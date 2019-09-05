@@ -32,6 +32,8 @@ export default function (web3, { ipfsGateway } = {}) {
   const fetcher = new FileFetcher({ ipfsGateway })
 
   return {
+    getContentPath: ({ location, provider }, path) =>
+      fetcher.getFullPath(provider, location, path),
     fetchLatestRepoContent: async (repoAddress) => {
       const repo = makeRepoProxy(repoAddress, web3)
       return fetchRepoContentFromVersion(fetcher, await getRepoLatestVersion(repo))

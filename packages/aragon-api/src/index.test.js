@@ -100,7 +100,7 @@ test('should return the accounts as an observable', t => {
 })
 
 test('should send a getApps request for the current app and observe the single response', t => {
-  t.plan(2)
+  t.plan(3)
 
   const currentApp = {
     appAddress: '0x456',
@@ -128,13 +128,16 @@ test('should send a getApps request for the current app and observe the single r
   // act
   const result = currentAppFn.call(instanceStub)
   // assert
-  subscribe(result, value => t.deepEqual(value, currentApp))
+  subscribe(result, value => {
+    t.is(value.icon(), undefined)
+    delete value.icon
+
+    t.deepEqual(value, currentApp)
+  })
   t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('get_apps'))
 })
 
 test('should send a getApps request for installed apps and observe the response', t => {
-  t.plan(3)
-
   const initialApps = [{
     appAddress: '0x123',
     appId: 'kernel',
@@ -178,6 +181,11 @@ test('should send a getApps request for installed apps and observe the response'
   // assert
   let emitIndex = 0
   subscribe(result, value => {
+    value.forEach(app => {
+      t.is(app.icon(), undefined)
+      delete app.icon
+    })
+
     if (emitIndex === 0) {
       t.deepEqual(value, initialApps)
     } else if (emitIndex === 1) {
@@ -488,7 +496,7 @@ test('should create a store and reduce correctly without previously cached state
   observableEvents.next({ event: 'Add', payload: 2 })
   await sleep(500)
   observableEvents.next({ event: 'Add', payload: 10 })
-  await sleep(500)
+  await sleep(1000)
 })
 
 test('should create a store and reduce correctly with previously cached state', async t => {

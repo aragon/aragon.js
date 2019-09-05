@@ -19,7 +19,8 @@ test('should return a subscription for the entire app list if observing all', as
     abi: 'abi for coolApp',
     isForwarder: false,
     name: 'Cool App',
-    proxyAddress: '0x456'
+    proxyAddress: '0x456',
+    icons: [{ src: 'icon_link' }]
   }]
   const appsMock = new BehaviorSubject(initialApps)
   const identifiersMock = of({
@@ -32,6 +33,9 @@ test('should return a subscription for the entire app list if observing all', as
   }
   const proxyStub = {}
   const wrapperStub = {
+    apm: {
+      getContentPath: (content, path) => `url/${path}`
+    },
     apps: appsMock,
     appIdentifiers: identifiersMock
   }
@@ -47,7 +51,8 @@ test('should return a subscription for the entire app list if observing all', as
     identifier: 'cool identifier',
     isForwarder: false,
     kernelAddress: '0x123',
-    name: 'Cool App'
+    name: 'Cool App',
+    icons: [{ src: 'url/icon_link' }]
   }]
   const expectedEndApps = [].concat(expectedInitialApps, {
     appAddress: '0x789',
@@ -56,7 +61,8 @@ test('should return a subscription for the entire app list if observing all', as
     identifier: 'voting identifier',
     isForwarder: true,
     kernelAddress: '0x123',
-    name: 'Voting App'
+    name: 'Voting App',
+    icons: [{ src: 'url/icon_link' }]
   })
   let emitIndex = 0
   result.subscribe(value => {
@@ -80,7 +86,8 @@ test('should return a subscription for the entire app list if observing all', as
     abi: 'abi for votingApp',
     isForwarder: true,
     name: 'Voting App',
-    proxyAddress: '0x789'
+    proxyAddress: '0x789',
+    icons: [{ src: 'icon_link' }]
   })
   appsMock.next(endApps)
 })
@@ -96,6 +103,7 @@ test('should return a subscription for the entire app list via initial RPC API',
     abi: 'abi for coolApp',
     isForwarder: false,
     name: 'Cool App',
+    icon: 'icon link',
     proxyAddress: '0x456'
   }]
   const endApps = [].concat(initialApps, {
@@ -105,6 +113,7 @@ test('should return a subscription for the entire app list via initial RPC API',
     abi: 'abi for votingApp',
     isForwarder: true,
     name: 'Voting App',
+    icon: 'icon link',
     proxyAddress: '0x789'
   })
   const appsMock = of(initialApps, endApps)
@@ -145,7 +154,8 @@ test('should return the initial value for the entire app list if getting all', a
     abi: 'abi for coolApp',
     isForwarder: false,
     name: 'Cool App',
-    proxyAddress: '0x456'
+    proxyAddress: '0x456',
+    icons: [{ src: 'icon_link' }]
   }]
   const appsMock = new BehaviorSubject(initialApps)
   const identifiersMock = of({
@@ -158,6 +168,9 @@ test('should return the initial value for the entire app list if getting all', a
   }
   const proxyStub = {}
   const wrapperStub = {
+    apm: {
+      getContentPath: (content, path) => `url/${path}`
+    },
     apps: appsMock,
     appIdentifiers: identifiersMock
   }
@@ -173,7 +186,8 @@ test('should return the initial value for the entire app list if getting all', a
     identifier: 'cool identifier',
     isForwarder: false,
     kernelAddress: '0x123',
-    name: 'Cool App'
+    name: 'Cool App',
+    icons: [{ src: 'url/icon_link' }]
   }]
   let emitIndex = 0
   result.subscribe(value => {
@@ -195,7 +209,8 @@ test('should return the initial value for the entire app list if getting all', a
     abi: 'abi for votingApp',
     isForwarder: true,
     name: 'Voting App',
-    proxyAddress: '0x789'
+    proxyAddress: '0x789',
+    icons: [{ src: 'icon_link' }]
   })
   appsMock.next(endApps)
 })
@@ -212,7 +227,8 @@ test('should return a subscription for just the current app if observing current
     abi: 'abi for coolApp',
     isForwarder: false,
     name: 'Cool App',
-    proxyAddress: currentAppAddress
+    proxyAddress: currentAppAddress,
+    icons: [{ src: 'icon_link' }]
   }
   const appsMock = new BehaviorSubject([initialApp])
   const identifiersMock = of({
@@ -226,6 +242,9 @@ test('should return a subscription for just the current app if observing current
     address: currentAppAddress
   }
   const wrapperStub = {
+    apm: {
+      getContentPath: (content, path) => `url/${path}`
+    },
     apps: appsMock,
     appIdentifiers: identifiersMock
   }
@@ -244,7 +263,8 @@ test('should return a subscription for just the current app if observing current
         identifier: 'cool identifier',
         isForwarder: false,
         kernelAddress: '0x123',
-        name: 'Cool App'
+        name: 'Cool App',
+        icons: [{ src: 'url/icon_link' }]
       })
     } else if (emitIndex === 1) {
       t.deepEqual(value, {
@@ -254,7 +274,8 @@ test('should return a subscription for just the current app if observing current
         identifier: 'cool identifier',
         isForwarder: false,
         kernelAddress: '0x123',
-        name: 'Cool App'
+        name: 'Cool App',
+        icons: [{ src: 'url/icon_link' }]
       })
     } else {
       t.fail('too many emissions')
@@ -278,7 +299,8 @@ test('should return a subscription for just the current app if observing current
       abi: 'abi for votingApp',
       isForwarder: true,
       name: 'Voting App',
-      proxyAddress: '0x789'
+      proxyAddress: '0x789',
+      icons: [{ src: 'icon_link' }]
     },
     endApp
   ])
@@ -296,7 +318,8 @@ test('should return the initial value for just the current app if getting curren
     abi: 'abi for coolApp',
     isForwarder: false,
     name: 'Cool App',
-    proxyAddress: currentAppAddress
+    proxyAddress: currentAppAddress,
+    icons: [{ src: 'icon_link' }]
   }
   const endApp = {
     ...initialApp,
@@ -314,6 +337,9 @@ test('should return the initial value for just the current app if getting curren
     address: currentAppAddress
   }
   const wrapperStub = {
+    apm: {
+      getContentPath: (content, path) => `url/${path}`
+    },
     apps: appsMock,
     appIdentifiers: identifiersMock
   }
@@ -332,7 +358,8 @@ test('should return the initial value for just the current app if getting curren
         identifier: 'cool identifier',
         isForwarder: false,
         kernelAddress: '0x123',
-        name: 'Cool App'
+        name: 'Cool App',
+        icons: [{ src: 'url/icon_link' }]
       })
     } else {
       t.fail('too many emissions')
