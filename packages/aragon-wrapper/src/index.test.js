@@ -1,8 +1,10 @@
 import test from 'ava'
 import sinon from 'sinon'
 import proxyquire from 'proxyquire'
-import { Subject, empty, of, from } from 'rxjs'
+import { empty, from, of, ReplaySubject, Subject } from 'rxjs'
 import { first } from 'rxjs/operators'
+import { signals as rpcSignals } from '@aragon/rpc-messenger'
+
 import * as apps from './apps'
 import * as configurationKeys from './configuration/keys'
 import * as apm from './core/apm'
@@ -33,6 +35,7 @@ test.beforeEach(t => {
     resolve: sinon.stub()
   }
   const messengerConstructorStub = sinon.stub()
+  messengerConstructorStub.signals = rpcSignals
   const utilsStub = {
     AsyncRequestCache,
     getCacheKey,
@@ -1259,7 +1262,6 @@ test('should run the app and be able to shutdown', async (t) => {
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
 
   const instance = createAragon()
-  instance.accounts = of('0x00')
   instance.apps = of([
     {
       appId: 'some other app with a different proxy',
@@ -1271,11 +1273,16 @@ test('should run the app and be able to shutdown', async (t) => {
       proxyAddress: '0x789'
     }
   ])
+  // Mimic never-ending stream
+  instance.accounts = new ReplaySubject(1)
+  instance.accounts.next('0x00')
+
   utilsStub.makeProxyFromAppABI = (proxyAddress) => ({
     address: proxyAddress,
     updateInitializationBlock: () => {}
   })
   instance.kernelProxy = { initializationBlock: 0 }
+
   // act
   const connect = await instance.runApp('0x789')
   const result = connect('someMessageProvider')
@@ -1315,7 +1322,6 @@ test('should run the app and be able to shutdown and clear cache', async (t) => 
   messengerConstructorStub.withArgs('someMessageProvider').returns(messengerStub)
 
   const instance = createAragon()
-  instance.accounts = of('0x00')
   instance.apps = of([
     {
       appId: 'some other app with a different proxy',
@@ -1327,6 +1333,9 @@ test('should run the app and be able to shutdown and clear cache', async (t) => 
       proxyAddress: runningProxyAddress
     }
   ])
+  // Mimic never-ending stream
+  instance.accounts = new ReplaySubject(1)
+  instance.accounts.next('0x00')
 
   utilsStub.makeProxyFromAppABI = (proxyAddress) => ({
     address: proxyAddress,

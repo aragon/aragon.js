@@ -1,6 +1,7 @@
 import test from 'ava'
 import sinon from 'sinon'
 import { of, from } from 'rxjs'
+import { signals } from '@aragon/rpc-messenger'
 
 import {
   createRequestHandler,
@@ -12,7 +13,7 @@ test.afterEach.always(() => {
 })
 
 test('should create a request handler', async (t) => {
-  t.plan(5)
+  t.plan(8)
   // arrange
   const requestStub = from([{
     request: {
@@ -71,14 +72,39 @@ test('should create a request handler', async (t) => {
   // act
   const result = createRequestHandler(requestStub, 'cache', handlerStub)
   // assert
-  result.subscribe(value => {
-    if (value.id === 'uuid1') return t.is(value.payload, 'resolved settings')
-    if (value.id === 'uuid4') return t.true(value.payload instanceof Error)
-    if (value.id === 'uuid4') return t.is(value.payload.message, 'no permissions to change settings!!')
-    if (value.id === 'uuid5') return t.true(value.payload instanceof Error)
-    if (value.id === 'uuid5') return t.is(value.payload.message, '')
-    if (value.id === 'uuid6') return t.is(value.payload, 'resolved profile')
-    if (value.id === 'uuid8') return t.is(value.payload, null)
+  const completed = new Set()
+  result.subscribe({
+    next (value) {
+      if (value.payload === signals.COMPLETE) {
+        if (completed.has(value.id)) {
+          t.fail(`request (${value.id}) completed twice`)
+        }
+        completed.add(value.id)
+        return
+      }
+
+      if (value.id === 'uuid1') {
+        return t.is(value.payload, 'resolved settings')
+      }
+      if (value.id === 'uuid4') {
+        t.is(value.payload.message, 'no permissions to change settings!!')
+        return t.true(value.payload instanceof Error)
+      }
+      if (value.id === 'uuid5') {
+        t.is(value.payload.message, '')
+        return t.true(value.payload instanceof Error)
+      }
+      if (value.id === 'uuid6') {
+        return t.is(value.payload, 'resolved profile')
+      }
+      if (value.id === 'uuid8') {
+        return t.is(value.payload, null)
+      }
+    },
+    // Check non-erroring requests completed correctly
+    complete () {
+      return t.deepEqual([...completed].sort(), ['uuid1', 'uuid6', 'uuid8'])
+    }
   })
 })
 
