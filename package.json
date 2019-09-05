@@ -13,7 +13,7 @@
   "scripts": {
     "lint": "lerna run lint",
     "test": "lerna run test",
-    "install": "npm run bootstrap",
+    "install": "npm run bootstrap && npm run build",
     "bootstrap": "lerna bootstrap --no-ci",
     "build": "lerna run build",
     "build:watch": "lerna run --parallel build:dev -- -- --watch",
