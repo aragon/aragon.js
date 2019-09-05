@@ -23,12 +23,9 @@ const state$ = app.store((state, event) => {
   if (event.event === 'Decrement') {
     // Calculate the next state
     state--
-    // Send notification
-    app.notify('Counter decremented', `The counter was decremented to ${state}`)
   }
   if (event.event === 'Increment') {
     state++
-    app.notify('Counter incremented', `The counter was incremented to ${state}`)
   }
 
   return state

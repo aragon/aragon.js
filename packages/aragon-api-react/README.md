@@ -93,6 +93,41 @@ function App() {
 }
 ```
 
+#### `path` / `requestPath()`
+
+The app's current path. Its value is `"/"` by default.
+
+Use `requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
+
+Example:
+
+```jsx
+function App() {
+  const { path, requestPath } = useAragonApi()
+
+  // “Hello World” screen
+  if (path === '/hello-world') {
+    return (
+      <div>
+        <h1>Hello World</h1>
+        <button onClick={() => requestPath('/')}>
+          Back
+        </button>
+      </div>
+    )
+  }
+
+  // Home
+  return (
+    <div>
+      <button onClick={() => requestPath('/hello-world')}>
+        Click
+      </button>
+    </div>
+  )
+}
+```
+
 #### `appState`
 
 The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
@@ -123,6 +158,56 @@ function App() {
 }
 ```
 
+#### `currentApp`
+
+Details about the current app. It returns a single object with the following keys:
+
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
+- `isForwarder`: whether the app is a forwarder
+- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
+- `name`: the app's name, if available
+
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
+Example:
+
+```jsx
+function App() {
+  const { currentApp } = useAragonApi()
+  return (
+    <div>
+      <img width="40" height="40" src={app.icon(40)} />
+      {currentApp.appAddress}
+    </div>
+  )
+}
+```
+
+#### `installedApps`
+
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
+the list of apps are loaded.
+
+Each object in the array holds the same keys as `currentApp`.
+
+Example:
+
+```jsx
+function App() {
+  const { installedApps } = useAragonApi()
+  return (
+    <div>
+      {installedApps.map(app => (
+        <div>{app.appAddress}</div>
+      ))}
+    </div>
+  )
+}
+```
+
 #### `network`
 
 An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
@@ -136,30 +221,29 @@ function App() {
 }
 ```
 
-#### `displayMenuButton`
-
-Whether or not to display the menu button (`Boolean`), depending on it being automatically hidden or not in the client.
-
-#### `requestMenu()`
-
-Call this function to display the Aragon menu, when hidden automatically. This should be called when the user clicks on the menu button.
-
 ### useApi()
 
-This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
 
 ### useAppState()
 
-This Hook returns the same data than the `appState` entry from the `useAppState()` hook.
+This Hook returns the same data as the `appState` entry from the `useAppState()` hook.
 
 ### useConnectedAccount()
 
-This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
 
-### useMenuButton()
+### useInstalledApps()
 
-This Hook returns an array containing the `displayMenuButton` and the `requestMenu` entries from the `useAragonApi()` hook, in that order.
+This Hook returns the same data as the `installedApps` entry from the `useAragonApi()` hook.
 
 ### useNetwork()
 
-This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
+
+### usePath()
+
+This Hook returns an array holding two values from the `useAragonApi()` hook:
+
+1. `path`, and
+1. `requestPath`
