@@ -3,6 +3,10 @@
   "version": "5.0.0-rc.15",
   "description": "Library for Aragon client implementations",
   "main": "dist/index.js",
+  "files": [
+    "artifacts",
+    "dist"
+  ],
   "scripts": {
     "flow": "flow src",
     "lint": "standard \"src/**/*.js\"",
