@@ -3,6 +3,9 @@
   "version": "2.0.0-beta.4",
   "description": "Aragon app API for React",
   "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aragon/aragon.js.git"
