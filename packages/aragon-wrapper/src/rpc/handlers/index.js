@@ -49,6 +49,7 @@ export function combineRequestHandlers (...handlers) {
 export { default as accounts } from './accounts'
 export { default as cache } from './cache'
 export { default as describeScript } from './describe-script'
+export { default as describeTransaction } from './describe-transaction'
 export { default as getApps } from './get-apps'
 export { default as network } from './network'
 export { default as path } from './path'
