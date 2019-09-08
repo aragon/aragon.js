@@ -1562,7 +1562,7 @@ export default class Aragon {
         // Intent basket with multiple transactions in a single callscript
         // First see if the step can be handled with a specialized descriptor
         try {
-          decoratedStep = tryDescribingUpgradeOrganizationBasket(step, this)
+          decoratedStep = await tryDescribingUpgradeOrganizationBasket(step, this)
         } catch (err) { }
 
         // If the step wasn't handled, just individually describe each of the transactions
