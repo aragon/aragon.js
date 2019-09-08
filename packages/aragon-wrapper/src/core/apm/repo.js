@@ -3,8 +3,6 @@ import { getAbi } from '../../interfaces'
 import { makeProxyFromABI } from '../../utils'
 import promiseTimeout from '../../utils/promise-timeout'
 
-const FETCH_TIMEOUT = 10000 // 10s
-
 export function makeRepoProxy (address, web3, options) {
   return makeProxyFromABI(address, getAbi('apm/Repo'), web3, options)
 }
@@ -55,7 +53,7 @@ export async function getRepoVersionById (repoProxy, versionId) {
   }
 }
 
-export async function fetchRepoContentURI (fileFetcher, contentURI) {
+export async function fetchRepoContentURI (fileFetcher, contentURI, { fetchTimeout } = {}) {
   const [provider, location] = contentURI.split(/:(.+)/)
 
   if (!provider || !location) {
@@ -66,14 +64,14 @@ export async function fetchRepoContentURI (fileFetcher, contentURI) {
 
   let files
   try {
-    files = await promiseTimeout(
-      Promise.all([
-        fileFetcher.fetch(provider, location, 'manifest.json'),
-        fileFetcher.fetch(provider, location, 'artifact.json')
-      ]),
-      FETCH_TIMEOUT
-    )
-    files = files.map(JSON.parse)
+    let filesFetch = Promise.all([
+      fileFetcher.fetch(provider, location, 'manifest.json'),
+      fileFetcher.fetch(provider, location, 'artifact.json')
+    ])
+    if (Number.isFinite(fetchTimeout) && fetchTimeout > 0) {
+      filesFetch = promiseTimeout(filesFetch, fetchTimeout)
+    }
+    files = (await filesFetch).map(JSON.parse)
   } catch (err) {
     if (err instanceof SyntaxError) {
       // JSON parse error

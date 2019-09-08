@@ -34,6 +34,7 @@ const providers = require('@aragon/wrapper').providers
   - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry
   - `options.apm.ipfs` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** IPFS options for fetching information from aragonPM (optional)
   - `options.apm.ipfs.gateway` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The IPFS gateway to use for fetching information (optional)
+  - `options.apm.ipfs.fetchTimeout` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** The timeout before a request to IPFS is automatically failed in milliseconds (optional, default 10s)
   - `options.cache` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Cache options (optional)
   - `options.cache.forceLocalStorage` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** On browser environments, downgrade to localStorage even if IndexedDB is available (optional)
 
