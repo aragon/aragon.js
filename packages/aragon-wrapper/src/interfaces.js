@@ -60,7 +60,7 @@ const APM_APP_MAPPINGS = new Map([
   [apmAppId('apm-registry.open'), 'APM Registry'],
   [apmAppId('apm-repo.open'), 'Repo'],
   [apmAppId('apm-enssub.open'), 'ENS Subdomain Registrar'],
-  // Support hatch.aragonpm.eth's native packages
+  // Support hatch.aragonpm.eth's native packages (see note above for `open.aragonpm.eth`)
   [apmAppId('apm-registry.hatch'), 'APM Registry'],
   [apmAppId('apm-repo.hatch'), 'Repo'],
   [apmAppId('apm-enssub.hatch'), 'ENS Subdomain Registrar']
