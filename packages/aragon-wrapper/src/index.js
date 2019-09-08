@@ -1840,8 +1840,8 @@ export default class Aragon {
   }
 }
 
-// Re-export the aragonPM and ENS utilities
-export { apm }
+// Re-export some web3 utilities
+export { apm, getRecommendedGasLimit }
 export { resolve as ensResolve } from './ens'
 
 // Re-export the AddressIdentityProvider abstract base class
