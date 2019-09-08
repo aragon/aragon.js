@@ -138,6 +138,8 @@ export const setupTemplates = (from, options = {}) => {
  *        IPFS provider config for aragonPM
  * @param {string} [options.apm.ipfs.gateway]
  *        IPFS gateway to fetch aragonPM artifacts from
+ * @param {number} [options.apm.ipfs.fetchTimeout]
+ *        Timeout for retrieving aragonPM artifacts from IPFS before failing
  * @param {Object} [options.cache]
  *        Options for the internal cache
  * @param {boolean} [options.cache.forceLocalStorage=false]
@@ -189,7 +191,14 @@ export default class Aragon {
     this.ens = ens(options.provider, options.apm.ensRegistryAddress)
 
     // Set up APM utilities
-    this.apm = apm(this.web3, { ipfsGateway: options.apm.ipfs && options.apm.ipfs.gateway })
+    const { ipfs: apmIpfsOptions = {} } = options.apm
+    this.apm = apm(
+      this.web3,
+      {
+        fetchTimeout: apmIpfsOptions.fetchTimeout,
+        ipfsGateway: apmIpfsOptions.gateway
+      }
+    )
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
@@ -1889,5 +1898,6 @@ export { resolve as ensResolve } from './ens'
 
 // Re-export the AddressIdentityProvider abstract base class
 export { AddressIdentityProvider } from './identity'
+
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/rpc-messenger'
