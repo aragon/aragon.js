@@ -318,12 +318,6 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 - `description`: a string description
 - `annotatedDescription`: (if available) an array of objects annotating the description
 
-#### Parameters
-
-- `script` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The EVM callscript to describe
-
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits the described transaction path. The emitted transaction path is an array of objects, where each item has a `destination`, `data` and `description` key.
-
 ### events
 
 Subscribe for events on your app's smart contract.
