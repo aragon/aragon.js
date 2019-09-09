@@ -263,6 +263,23 @@ export class AppProxy {
   }
 
   /**
+   * Try to describe a transaction based on its input data.
+   *
+   * @param  {Object} transaction Transaction object
+   * @param  {string} transaction.data Transaction's bytes data
+   * @param  {string} transaction.to Transaction's to address
+   * @return {Observable} Single-emission Observable that emits the transaction's description, if describable. The result is an object holding a string `description` and an array of objects as `annotatedDescription`.
+   */
+  describeTransaction (transaction) {
+    return this.rpc.sendAndObserveResponse(
+      'describe_transaction',
+      [transaction]
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Subscribe for events on your app's smart contract
    *
    * @param  {object} [options] web3.eth.Contract.events()' options

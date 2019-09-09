@@ -19,9 +19,19 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
   // If the intent matches an installed app, use only that app to search for a
   // method match, otherwise fallback to searching all installed apps
   const appsToSearch = app ? [app] : apps
-  const method = appsToSearch.reduce((method, app) => {
-    return method || findAppMethodFromData(app, intent.data)
+  const foundMethod = appsToSearch.reduce((found, app) => {
+    if (found) { return found }
+
+    const method = findAppMethodFromData(app, intent.data)
+    if (method) {
+      return {
+        method,
+        abi: app.abi
+      }
+    }
   }, undefined)
+
+  const { abi, method } = foundMethod || {}
 
   let evaluatedNotice
   if (method && method.notice) {
@@ -29,12 +39,12 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
       evaluatedNotice = await radspec.evaluate(
         method.notice,
         {
-          abi: app.abi,
+          abi,
           transaction: intent
         },
         { ethNode: wrapper.web3.currentProvider }
       )
-    } catch (err) { }
+    } catch (err) {}
   }
 
   return {
