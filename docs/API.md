@@ -412,7 +412,7 @@ Returns **void**.
 
 ### trigger
 
-Trigger an event handler in the appplication's store. This can be used to periodically update the frontend with current contract information.
+Trigger an event handler in the application's store. This can be used to periodically update the frontend with current contract information.
 
 #### Parameters
 
