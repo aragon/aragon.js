@@ -805,7 +805,7 @@ test('should init the identity providers correctly', async (t) => {
   // assert
   t.truthy(instance.identityProviderRegistrar)
   t.true(instance.identityProviderRegistrar instanceof Map)
-  t.is(instance.identityProviderRegistrar.size, 1, 'Should have only one provider')
+  t.is(instance.identityProviderRegistrar.size, 2, 'Should have only two providers')
 })
 
 test('should emit an intent when requesting address identity modification', async (t) => {
