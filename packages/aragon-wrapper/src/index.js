@@ -20,6 +20,7 @@ import {
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
+import axios from 'axios'
 
 // RPC
 import Messenger from '@aragon/rpc-messenger'
@@ -160,12 +161,36 @@ export default class Aragon {
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
 
+  async hydrateCacheFromFeather (featherNode) {
+    // Load cache state from Feather
+    // TODO: Only apply cache if it is a newer version of what we have
+    const {
+      data: {
+        cache: cachedState
+      }
+    } = await axios.get(
+      `${featherNode}/${this.kernelProxy.address}`
+    )
+
+    let cachedStateIsEmpty = Object.keys(cachedState).length === 0
+    if (!cachedStateIsEmpty) {
+      for (var cacheKey in cachedState) {
+        await this.cache.set(cacheKey, cachedState[cacheKey])
+      }
+    }
+  }
+
   /**
    * Initialise the wrapper.
    *
    * @param {Object} [options] Options
    * @param {Object} [options.accounts] `initAccount()` options (see below)
    * @param {Object} [options.acl] `initACL()` options (see below)
+   * @param {String} [options.cache.featherNode=null]
+   *        A Feather node that can be used to hydrate the cache
+   *        for this specific organisation.
+   * @param {boolean} [options.cache.hydrateFromFeather=false]
+   *        Hydrate the cache from the specified Feather node.
    * @return {Promise<void>}
    * @throws {Error} Will throw an error if the `daoAddress` is detected to not be a Kernel instance
    */
@@ -181,6 +206,9 @@ export default class Aragon {
     }
 
     await this.cache.init()
+    if (options.featherNode && options.hydrateFromFeather) {
+      await this.hydrateCacheFromFeather(options.featherNode)
+    }
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
