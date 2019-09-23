@@ -9,7 +9,7 @@ const addressBookAppIds = [
 /**
  * An identity provider for Address Book Entries
  *
- * @class AddressIdentityProvider
+ * @extends AddressIdentityProvider
  */
 export default class AddressBookIdentityProvider extends AddressIdentityProvider {
   constructor (apps, cache) {
@@ -49,6 +49,42 @@ export default class AddressBookIdentityProvider extends AddressIdentityProvider
         .find(entry => entry.addr.toLowerCase() === address) || {}
       return entryData || null
     }, null)
+  }
+
+  async search (searchTerm = '') {
+    const isAddressSearch = searchTerm.substring(0, 2).toLowerCase() === '0x'
+    const identities = await this.getAll()
+    const results = Object.entries(identities)
+      .filter(
+        ([address, { name }]) =>
+          (isAddressSearch &&
+            searchTerm.length > 3 &&
+            address.toLowerCase().indexOf(searchTerm.toLowerCase()) === 0) ||
+          name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1
+      )
+      .map(([address, { name }]) => ({ name, address }))
+    return results
+  }
+
+  /**
+   * get all identities from all installed address book instances
+   */
+  async getAll () {
+    const addressBookApps = await this.apps.pipe(
+      first(),
+      map(apps => apps.filter(app => addressBookAppIds.includes(app.appId)))
+    ).toPromise()
+
+    return addressBookApps.reduce(async (allEntries, app) => {
+      const cacheKey = getCacheKey(app.proxyAddress, 'state')
+      const { entries = [] } = await this.cache.get(cacheKey)
+      const allEntriesResolved = await allEntries
+      const entriesObject = entries.reduce((obj, entry) => {
+        return { ...obj, [entry.addr.toLowerCase()]: entry.data }
+      }, {})
+      // ensure the entries retrieved from the first-installed address book aren't overwritten
+      return { ...entriesObject, ...allEntriesResolved }
+    }, Promise.resolve({}))
   }
 
   /**

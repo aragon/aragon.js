@@ -946,13 +946,23 @@ export default class Aragon {
    * @param  {string} searchTerm
    * @return {Promise} Resolves with the identity or null if not found
    */
-  searchIdentities (searchTerm) {
-    const providerName = 'local' // TODO - get provider
-    const provider = this.identityProviderRegistrar.get(providerName)
-    if (provider && typeof provider.search === 'function') {
-      return provider.search(searchTerm)
-    }
-    return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+  async searchIdentities (searchTerm) {
+    const providerNames = [ 'local', 'addressBook' ] // TODO - get provider
+    const resolvedResults = await Promise.all(
+      providerNames.map( (providerName) => {
+        const provider = this.identityProviderRegistrar.get(providerName)
+        if (provider && typeof provider.search === 'function') {
+          return provider.search(searchTerm)
+        }
+        return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+      })
+    )
+    return  resolvedResults.reduce(
+      (combinedResults, providerResult) => {
+      return [ ...combinedResults, ...providerResult ]
+      }, 
+      []
+    )
   }
 
   /**

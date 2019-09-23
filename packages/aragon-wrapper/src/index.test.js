@@ -808,6 +808,86 @@ test('should init the identity providers correctly', async (t) => {
   t.is(instance.identityProviderRegistrar.size, 2, 'Should have only two providers')
 })
 
+test('should search identities correctly', async (t) => {
+  const { createAragon } = t.context
+
+  t.plan(2)
+  // arrange
+  const instance = createAragon()
+  instance.apps = of([
+    {
+      appId: '0x32ec8cc9f3136797e0ae30e7bf3740905b0417b81ff6d4a74f6100f9037425de',
+      proxyAddress: '0x001'
+    }, {
+      appId: 'votingApp',
+      isForwarder: false
+    }
+  ])
+  await instance.cache.init()
+  await instance.cache.set('0x001.state', { 
+    entries: [
+      { addr: '0x789', data: { name: 'testEntity' } }, 
+      { addr: '0x456', data: { name: 'testDude' } } 
+    ] 
+  })
+  await instance.initIdentityProviders()
+
+  // act
+  await instance.modifyAddressIdentity('0x123', { name: 'testperson' })
+  await instance.modifyAddressIdentity('0x456', { name: 'testDao' })
+  // assert
+  //console.log(await instance.cache.get('0x001.state'))
+  let result = await instance.searchIdentities('test')
+  
+  t.deepEqual(result, [ { name: 'testperson', address: '0x123' },
+  { name: 'testDao', address: '0x456' },
+  { name: 'testEntity', address: '0x789' },
+  { name: 'testDude', address: '0x456' } ])
+
+  result = await instance.searchIdentities('0x456')
+  t.deepEqual(result, [ 
+    { name: 'testDao', address: '0x456' },
+    { name: 'testDude', address: '0x456' } 
+  ])
+})
+
+test('should resolve identity correctly', async (t) => {
+  const { createAragon } = t.context
+
+  t.plan(2)
+  // arrange
+  const instance = createAragon()
+  instance.apps = of([
+    {
+      appId: '0x32ec8cc9f3136797e0ae30e7bf3740905b0417b81ff6d4a74f6100f9037425de',
+      proxyAddress: '0x001'
+    }, {
+      appId: 'votingApp',
+      isForwarder: false
+    }
+  ])
+  await instance.cache.init()
+  await instance.cache.set('0x001.state', { 
+    entries: [
+      { addr: '0x789', data: { name: 'testEntity' } }, 
+      { addr: '0x456', data: { name: 'testDude' } } 
+    ] 
+  })
+  await instance.initIdentityProviders()
+
+  // act
+  await instance.modifyAddressIdentity('0x123', { name: 'testperson' })
+  await instance.modifyAddressIdentity('0x456', { name: 'testDao' })
+  // assert
+  //console.log(await instance.cache.get('0x001.state'))
+  let result = await instance.resolveAddressIdentity('0x456')
+  console.log('wrapper result: ', result)
+  t.is(result.name, 'testDao', 'should resolve to local label')
+  
+  result = await instance.resolveAddressIdentity('0x789')
+  t.is(result.name, 'testEntity', 'should resolve to address book entry')
+})
+
 test('should emit an intent when requesting address identity modification', async (t) => {
   const { createAragon } = t.context
   const expectedAddress = '0x123'

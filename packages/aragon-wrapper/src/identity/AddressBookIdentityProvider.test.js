@@ -22,8 +22,8 @@ test.before(async t => {
 
   cache = new Cache('stubbedAddressBook')
   await cache.init()
-  cache.set('0x0.state', { entries: [{ addr: '0x3', data: { name: 'testEntity' } }] })
-  cache.set('0x11.state', { entries: [{ addr: '0x3', data: { name: 'testEntity2' } }] })
+  cache.set('0x0.state', { entries: [{ addr: '0x3a', data: { name: 'testEntity' } }, { addr: '0x33', data: { name: 'testDude' } } ] })
+  cache.set('0x11.state', { entries: [{ addr: '0x3a', data: { name: 'testEntity2' } }] })
 })
 
 test.beforeEach(async t => {
@@ -33,7 +33,7 @@ test.beforeEach(async t => {
 
 test('should resolve identity from first address book in app array', async t => {
   const provider = t.context.addressBookIdentityProvider
-  const identityMetadata = await provider.resolve('0x3')
+  const identityMetadata = await provider.resolve('0x3a')
   t.is(identityMetadata.name, 'testEntity')
 })
 
@@ -46,4 +46,27 @@ test('should resolve to null for non-existent identity', async t => {
 test('should throw error on any modify attempt', async t => {
   const provider = t.context.addressBookIdentityProvider
   await t.throwsAsync(() => provider.modify('0x9', { name: 'newEntity' }))
+})
+
+test('getAll should return a combined Object containing all entries', async t => {
+  const provider = t.context.addressBookIdentityProvider
+  const allIdentities = await provider.getAll()
+  t.deepEqual(allIdentities, {
+    '0x3a': { name: 'testEntity' }, 
+    '0x33': { name: 'testDude' }
+  })
+})
+
+test('search should return an aray of results of freely matching identities', async t => {
+  t.plan(3)
+  const provider = t.context.addressBookIdentityProvider
+  let result = await provider.search('0x3a')
+  t.deepEqual(result, [ { name: 'testEntity', address: '0x3a' } ])
+
+  result = await provider.search('test')
+  t.deepEqual(result, [ { name: 'testEntity', address: '0x3a' },
+  { name: 'testDude', address: '0x33' } ])
+
+  result = await provider.search('testd')
+  t.deepEqual(result, [{ name: 'testDude', address: '0x33' } ])
 })
