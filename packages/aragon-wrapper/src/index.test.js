@@ -824,11 +824,11 @@ test('should search identities correctly', async (t) => {
     }
   ])
   await instance.cache.init()
-  await instance.cache.set('0x001.state', { 
+  await instance.cache.set('0x001.state', {
     entries: [
-      { addr: '0x789', data: { name: 'testEntity' } }, 
-      { addr: '0x456', data: { name: 'testDude' } } 
-    ] 
+      { addr: '0x789', data: { name: 'testEntity' } },
+      { addr: '0x456', data: { name: 'testDude' } }
+    ]
   })
   await instance.initIdentityProviders()
 
@@ -836,18 +836,18 @@ test('should search identities correctly', async (t) => {
   await instance.modifyAddressIdentity('0x123', { name: 'testperson' })
   await instance.modifyAddressIdentity('0x456', { name: 'testDao' })
   // assert
-  //console.log(await instance.cache.get('0x001.state'))
   let result = await instance.searchIdentities('test')
-  
-  t.deepEqual(result, [ { name: 'testperson', address: '0x123' },
-  { name: 'testDao', address: '0x456' },
-  { name: 'testEntity', address: '0x789' },
-  { name: 'testDude', address: '0x456' } ])
+
+  t.deepEqual(result, [
+    { name: 'testperson', address: '0x123' },
+    { name: 'testDao', address: '0x456' },
+    { name: 'testEntity', address: '0x789' },
+    { name: 'testDude', address: '0x456' } ])
 
   result = await instance.searchIdentities('0x456')
-  t.deepEqual(result, [ 
+  t.deepEqual(result, [
     { name: 'testDao', address: '0x456' },
-    { name: 'testDude', address: '0x456' } 
+    { name: 'testDude', address: '0x456' }
   ])
 })
 
@@ -867,11 +867,11 @@ test('should resolve identity correctly', async (t) => {
     }
   ])
   await instance.cache.init()
-  await instance.cache.set('0x001.state', { 
+  await instance.cache.set('0x001.state', {
     entries: [
-      { addr: '0x789', data: { name: 'testEntity' } }, 
-      { addr: '0x456', data: { name: 'testDude' } } 
-    ] 
+      { addr: '0x789', data: { name: 'testEntity' } },
+      { addr: '0x456', data: { name: 'testDude' } }
+    ]
   })
   await instance.initIdentityProviders()
 
@@ -879,11 +879,9 @@ test('should resolve identity correctly', async (t) => {
   await instance.modifyAddressIdentity('0x123', { name: 'testperson' })
   await instance.modifyAddressIdentity('0x456', { name: 'testDao' })
   // assert
-  //console.log(await instance.cache.get('0x001.state'))
   let result = await instance.resolveAddressIdentity('0x456')
-  console.log('wrapper result: ', result)
   t.is(result.name, 'testDao', 'should resolve to local label')
-  
+
   result = await instance.resolveAddressIdentity('0x789')
   t.is(result.name, 'testEntity', 'should resolve to address book entry')
 })

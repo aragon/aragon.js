@@ -15,7 +15,10 @@ import {
   startWith,
   switchMap,
   throttleTime,
-  withLatestFrom
+  withLatestFrom,
+  flatMap,
+  skipWhile,
+  defaultIfEmpty
 } from 'rxjs/operators'
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
@@ -928,16 +931,19 @@ export default class Aragon {
    */
   resolveAddressIdentity (address) {
     const providerNames = [ 'local', 'addressBook' ] // TODO - get provider
-    return providerNames.reduce(async (identity, providerName, index) => {
-      if (await identity) {
-        return identity
-      }
-      const provider = this.identityProviderRegistrar.get(providerName)
-      if (provider && typeof provider.resolve === 'function') {
-        return provider.resolve(address)
-      }
-      return Promise.reject(new Error(`Provider (${providerName}) not installed`))
-    }, Promise.resolve(null))
+    return from(providerNames).pipe(
+      map(providerName => {
+        const provider = this.identityProviderRegistrar.get(providerName)
+        if (provider && typeof provider.resolve === 'function') {
+          return provider.resolve(address)
+        }
+        return Promise.reject(new Error(`Provider (${providerName}) not installed`))
+      }),
+      flatMap(unresolvedAddress => from(unresolvedAddress)),
+      skipWhile(entryData => !entryData),
+      defaultIfEmpty(null),
+      first()
+    ).toPromise()
   }
 
   /**
@@ -949,7 +955,7 @@ export default class Aragon {
   async searchIdentities (searchTerm) {
     const providerNames = [ 'local', 'addressBook' ] // TODO - get provider
     const resolvedResults = await Promise.all(
-      providerNames.map( (providerName) => {
+      providerNames.map(providerName => {
         const provider = this.identityProviderRegistrar.get(providerName)
         if (provider && typeof provider.search === 'function') {
           return provider.search(searchTerm)
@@ -957,10 +963,10 @@ export default class Aragon {
         return Promise.reject(new Error(`Provider (${providerName}) not installed`))
       })
     )
-    return  resolvedResults.reduce(
+    return resolvedResults.reduce(
       (combinedResults, providerResult) => {
-      return [ ...combinedResults, ...providerResult ]
-      }, 
+        return [ ...combinedResults, ...providerResult ]
+      },
       []
     )
   }

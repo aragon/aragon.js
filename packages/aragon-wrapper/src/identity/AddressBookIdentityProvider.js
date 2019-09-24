@@ -1,10 +1,15 @@
 import AddressIdentityProvider from './AddressIdentityProvider'
-import { first, map } from 'rxjs/operators'
+import { from } from 'rxjs'
+import { concatAll, first, map, skipWhile, filter, flatMap, defaultIfEmpty, reduce } from 'rxjs/operators'
 import { getCacheKey } from '../utils/index'
+import { apmAppId } from '../utils/apps'
 
 const addressBookAppIds = [
-  '0x32ec8cc9f3136797e0ae30e7bf3740905b0417b81ff6d4a74f6100f9037425de'
-  // TODO Add in App Ids for rinkeby and mainnet appIds
+  apmAppId('address-book'),
+  apmAppId('address-book.open'),
+  apmAppId('tps-address-book.open'),
+  apmAppId('address-book-staging.open'),
+  apmAppId('address-book.hatch')
 ]
 /**
  * An identity provider for Address Book Entries
@@ -12,16 +17,15 @@ const addressBookAppIds = [
  * @extends AddressIdentityProvider
  */
 export default class AddressBookIdentityProvider extends AddressIdentityProvider {
+  /**
+   * Create a new identity Provider that queries installed Address Book apps
+   * @param {Observable} apps apps Observable from the wrapper
+   * @param {Cache} cache the cache instance utilized by the wrapper
+   */
   constructor (apps, cache) {
     super()
     this.apps = apps
     this.cache = cache
-  }
-  /**
-   * Optional initialization, if required by the provider
-   */
-  async init () {
-    // no-op
   }
 
   /**
@@ -30,27 +34,36 @@ export default class AddressBookIdentityProvider extends AddressIdentityProvider
    * Will return the first successful resolution                                                                                                                                                                                                                                tity could not be found
    *
    * @param  {string} address Address to resolve
-   * @return {Promise} Resolved metadata or rejected error
+   * @return {Promise} Resolves with identity metadata or null if not found
    */
   async resolve (address) {
     address = address.toLowerCase()
-    const addressBookApps = await this.apps.pipe(
-      first(),
-      map(apps => apps.filter(app => addressBookAppIds.includes(app.appId)))
-    ).toPromise()
-
-    return addressBookApps.reduce(async (identity, app) => {
-      if (identity) {
-        return identity
+    return this.apps.pipe(
+      concatAll(),
+      filter(app => addressBookAppIds.includes(app.appId)),
+      map(async app => {
+        const cacheKey = getCacheKey(app.proxyAddress, 'state')
+        const { entries = [] } = await this.cache.get(cacheKey)
+        const { data: entryData } = entries
+          .find(entry => entry.addr.toLowerCase() === address) || {}
+        return entryData || null
       }
-      const cacheKey = getCacheKey(app.proxyAddress, 'state')
-      const { entries = [] } = await this.cache.get(cacheKey)
-      const { data: entryData } = entries
-        .find(entry => entry.addr.toLowerCase() === address) || {}
-      return entryData || null
-    }, null)
+      ),
+      flatMap(pendingEntryData => from(pendingEntryData)),
+      skipWhile(entryData => !entryData),
+      defaultIfEmpty(null),
+      first()
+    ).toPromise()
   }
 
+  /**
+   * Search for matches in the installed address books.
+   *
+   * If the search term starts with '0x', addresses will be matched for instead.
+   *
+   * @param  {string} searchTerm Search term
+   * @return {Promise} Resolved with array of matches, each containing the address and name
+   */
   async search (searchTerm = '') {
     const isAddressSearch = searchTerm.substring(0, 2).toLowerCase() === '0x'
     const identities = await this.getAll()
@@ -68,23 +81,28 @@ export default class AddressBookIdentityProvider extends AddressIdentityProvider
 
   /**
    * get all identities from all installed address book instances
+   *
+   * @return {Promise} Resolved with an object of all identities when completed
    */
   async getAll () {
-    const addressBookApps = await this.apps.pipe(
+    return this.apps.pipe(
       first(),
-      map(apps => apps.filter(app => addressBookAppIds.includes(app.appId)))
+      concatAll(),
+      filter(app => addressBookAppIds.includes(app.appId)),
+      reduce(
+        async (allEntries, app) => {
+          const cacheKey = getCacheKey(app.proxyAddress, 'state')
+          const { entries = [] } = await this.cache.get(cacheKey)
+          const allEntriesResolved = await allEntries
+          const entriesObject = entries.reduce((obj, entry) => {
+            return { ...obj, [entry.addr.toLowerCase()]: entry.data }
+          }, {})
+          // ensure the entries retrieved from the first-installed address book aren't overwritten
+          return { ...entriesObject, ...allEntriesResolved }
+        },
+        Promise.resolve({})
+      )
     ).toPromise()
-
-    return addressBookApps.reduce(async (allEntries, app) => {
-      const cacheKey = getCacheKey(app.proxyAddress, 'state')
-      const { entries = [] } = await this.cache.get(cacheKey)
-      const allEntriesResolved = await allEntries
-      const entriesObject = entries.reduce((obj, entry) => {
-        return { ...obj, [entry.addr.toLowerCase()]: entry.data }
-      }, {})
-      // ensure the entries retrieved from the first-installed address book aren't overwritten
-      return { ...entriesObject, ...allEntriesResolved }
-    }, Promise.resolve({}))
   }
 
   /**
