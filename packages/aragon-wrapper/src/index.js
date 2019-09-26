@@ -1639,6 +1639,11 @@ export default class Aragon {
 
     const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
+
+    if (!app) {
+      throw new Error(`App not found for ${destination}`)
+    } 
+
     const directTransaction = await createDirectTransactionForApp(sender, app, methodName, params, this.web3)
 
     let appsWithPermissionForMethod = []
