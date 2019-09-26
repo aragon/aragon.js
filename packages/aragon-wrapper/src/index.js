@@ -1642,7 +1642,7 @@ export default class Aragon {
 
     if (!app) {
       throw new Error(`App not found for ${destination}`)
-    } 
+    }
 
     const directTransaction = await createDirectTransactionForApp(sender, app, methodName, params, this.web3)
 
