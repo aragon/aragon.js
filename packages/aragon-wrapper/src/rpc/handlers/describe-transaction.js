@@ -22,6 +22,10 @@ export default async function (request, proxy, wrapper) {
         description: processed.description
       }
     } catch (_) {}
+  } else {
+    return {
+      ...transaction
+    }
   }
 
   return {

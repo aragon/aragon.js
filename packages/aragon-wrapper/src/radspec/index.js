@@ -44,7 +44,9 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
         },
         { ethNode: wrapper.web3.currentProvider }
       )
-    } catch (err) {}
+    } catch (err) {
+      console.error(`Could not evaluate a description for given transaction data: ${intent.data}`, err)
+    }
   }
 
   return {
