@@ -30,15 +30,21 @@ const providers = require('@aragon/wrapper').providers
 - `daoAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the DAO.
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Wrapper options. (optional, default `{}`)
   - `options.provider` **any** The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider` if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws (optional)
-  - `options.apm` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Primarily used to set an alternative ipfs provider (optional, default `{}`)
-  - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry (optional, default `null`)
-  - `options.cache` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Cache options
-  - `options.cache.forceLocalStorage` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** On browser environments, downgrade to localStorage even if IndexedDB is available
+  - `options.apm` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Options for fetching information from aragonPM
+  - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry
+  - `options.apm.ipfs` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** IPFS options for fetching information from aragonPM (optional)
+  - `options.apm.ipfs.gateway` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The IPFS gateway to use for fetching information (optional)
+  - `options.apm.ipfs.fetchTimeout` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** The timeout before a request to IPFS is automatically failed in milliseconds (optional, default 10s)
+  - `options.cache` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Cache options (optional)
+  - `options.cache.forceLocalStorage` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** On browser environments, downgrade to localStorage even if IndexedDB is available (optional)
 
 ### **Examples**
 
 ```javascript
-const aragon = new Aragon('0xdeadbeef')
+const aragon = new Aragon(
+  '0xdeadbeef',
+  { apm: { ensRegistryAddress: '0x...' } }
+)
 
 // Initialises the wrapper
 await aragon.init({

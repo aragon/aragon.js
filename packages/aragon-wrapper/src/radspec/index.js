@@ -1,5 +1,7 @@
+import { first } from 'rxjs/operators'
 import * as radspec from 'radspec'
-import { makeRepoProxy } from '../core/apm/repo'
+import { getRepoLatestVersionForContract, makeRepoProxy } from '../core/apm/repo'
+import { addressesEqual } from '../utils'
 import { findAppMethodFromData, knownAppIds } from '../utils/apps'
 import { filterAndDecodeAppUpgradeIntents } from '../utils/intents'
 
@@ -11,8 +13,25 @@ import { filterAndDecodeAppUpgradeIntents } from '../utils/intents'
  * @return {Promise<Object>} Decorated intent with description, if one could be made
  */
 export async function tryEvaluatingRadspec (intent, wrapper) {
-  const app = await wrapper.getApp(intent.to)
-  const method = findAppMethodFromData(app, intent.data)
+  const apps = await wrapper.apps.pipe(first()).toPromise()
+  const app = apps.find(app => addressesEqual(app.proxyAddress, intent.to))
+
+  // If the intent matches an installed app, use only that app to search for a
+  // method match, otherwise fallback to searching all installed apps
+  const appsToSearch = app ? [app] : apps
+  const foundMethod = appsToSearch.reduce((found, app) => {
+    if (found) { return found }
+
+    const method = findAppMethodFromData(app, intent.data)
+    if (method) {
+      return {
+        method,
+        abi: app.abi
+      }
+    }
+  }, undefined)
+
+  const { abi, method } = foundMethod || {}
 
   let evaluatedNotice
   if (method && method.notice) {
@@ -20,12 +39,14 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
       evaluatedNotice = await radspec.evaluate(
         method.notice,
         {
-          abi: app.abi,
+          abi,
           transaction: intent
         },
         { ethNode: wrapper.web3.currentProvider }
       )
-    } catch (err) { }
+    } catch (err) {
+      console.error(`Could not evaluate a description for given transaction data: ${intent.data}`, err)
+    }
   }
 
   return {
@@ -47,10 +68,9 @@ export async function tryDescribingUpdateAppIntent (intent, wrapper) {
 
   const { appId, appAddress } = upgradeIntentParams
   // Fetch aragonPM information
-  const repo = await makeRepoProxy(appId, wrapper.apm, wrapper.web3)
-  const latestVersion = (await repo.call('getLatestForContractAddress', appAddress))
-    .semanticVersion
-    .join('.')
+  const repoAddress = await wrapper.ens.resolve(appId)
+  const repo = makeRepoProxy(repoAddress, wrapper.web3)
+  const { version: latestVersion } = await getRepoLatestVersionForContract(repo, appAddress)
 
   return {
     ...intent,
@@ -80,9 +100,11 @@ export async function tryDescribingUpgradeOrganizationBasket (intents, wrapper) 
     knownAppIds.length === upgradedKnownAppIds.length
   ) {
     return {
-      description: 'Upgrade organization to Aragon 0.7 Bella',
+      description: 'Upgrade organization to Aragon 0.8 Camino',
       from: intents[0].from,
       to: intents[0].to
     }
   }
 }
+
+export { postprocessRadspecDescription } from './postprocess'

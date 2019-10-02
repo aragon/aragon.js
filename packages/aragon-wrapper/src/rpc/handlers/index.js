@@ -1,9 +1,10 @@
 import { from, merge } from 'rxjs'
 import { filter, mergeMap, materialize } from 'rxjs/operators'
+import { signals } from '@aragon/rpc-messenger'
 
 export function createResponse ({ request: { id } }, { error, value = null, kind }) {
   if (kind === 'C') {
-    return {}
+    return { id, payload: signals.COMPLETE }
   }
 
   if (kind === 'E') {
@@ -23,9 +24,9 @@ export function createRequestHandler (request$, requestType, handler) {
   return filteredRequest$.pipe(
     /**
      * Turn the promise returned by the handler into an observable and materialize it, i.e:
-     * - if the promise rejects emit a Notification of kind 'E' with an error property
-     * - if the promise resolves emit a Notification of kind 'N' (next) with a value property AND
-     * another one of kind 'C' (complete) which we should filter out
+     * - if the observable emits, emit a Notification of kind 'N' (next) with a value property
+     * - if the observable rejects, emit a Notification of kind 'E' with an error property
+     * - if the observable completes, emit a Notification of kind 'C' (complete)
      */
     mergeMap(
       ({ request, proxy, wrapper }) => {
@@ -33,7 +34,7 @@ export function createRequestHandler (request$, requestType, handler) {
       },
       createResponse
     ),
-    // filter empty responses caused by Notifications of kind 'C'
+    // TODO: instead of filtering, log if a payload is undefined
     filter((response) => response.payload !== undefined)
   )
 }
@@ -48,8 +49,12 @@ export function combineRequestHandlers (...handlers) {
 export { default as accounts } from './accounts'
 export { default as cache } from './cache'
 export { default as describeScript } from './describe-script'
+export { default as describeTransaction } from './describe-transaction'
 export { default as getApps } from './get-apps'
 export { default as network } from './network'
+export { default as path } from './path'
+export { trigger as newTrigger } from './trigger'
+export { triggerSubscribe as getTriggers } from './trigger'
 export { default as web3Eth } from './web3-eth'
 
 export { default as intent } from './intent'
@@ -66,7 +71,3 @@ export { pastEvents as externalPastEvents } from './external'
 export { default as addressIdentity } from './address-identity'
 export { default as appIdentifier } from './app-identifier'
 export { default as searchIdentities } from './search-identities'
-
-export { default as notifications } from './notifications'
-export { trigger as newTrigger } from './trigger'
-export { triggerSubscribe as getTriggers } from './trigger'
