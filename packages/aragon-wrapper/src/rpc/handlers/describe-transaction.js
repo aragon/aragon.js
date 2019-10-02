@@ -11,7 +11,8 @@ export default async function (request, proxy, wrapper) {
 
   let description
   try {
-    description = await tryEvaluatingRadspec(transaction, wrapper)
+    const decoratedTransaction = await tryEvaluatingRadspec(transaction, wrapper)
+    description = decoratedTransaction.description
   } catch (_) {}
 
   if (description) {
