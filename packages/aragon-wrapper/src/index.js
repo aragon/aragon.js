@@ -1635,10 +1635,13 @@ export default class Aragon {
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
   async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
-    const finalForwarderProvided = isAddress(finalForwarder)
-
-    const permissions = await this.permissions.pipe(first()).toPromise()
     const app = await this.getApp(destination)
+    if (!app) {
+      throw new Error(`Transaction path destination (${destination}) is not an installed app`)
+    }
+
+    const finalForwarderProvided = isAddress(finalForwarder)
+    const permissions = await this.permissions.pipe(first()).toPromise()
     const directTransaction = await createDirectTransactionForApp(sender, app, methodName, params, this.web3)
 
     let appsWithPermissionForMethod = []
