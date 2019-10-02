@@ -770,7 +770,7 @@ export default class Aragon {
         const currentVersion = Array.from(versions)
           // Apply reverse to find the latest version with the currently installed contract address
           .reverse()
-          .find(version => version.contractAddress === installedRepoInfo.contractAddress)
+          .find(version => addressesEqual(version.contractAddress, installedRepoInfo.contractAddress))
 
         // Get info for the current and latest versions of the repo
         const currentVersionRequest = applicationInfoCache
@@ -783,7 +783,7 @@ export default class Aragon {
 
         const versionInfos = await Promise.all([
           currentVersionRequest,
-          currentVersion.contractAddress === latestVersion.contractAddress
+          addressesEqual(currentVersion.contractAddress, latestVersion.contractAddress)
             ? currentVersionRequest // current version is also the latest, no need to refetch
             : applicationInfoCache
               .request(`${appId}.${latestVersion.contractAddress}`)
@@ -1645,7 +1645,7 @@ export default class Aragon {
 
     // Only try to perform direct transaction if no final forwarder is provided or
     // if the final forwarder is the sender
-    if (!finalForwarderProvided || finalForwarder === sender) {
+    if (!finalForwarderProvided || addressesEqual(finalForwarder, sender)) {
       const methods = app.functions
 
       if (!methods) {
