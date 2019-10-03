@@ -1,62 +1,80 @@
 import test from 'ava'
-import AppContextPool from './index'
+import AppContextPool, { APP_CONTEXTS } from './index'
 
 test('AppContextPool starts empty', async (t) => {
   // arrange
   const appAddress = '0x12'
-  // act
   const pool = new AppContextPool()
   // assert
   t.false(pool.hasApp(appAddress))
 })
 
-test('AppContextPool can create new app contexts', async (t) => {
+test('AppContextPool can create new app contexts when retrieving context for first time', async (t) => {
   // arrange
   const appAddress = '0x12'
-  // act
   const pool = new AppContextPool()
-  pool.set(appAddress, 'path', '/vote')
+  t.false(pool.hasApp(appAddress))
+  // act
+  pool.get(appAddress, APP_CONTEXTS.PATH)
   // assert
   t.true(pool.hasApp(appAddress))
 })
 
-test('AppContextPool can read and write values to app context', async (t) => {
+test('AppContextPool can create new app contexts when setting initial value', async (t) => {
   // arrange
   const appAddress = '0x12'
-  // act
   const pool = new AppContextPool()
-  pool.set(appAddress, 'first', 'first value')
-  pool.set(appAddress, 'second', 'first value')
-  pool.set(appAddress, 'second', 'second value')
+  t.false(pool.hasApp(appAddress))
+  // act
+  pool.set(appAddress, APP_CONTEXTS.PATH, '/vote')
   // assert
-  t.is(await pool.get(appAddress, 'first'), 'first value')
-  t.is(await pool.get(appAddress, 'second'), 'second value')
+  t.true(pool.hasApp(appAddress))
 })
 
-test('AppContextPool can observe values from app context', async (t) => {
+test('AppContextPool can read and write values to path context', async (t) => {
   // arrange
   const appAddress = '0x12'
-  const contextKey = 'key'
-  // act
   const pool = new AppContextPool()
-  const observedContext = pool.observe(appAddress, contextKey)
-  pool.set(appAddress, contextKey, 'first value') // starting value
   // assert
+  const context = pool.get(appAddress, APP_CONTEXTS.PATH)
   let counter = 0
-  observedContext.subscribe(val => {
+  context.subscribe(val => {
     if (counter === 0) {
-      t.is(val, 'first value')
+      t.is(val, null)
     } else if (counter === 1) {
-      t.is(val, 'second value')
+      t.is(val, '/first')
     } else if (counter === 2) {
-      t.is(val, 'third value')
+      t.is(val, '/second')
     } else {
       t.fail('too many emissions')
     }
     counter++
   })
+  // act
+  pool.set(appAddress, APP_CONTEXTS.PATH, '/first')
+  pool.set(appAddress, APP_CONTEXTS.PATH, '/second')
+})
 
-  // Emit after subscribed
-  pool.set(appAddress, contextKey, 'second value')
-  pool.set(appAddress, contextKey, 'third value')
+test('AppContextPool can read and write values to trigger context', async (t) => {
+  // arrange
+  const appAddress = '0x12'
+  const pool = new AppContextPool()
+  // assert
+  const context = pool.get(appAddress, APP_CONTEXTS.TRIGGER)
+  let counter = 0
+  context.subscribe(val => {
+    if (counter === 0) {
+      t.is(val.event, 'first')
+      t.deepEqual(val.returnValues, {})
+    } else if (counter === 1) {
+      t.is(val.event, 'second')
+      t.deepEqual(val.returnValues, {})
+    } else {
+      t.fail('too many emissions')
+    }
+    counter++
+  })
+  // act
+  pool.set(appAddress, APP_CONTEXTS.TRIGGER, { event: 'first', returnValues: {} })
+  pool.set(appAddress, APP_CONTEXTS.TRIGGER, { event: 'second', returnValues: {} })
 })

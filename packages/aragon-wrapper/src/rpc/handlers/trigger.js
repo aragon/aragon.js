@@ -1,21 +1,26 @@
-import { map, filter } from 'rxjs/operators'
+import { APP_CONTEXTS } from '../../apps'
+
 export function trigger (request, proxy, wrapper) {
-  const [
-    eventName,
-    returnValues
-  ] = request.params
+  const [operation] = request.params
 
-  wrapper.triggerAppStore(
-    proxy.address,
-    eventName,
-    returnValues
-  )
-  return Promise.resolve()
-}
+  if (operation === 'observe') {
+    return wrapper.appContextPool.get(proxy.address, APP_CONTEXTS.TRIGGER)
+  }
+  if (operation === 'emit') {
+    const [
+      eventName,
+      data
+    ] = request.params.slice(1)
 
-export function triggerSubscribe (request, proxy, wrapper) {
-  return wrapper.trigger.pipe(
-    filter(appEvent => appEvent.origin === proxy.address),
-    map(appEvent => appEvent.frontendEvent)
-  )
+    wrapper.appContextPool.set(
+      proxy.address,
+      APP_CONTEXTS.TRIGGER,
+      // Mimic web3.js@1's event schema
+      {
+        event: eventName,
+        // `returnValues` is always a object for real Ethereum events
+        returnValues: data || {}
+      }
+    )
+  }
 }
