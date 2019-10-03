@@ -475,12 +475,14 @@ Reduce and cache application state based on events. See [store documentation abo
 
 ### trigger
 
-Trigger an event handler in the application's store. This can be used to periodically update the frontend with current contract information.
+Emit an event trigger to all running aragonAPI instances of your application, including the triggering instance. For example, if an application's frontend emits an event trigger, both the frontend and the background script's aragonAPI instances will receive it.
+
+A common use case is to emit non-Ethereum event triggers from an application's frontend to its background script to recalculate reduced state based on a timer, user action, or external API request.
 
 #### Parameters
 
-- `eventName` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the event to be handled within the reducer.
-- `Object` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): event data
+- `name` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)**: The name of the event
+- `data` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): event data
 
 Returns **void**.
 

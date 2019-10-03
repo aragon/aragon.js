@@ -277,6 +277,48 @@ test('should send a path modification request', t => {
   t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('path', ['modify', path]))
 })
 
+test('should send a trigger emission', t => {
+  t.plan(1)
+  // arrange
+  const eventName = 'TestTrigger'
+  const eventData = { testprop: '123abc' }
+  const emitTriggerFn = Index.AppProxy.prototype.emitTrigger
+  const instanceStub = {
+    rpc: {
+      send: sinon.stub()
+    }
+  }
+  // act
+  emitTriggerFn.call(instanceStub, eventName, eventData)
+  // assert
+  t.true(instanceStub.rpc.send.calledOnceWith('trigger', ['emit', eventName, eventData]))
+})
+
+test('should return the triggers observable', t => {
+  t.plan(2)
+  // arrange
+  const triggersFn = Index.AppProxy.prototype.triggers
+  // TODO
+  const observable = of({
+    id: 'uuid1',
+    result: ['eventA', 'eventB']
+  })
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponses: createDeferredStub(observable)
+    }
+  }
+  // act
+  const result = triggersFn.call(instanceStub)
+  // assert
+  subscribe(result, value => {
+    // TODO
+    t.deepEqual(value, ['eventA', 'eventB'])
+  })
+  t.true(instanceStub.rpc.sendAndObserveResponses.calledOnceWith('trigger', ['observe']))
+})
+
 test('should return the events observable', t => {
   t.plan(2)
   // arrange
@@ -458,6 +500,7 @@ test('should create a store and reduce correctly without previously cached state
     events: createDeferredStub(observableEvents),
     getCache: () => from([null]),
     pastEvents: () => of([]),
+    triggers: () => of(),
     web3Eth: sinon.stub().withArgs('getBlockNumber').returns(from(['4385398']))
   }
   const reducer = (state, action) => {
@@ -521,6 +564,7 @@ test('should create a store and reduce correctly with previously cached state', 
       blockNumber: 1
     }),
     pastEvents: () => of([]),
+    triggers: () => of(),
     web3Eth: sinon.stub().withArgs('getBlockNumber').returns(from(['4385398']))
   }
   const reducer = (state, action) => {
@@ -636,20 +680,4 @@ test('should send a web3Eth function request and observe the response', t => {
     t.deepEqual(value, ['accountA', 'accountB'])
   })
   t.true(instanceStub.rpc.sendAndObserveResponse.calledOnceWith('web3_eth', ['getAccounts', 5]))
-})
-
-test('should send a trigger request to the wrapper', t => {
-  t.plan(2)
-  // arrange
-  const triggerFn = Index.AppProxy.prototype.trigger
-  const instanceStub = {
-    rpc: {
-      send: sinon.stub()
-    }
-  }
-  // act
-  triggerFn.call(instanceStub, 'TriggerTest', { testprop: '123abc' })
-  // assert
-  t.is(instanceStub.rpc.send.getCall(0).args[0], 'trigger')
-  t.deepEqual(instanceStub.rpc.send.getCall(0).args[1], ['TriggerTest', { testprop: '123abc' }])
 })

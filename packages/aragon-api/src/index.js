@@ -183,25 +183,25 @@ export class AppProxy {
   }
 
   /**
+   * Emit an event trigger to all aragonAPI instances of your application.
    *
-   * Trigger an event handler in the application's store
-   *
-   * @param {string} eventName The name of the event to be handled in the reducer
-   * @param {Object} [returnValues={}] Optional event data
+   * @param {string} name The name of the event
+   * @param {Object} [data] Optional event data
+   * @return {void}
    */
-  trigger (eventName, returnValues = {}) {
-    return this.rpc.send(
-      'trigger',
-      [eventName, returnValues]
-    )
+  emitTrigger (name, data) {
+    this.rpc.send('trigger', ['emit', name, data])
   }
 
   /**
-   * subscribe to an observable that emits events created by the frontend event triggers
+   * Subscribe to any emitted event triggers from all aragonAPI instances of your application.
+   *
+   * @return {Observable} Multi-emission Observable that emits new event triggers
    */
-  frontendTriggers () {
+  triggers () {
     return this.rpc.sendAndObserveResponses(
-      'getTriggers'
+      'trigger',
+      ['observe']
     ).pipe(
       pluck('result')
     )
@@ -530,8 +530,7 @@ export class AppProxy {
 
     const getCurrentEvents = (fromBlock) => merge(
       this.events({ fromBlock }),
-      ...externals.map(({ contract }) => contract.events({ fromBlock })),
-      this.frontendTriggers()
+      ...externals.map(({ contract }) => contract.events({ fromBlock }))
     )
 
     // If `cachedFromBlock` is null there's no cache, `pastEvents` will use the initializationBlock
@@ -598,7 +597,7 @@ export class AppProxy {
 
         return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
           mergeScan(wrappedReducer, initialStoreState, 1),
-          // throttle to reduce rendering and caching overthead
+          // throttle to reduce rendering and caching overhead
           // must keep trailing to avoid discarded events
           throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
           delayWhen((state) => {
@@ -614,6 +613,8 @@ export class AppProxy {
             })
           }),
           switchMap(pastState => {
+            // fetch current events from block after cached block
+            const currentEvents$ = getCurrentEvents(pastEventsToBlock + 1)
             // observable which emits an web3.js event-like object with the address of the active account.
             const accounts$ = this.accounts().pipe(
               map(accounts => {
@@ -625,14 +626,14 @@ export class AppProxy {
                 }
               })
             )
-            // fetch current events from block after cached block
-            const currentEvents$ = getCurrentEvents(pastEventsToBlock + 1)
+            // triggers; make no assumptions about their data structure
+            const triggers$ = this.triggers()
 
-            return merge(currentEvents$, accounts$).pipe(
+            return merge(currentEvents$, accounts$, triggers$).pipe(
               mergeScan(wrappedReducer, pastState, 1)
             )
           }),
-          // throttle to reduce rendering and caching overthead
+          // throttle to reduce rendering and caching overhead
           // must keep trailing to avoid discarded events
           throttleTime(250, asyncScheduler, { leading: false, trailing: true }),
           delayWhen((state) => {
@@ -647,6 +648,7 @@ export class AppProxy {
 
     return store$
   }
+}
 
 /**
  * This class is used to communicate with the wrapper in which the app is run.
