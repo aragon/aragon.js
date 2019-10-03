@@ -129,11 +129,11 @@ api.deposit(tokenAddress, amount, reference, intentParams)
 
 ### store
 
-**Should be** used as the main "event loop" in application background scripts running in a WebWorker. Listens for events, passes them through `reducer`, caches the resulting state, and re-emits that state for easy chaining.
+**Should be** used as the main "event loop" in an application's background script (running inside a WebWorker). Listens for events, passes them through `reducer`, caches the resulting state, and re-emits that state for easy chaining.
 
 The store has block caching automatically applied, such that subsequent loads of the application only fetch new events from a cached ("committed") block height (rather than from `0` or the app's initialization block).
 
-The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event. Returning `undefined` will reset the reduced state to its initial null state.
+The reducer takes the signature `(state, event)` à la Redux. Note that it _must always_ return a state, even if it is unaltered by the event. Returning `undefined` will reset the reduced state to its initial `null` state.
 
 Also note that the initial state is always `null`, not `undefined`, because of [JSONRPC](https://www.jsonrpc.org/specification) limitations.
 
@@ -142,11 +142,13 @@ Optionally takes a configuration object comprised of an `init` function, to re-i
 #### Parameters
 
 - `reducer` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)**: A function that reduces events to a state. The function is allowed to be `async` and can return a Promise that resolves to the new state.
-- `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): An object that initializes the store with a specific configuration:
-    - `options.init` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** (optional): An initialization function for the state that takes the cached state (`null` if no cached state exists) as a parameter and returns re-initialized state. The function is allowed to be `async` and can return a Promise that resolves to the state.
-    - `options.externals` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** (optional): An array of external contracts whose events the store will also be subscribed to. Each element in the array is an object containing `contract` (an external contract handle returned from `api.external()`) and an optional `initializationBlock` number from which external events should be fetched from.
+- `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional, default `{}`): Optional configuration for the store:
+  - `options.init` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** (optional): An initialization function for the state that takes the cached state (`null` if no cached state exists) as a parameter and returns re-initialized state. The function is allowed to be `async` and can return a Promise that resolves to the state.
+  - `options.externals` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)** (optional): An array of external contracts whose events the store will also be subscribed to. Each element in the array is an object containing:
+    - `contract` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**: an external contract handle returned from `api.external()`
+    - `initializationBlock` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** (optional, defaults to the application's own initialization block):  block from which the external contract's events should be fetched from.
 
-Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits the application state every time it changes. The type of the emitted values is application specific.
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits the application state every time it changes.
 
 #### Lifecycle
 
@@ -162,13 +164,15 @@ A simple representation of the store's lifecycle:
   - Note that there are some "custom" built-in events at this step:
     - `ACCOUNT_TRIGGER`: triggered whenever the currently connected account changes
 
-However, with `options.init` and `options.externals`, the lifecycle becomes a bit more complicated:
+If `options.init` and `options.externals` are given, the lifecycle becomes a bit more complicated:
 
 1. Obtain the initial "committed" state, as before
 1. If `options.init` is available, feed the initial state into `options.init`. Use the returned state from `options.init` as the new current state.
-1. Fetch past events from the contract and any given `options.externals` contracts, reducing new state from found events. Note that new events from these contracts are **not** fetched until all past events have been found.
-1. Cache the state as "committed" state, as before
+1. Fetch past events from the application contract and any given `options.externals` contracts, reducing new state from found events. Note that new events from both the application contract and external contracts are **not** fetched until all past events have been found.
+1. Cache the state at the end of the initial sync as "committed" state, as before
 1. Subscribe to new events from the contract and any given `options.externals` contracts, reducing new state based on the incoming events.
+
+If the application emits its own `trigger`s (see [`emitTrigger`](#emittrigger)), the triggers will appear in the reducer only once the syncing phase for past events ends. Any triggers emitted before this will be ignored.
 
 > **Note**<br>
 > The custom events are symbols and can be fetched from the `events` export of `@aragon/api` (e.g. `import { events } from '@aragon/api'`).
@@ -473,7 +477,13 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 
 Reduce and cache application state based on events. See [store documentation above](#store).
 
-### trigger
+### triggers
+
+Observe any emitted event triggers for this application.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits on every emitted event trigger for this application (see [`emitTrigger()`](#emittrigger)).
+
+### emitTrigger
 
 Emit an event trigger to all running aragonAPI instances of your application, including the triggering instance. For example, if an application's frontend emits an event trigger, both the frontend and the background script's aragonAPI instances will receive it.
 
