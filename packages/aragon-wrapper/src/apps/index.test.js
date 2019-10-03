@@ -9,7 +9,7 @@ test('AppContextPool starts empty', async (t) => {
   t.false(pool.hasApp(appAddress))
 })
 
-test('AppContextPool can create new app contexts when retrieving context for first time', async (t) => {
+test('AppContextPool can create new app context when retrieving a context for first time', async (t) => {
   // arrange
   const appAddress = '0x12'
   const pool = new AppContextPool()
@@ -20,13 +20,13 @@ test('AppContextPool can create new app contexts when retrieving context for fir
   t.true(pool.hasApp(appAddress))
 })
 
-test('AppContextPool can create new app contexts when setting initial value', async (t) => {
+test('AppContextPool can create new app context when emitting initial value', async (t) => {
   // arrange
   const appAddress = '0x12'
   const pool = new AppContextPool()
   t.false(pool.hasApp(appAddress))
   // act
-  pool.set(appAddress, APP_CONTEXTS.PATH, '/vote')
+  pool.emit(appAddress, APP_CONTEXTS.PATH, '/vote')
   // assert
   t.true(pool.hasApp(appAddress))
 })
@@ -51,8 +51,8 @@ test('AppContextPool can read and write values to path context', async (t) => {
     counter++
   })
   // act
-  pool.set(appAddress, APP_CONTEXTS.PATH, '/first')
-  pool.set(appAddress, APP_CONTEXTS.PATH, '/second')
+  pool.emit(appAddress, APP_CONTEXTS.PATH, '/first')
+  pool.emit(appAddress, APP_CONTEXTS.PATH, '/second')
 })
 
 test('AppContextPool can read and write values to trigger context', async (t) => {
@@ -75,6 +75,6 @@ test('AppContextPool can read and write values to trigger context', async (t) =>
     counter++
   })
   // act
-  pool.set(appAddress, APP_CONTEXTS.TRIGGER, { event: 'first', returnValues: {} })
-  pool.set(appAddress, APP_CONTEXTS.TRIGGER, { event: 'second', returnValues: {} })
+  pool.emit(appAddress, APP_CONTEXTS.TRIGGER, { event: 'first', returnValues: {} })
+  pool.emit(appAddress, APP_CONTEXTS.TRIGGER, { event: 'second', returnValues: {} })
 })

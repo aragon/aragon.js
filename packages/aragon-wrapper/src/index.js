@@ -1048,7 +1048,7 @@ export default class Aragon {
       throw new Error('Path must be a string')
     }
 
-    this.appContextPool.set(appAddress, APP_CONTEXTS.PATH, path)
+    this.appContextPool.emit(appAddress, APP_CONTEXTS.PATH, path)
   }
 
   /**

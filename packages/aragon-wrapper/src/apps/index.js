@@ -43,7 +43,7 @@ export default class AppContextPool {
     return appContext.get(context)
   }
 
-  set (appAddress, context, value) {
+  emit (appAddress, context, value) {
     this.get(appAddress, context).next(value)
   }
 }

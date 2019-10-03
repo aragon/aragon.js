@@ -12,7 +12,7 @@ export function trigger (request, proxy, wrapper) {
       data
     ] = request.params.slice(1)
 
-    wrapper.appContextPool.set(
+    wrapper.appContextPool.emit(
       proxy.address,
       APP_CONTEXTS.TRIGGER,
       // Mimic web3.js@1's event schema
