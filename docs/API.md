@@ -172,7 +172,7 @@ If `options.init` and `options.externals` are given, the lifecycle becomes a bit
 1. Cache the state at the end of the initial sync as "committed" state, as before
 1. Subscribe to new events from the contract and any given `options.externals` contracts, reducing new state based on the incoming events.
 
-If the application emits its own `trigger`s (see [`emitTrigger`](#emittrigger)), the triggers will appear in the reducer only once the syncing phase for past events ends. Any triggers emitted before this will be ignored. Triggers are implicitly transformed into the web3 event schema of `event` (string) and `returnValues` (object).
+If the application emits its own `trigger`s (see [`emitTrigger`](#emittrigger)), the triggers will appear in the reducer only once the syncing phase for past events starts. Any triggers emitted before this will be ignored. Triggers are implicitly transformed into the web3 event schema of `event` (string) and `returnValues` (object).
 
 > **Note**<br>
 > The custom events are symbols and can be fetched from the `events` export of `@aragon/api` (e.g. `import { events } from '@aragon/api'`).

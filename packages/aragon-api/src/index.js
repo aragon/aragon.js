@@ -8,9 +8,11 @@ import {
   mergeScan,
   last,
   pluck,
+  publishLast,
   publishReplay,
   startWith,
   switchMap,
+  takeUntil,
   throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
@@ -595,7 +597,15 @@ export class AppProxy {
         }
         debug(`- store - currentEvents$: block ${pastEventsToBlock} -> future`)
 
-        return getPastEvents(cachedBlock, pastEventsToBlock).pipe(
+        const pastEvents$ = getPastEvents(cachedBlock, pastEventsToBlock)
+        const triggers$ = this.triggers()
+        const pastEventsWithTriggers$ = merge(
+          pastEvents$,
+          // Only subscribe to triggers up until the pastEvents$ finishes
+          // We'll re-subscribe to new triggers after when we subscribe to current events
+          triggers$.pipe(takeUntil(pastEvents$.pipe(publishLast())))
+        )
+        return pastEventsWithTriggers$.pipe(
           mergeScan(wrappedReducer, initialStoreState, 1),
           // throttle to reduce rendering and caching overhead
           // must keep trailing to avoid discarded events
@@ -626,8 +636,6 @@ export class AppProxy {
                 }
               })
             )
-            // triggers; make no assumptions about their data structure
-            const triggers$ = this.triggers()
 
             return merge(currentEvents$, accounts$, triggers$).pipe(
               mergeScan(wrappedReducer, pastState, 1)
