@@ -52,7 +52,7 @@ export async function applyPretransaction (directTransaction, web3) {
 }
 
 export async function applyForwardingPretransaction (forwardingTransaction, web3) {
-  const { to: forwarder } = forwardingTransaction
+  const { to: forwarder, from } = forwardingTransaction
 
   // Check if a token approval pretransaction is needed due to the forwarder requiring a fee
   const forwardFee = new web3.eth.Contract(
@@ -62,7 +62,8 @@ export async function applyForwardingPretransaction (forwardingTransaction, web3
 
   const feeDetails = { amount: toBN(0) }
   try {
-    const feeResult = await forwardFee().call() // forwardFee() returns (address, uint256)
+    // Passing the EOA as `msg.sender` to the forwardFee call is useful for use cases where the fee differs relative to the account 
+    const feeResult = await forwardFee().call({ from }) // forwardFee() returns (address, uint256) 
     feeDetails.tokenAddress = feeResult[0]
     feeDetails.amount = toBN(feeResult[1])
   } catch (err) {
