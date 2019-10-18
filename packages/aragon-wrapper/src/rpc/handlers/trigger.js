@@ -1,6 +1,6 @@
 import { APP_CONTEXTS } from '../../apps'
 
-export function trigger (request, proxy, wrapper) {
+export default function trigger (request, proxy, wrapper) {
   const [operation] = request.params
 
   if (operation === 'observe') {
@@ -22,5 +22,10 @@ export function trigger (request, proxy, wrapper) {
         returnValues: data || {}
       }
     )
+    return Promise.resolve()
   }
+
+  return Promise.reject(
+    new Error('Invalid trigger operation')
+  )
 }
