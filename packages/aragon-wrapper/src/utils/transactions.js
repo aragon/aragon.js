@@ -62,8 +62,8 @@ export async function applyForwardingPretransaction (forwardingTransaction, web3
 
   const feeDetails = { amount: toBN(0) }
   try {
-    // Passing the EOA as `msg.sender` to the forwardFee call is useful for use cases where the fee differs relative to the account 
-    const feeResult = await forwardFee().call({ from }) // forwardFee() returns (address, uint256) 
+    // Passing the EOA as `msg.sender` to the forwardFee call is useful for use cases where the fee differs relative to the account
+    const feeResult = await forwardFee().call({ from }) // forwardFee() returns (address, uint256)
     feeDetails.tokenAddress = feeResult[0]
     feeDetails.amount = toBN(feeResult[1])
   } catch (err) {
