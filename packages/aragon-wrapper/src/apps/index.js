@@ -1,44 +1,49 @@
-import { BehaviorSubject } from 'rxjs'
-import { first } from 'rxjs/operators'
+import { BehaviorSubject, Subject } from 'rxjs'
 
-function ensureContext (apps, appAddress, context) {
-  let app = apps.get(appAddress)
-  if (!app) {
-    app = new Map()
-    apps.set(appAddress, app)
-  }
-
-  let appContext = app.get(context)
-  if (!appContext) {
-    appContext = new BehaviorSubject(null)
-    app.set(context, appContext)
-  }
-
-  return appContext
+const contextInstantiators = {
+  path: () => new BehaviorSubject(null),
+  trigger: () => new Subject()
 }
 
+class AppContext {
+  constructor (appAddress) {
+    this.appAddress = appAddress
+
+    Object.entries(contextInstantiators).forEach(([context, instantiator]) => {
+      this[context] = instantiator()
+    })
+  }
+  get (context) {
+    if (!this[context]) {
+      throw new Error(`Could not find internal context '${context}' on ${this.appAddress}`)
+    }
+    return this[context]
+  }
+}
+
+export const APP_CONTEXTS = Object.keys(contextInstantiators).reduce((contexts, context) => {
+  contexts[context.toUpperCase()] = context
+  return contexts
+}, {})
+
 export default class AppContextPool {
-  #apps = new Map()
+  #appContexts = new Map()
 
   hasApp (appAddress) {
-    return this.#apps.has(appAddress)
+    return this.#appContexts.has(appAddress)
   }
 
-  async get (appAddress, context) {
-    const app = this.#apps.get(appAddress)
-    if (!app || !app.has(context)) {
-      return null
+  get (appAddress, context) {
+    let appContext = this.#appContexts.get(appAddress)
+    if (!appContext) {
+      appContext = new AppContext()
+      this.#appContexts.set(appAddress, appContext)
     }
-    return app.get(context).pipe(first()).toPromise()
+
+    return appContext.get(context)
   }
 
-  observe (appAddress, context) {
-    const appContext = ensureContext(this.#apps, appAddress, context)
-    return appContext
-  }
-
-  set (appAddress, context, value) {
-    const appContext = ensureContext(this.#apps, appAddress, context)
-    appContext.next(value)
+  emit (appAddress, context, value) {
+    this.get(appAddress, context).next(value)
   }
 }

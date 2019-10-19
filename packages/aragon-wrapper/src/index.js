@@ -25,7 +25,7 @@ import dotprop from 'dot-prop'
 import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
-import AppContextPool from './apps'
+import AppContextPool, { APP_CONTEXTS } from './apps'
 import Cache from './cache'
 import apm, { getApmInternalAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
@@ -1048,7 +1048,7 @@ export default class Aragon {
       throw new Error('Path must be a string')
     }
 
-    this.appContextPool.set(appAddress, 'path', path)
+    this.appContextPool.emit(appAddress, APP_CONTEXTS.PATH, path)
   }
 
   /**
@@ -1107,6 +1107,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
         handlers.createRequestHandler(request$, 'network', handlers.network),
         handlers.createRequestHandler(request$, 'path', handlers.path),
+        handlers.createRequestHandler(request$, 'trigger', handlers.trigger),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
 
         // Contract handlers
