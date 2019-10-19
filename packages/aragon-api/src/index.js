@@ -1,18 +1,17 @@
-import { asyncScheduler, forkJoin, from, merge } from 'rxjs'
+import { asyncScheduler, concat, defer, forkJoin, from, merge } from 'rxjs'
 import {
   catchError,
+  concatMap,
   delayWhen,
   endWith,
   flatMap,
   map,
   mergeScan,
-  last,
   pluck,
-  publishLast,
   publishReplay,
   startWith,
   switchMap,
-  takeUntil,
+  tap,
   throttleTime
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
@@ -516,11 +515,12 @@ export class AppProxy {
     // in our reducer (due to the Promise wrapping). That's a lot of reducing.
     //
     // This is why we need the `mergeScan` operator below.
-    const wrappedReducer = (state, event) =>
+    const wrappedReducer = ({ state }, event) =>
       from(
         // Ensure a promise is returned even if the reducer returns an array or throws
         new Promise((resolve) => resolve(reducer(state, event)))
       ).pipe(
+        map(state => ({ state, lastEvent: event })),
         catchError((err) => {
           console.error('Error from app reducer on event', err)
           console.error('Current event', event)
@@ -597,35 +597,14 @@ export class AppProxy {
         }
         debug(`- store - currentEvents$: block ${pastEventsToBlock} -> future`)
 
-        const pastEvents$ = getPastEvents(cachedBlock, pastEventsToBlock)
-        const triggers$ = this.triggers()
-        const pastEventsWithTriggers$ = merge(
-          pastEvents$,
-          // Only subscribe to triggers up until the pastEvents$ finishes
-          // We'll re-subscribe to new triggers after when we subscribe to current events
-          triggers$.pipe(takeUntil(pastEvents$.pipe(publishLast())))
-        )
-        return pastEventsWithTriggers$.pipe(
-          mergeScan(wrappedReducer, initialStoreState, 1),
-          // throttle to reduce rendering and caching overhead
-          // must keep trailing to avoid discarded events
-          throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
-          delayWhen((state) => {
-            debug('- store - reduced state from past event:', state)
-            return this.cache('state', state)
-          }),
-          last(),
-          delayWhen((state) => {
-            debug('caching state:', state)
-            return this.cache(CACHED_STATE_KEY, {
-              block: pastEventsToBlock,
-              state
-            })
-          }),
-          switchMap(pastState => {
-            // fetch current events from block after cached block
+        const events$ = concat(
+          // Past events
+          defer(() => getPastEvents(cachedBlock, pastEventsToBlock)),
+          // Current events
+          defer(() => {
+            // Fetch current events from block after cached block
             const currentEvents$ = getCurrentEvents(pastEventsToBlock + 1)
-            // observable which emits an web3.js event-like object with the address of the active account.
+            // Observable which emits an web3.js event-like object with the address of the active account.
             const accounts$ = this.accounts().pipe(
               map(accounts => {
                 return {
@@ -637,16 +616,39 @@ export class AppProxy {
               })
             )
 
-            return merge(currentEvents$, accounts$, triggers$).pipe(
-              mergeScan(wrappedReducer, pastState, 1)
-            )
+            return merge(currentEvents$, accounts$)
+          })
+        )
+        const eventsWithTriggers$ = merge(events$, this.triggers())
+
+        return eventsWithTriggers$.pipe(
+          // Reduce
+          mergeScan(wrappedReducer, { state: initialStoreState }, 1),
+          // Cache commited state when past events have synced
+          tap(async ({ state, lastEvent = {} }) => {
+            if (lastEvent.event === events.SYNC_STATUS_SYNCED) {
+              debug(`- store - caching state (block ${pastEventsToBlock}):`, state)
+              const cacheState = {
+                block: pastEventsToBlock,
+                state
+              }
+
+              try {
+                await this.cache(CACHED_STATE_KEY, cacheState).toPromise()
+              } catch (_) {
+                console.error('Could not cache commited state')
+              }
+            }
           }),
-          // throttle to reduce rendering and caching overhead
-          // must keep trailing to avoid discarded events
-          throttleTime(250, asyncScheduler, { leading: false, trailing: true }),
-          delayWhen((state) => {
+          // Throttle to reduce rendering and caching overhead
+          // Must keep trailing to avoid discarding events
+          throttleTime(1000, asyncScheduler, { leading: false, trailing: true }),
+          // Use concatMap to ensure state is saved in the correct order
+          concatMap(async ({ state }) => {
             debug('- store - reduced state:', state)
-            return this.cache('state', state)
+            await this.cache('state', state).toPromise()
+
+            return state
           })
         )
       }),
