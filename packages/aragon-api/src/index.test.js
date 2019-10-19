@@ -537,9 +537,9 @@ test('should create a store and reduce correctly without previously cached state
   // send events; wait to avoid grouping through debounce
   await sleep(250)
   observableEvents.next({ event: 'Add', payload: 2 })
-  await sleep(500)
+  await sleep(1200)
   observableEvents.next({ event: 'Add', payload: 10 })
-  await sleep(1000)
+  await sleep(1200)
 })
 
 test('should create a store and reduce correctly with previously cached state', async t => {
@@ -608,9 +608,9 @@ test('should create a store and reduce correctly with previously cached state', 
   // send events; wait to avoid grouping through debounce
   await sleep(250)
   observableEvents.next({ event: 'Add', payload: 2 })
-  await sleep(500)
+  await sleep(1200)
   observableEvents.next({ event: 'Add', payload: 10 })
-  await sleep(500)
+  await sleep(1200)
 })
 
 test('should perform a call to the contract and observe the response', t => {
