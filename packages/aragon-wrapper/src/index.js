@@ -1247,22 +1247,22 @@ export default class Aragon {
 
   /**
    * Calculate the transaction path for a transaction to `destination`
-   * that invokes `methodName` with `params`.
+   * that invokes `methodSignature` with `params`.
    *
    * @param  {string} destination
-   * @param  {string} methodName
+   * @param  {string} methodSignature
    * @param  {Array<*>} params
    * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async getTransactionPath (destination, methodName, params, finalForwarder) {
+  async getTransactionPath (destination, methodSignature, params, finalForwarder) {
     const accounts = await this.getAccounts()
 
     for (let account of accounts) {
       const path = await this.calculateTransactionPath(
         account,
         destination,
-        methodName,
+        methodSignature,
         params,
         finalForwarder
       )
@@ -1316,7 +1316,7 @@ export default class Aragon {
    * Calculate the transaction path for a basket of intents.
    * Expects the `intentBasket` to be an array of tuples holding the following:
    *   {string}   destination: destination address
-   *   {string}   methodName: method to invoke on destination
+   *   {string}   methodSignature: method to invoke on destination
    *   {Array<*>} params: method params
    * These are the same parameters as the ones used for `getTransactionPath()`
    *
@@ -1345,8 +1345,8 @@ export default class Aragon {
           : []
     const intentPaths = await Promise.all(
       intentsToCheck.map(
-        ([destination, methodName, params]) =>
-          this.getTransactionPath(destination, methodName, params))
+        ([destination, methodSignature, params]) =>
+          this.getTransactionPath(destination, methodSignature, params))
     )
 
     // If the paths don't match, we can't send the transactions in this intent basket together
@@ -1356,8 +1356,8 @@ export default class Aragon {
       const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
       const directTransactions = await Promise.all(
         intentBasket.map(
-          async ([destination, methodName, params]) =>
-            createDirectTransactionForApp(sender, await this.getApp(destination), methodName, params, this.web3)
+          async ([destination, methodSignature, params]) =>
+            createDirectTransactionForApp(sender, await this.getApp(destination), methodSignature, params, this.web3)
         )
       )
 
@@ -1625,80 +1625,62 @@ export default class Aragon {
 
   /**
    * Calculate the transaction path for a transaction to `destination`
-   * that invokes `methodName` with `params`.
+   * that invokes `methodSignature` with `params`.
    *
    * @param  {string} sender
    * @param  {string} destination
-   * @param  {string} methodName
+   * @param  {string} methodSignature
    * @param  {Array<*>} params
    * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action.
    *                  Needed for actions that aren't in the ACL but whose execution depends on other factors
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
+  async calculateTransactionPath (sender, destination, methodSignature, params, finalForwarder) {
+    // Get the destination app
     const app = await this.getApp(destination)
     if (!app) {
       throw new Error(`Transaction path destination (${destination}) is not an installed app`)
     }
 
-    const finalForwarderProvided = isAddress(finalForwarder)
-    const permissions = await this.permissions.pipe(first()).toPromise()
-    const directTransaction = await createDirectTransactionForApp(sender, app, methodName, params, this.web3)
-
-    let appsWithPermissionForMethod = []
-
-    // Only try to perform direct transaction if no final forwarder is provided or
-    // if the final forwarder is the sender
-    if (!finalForwarderProvided || addressesEqual(finalForwarder, sender)) {
-      const methods = app.functions
-
-      if (!methods) {
-        throw new Error(`No functions specified in artifact for ${destination}`)
-      }
-
-      // Find method description from the function signatures
-      const method = methods.find(
-        (method) => method.sig.split('(')[0] === methodName
-      )
-      if (!method) {
-        throw new Error(`No method named ${methodName} on ${destination}`)
-      }
-
-      // If the method has no ACL requirements, we assume we
-      // can perform the action directly
-      if (method.roles.length === 0) {
-        try {
-          // `applyTransactionGas` can throw if the transaction will fail
-          // If that happens, we give up as we should've been able to perform the action directly
-          return [await this.applyTransactionGas(directTransaction)]
-        } catch (_) {
-          return []
-        }
-      }
-
-      const roleSig = app.roles.find(
-        (role) => role.id === method.roles[0]
-      ).bytes
-
-      const permissionsForDestination = permissions[destination]
-      appsWithPermissionForMethod = dotprop.get(
-        permissionsForDestination,
-        `${roleSig}.allowedEntities`,
-        []
-      )
-
-      // No one has access, so of course we (or the final forwarder) don't as well
-      if (appsWithPermissionForMethod.length === 0) {
-        return []
-      }
-
-      try {
-        // `applyTransactionGas` can throw if the transaction will fail
-        // If that happens, we will try to find a transaction path through a forwarder
-        return [await this.applyTransactionGas(directTransaction)]
-      } catch (_) { }
+    const methods = app.functions
+    if (!methods) {
+      throw new Error(`No functions specified in artifact for ${destination}`)
     }
 
+    // Find the relevant method information
+    // Is the given method a full signature, e.g. 'foo(arg1,arg2,...)'
+    const fullMethodSignature =
+      Boolean(methodSignature) && methodSignature.includes('(') && methodSignature.includes(')')
+    const method = methods.find(
+      (method) => fullMethodSignature
+        ? method.sig === methodSignature
+        // If the full signature isn't given, just select the first overload declared
+        : method.sig.split('(')[0] === methodSignature
+    )
+    if (!method) {
+      throw new Error(`No method named ${methodSignature} on ${destination}`)
+    }
+
+    const finalForwarderProvided = isAddress(finalForwarder)
+    const directTransaction = await createDirectTransactionForApp(sender, app, method.sig, params, this.web3)
+
+    // Avoid doing more work if the user can directly perform the action:
+    //   - If the method has no ACL requirements and no final forwarder was given
+    //   - If the final forwarder matches the sender
+    if (
+      (method.roles.length === 0 && !finalForwarderProvided) ||
+      addressesEqual(finalForwarder, sender)
+    ) {
+      try {
+        // `applyTransactionGas` can throw if the transaction will fail
+        // If that happens, we give up as we should've been able to perform the action directly
+        return [await this.applyTransactionGas(directTransaction)]
+      } catch (_) {
+        return []
+      }
+    }
+
+    // Failing the direct transaction, attempt transaction pathing algorithm with forwarders
     const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
@@ -1706,19 +1688,39 @@ export default class Aragon {
     )
 
     let forwardersWithPermission
-
     if (finalForwarderProvided) {
       if (!includesAddress(forwarders, finalForwarder)) {
+        // Final forwarder was given, but did not match any available forwarders, so no path
+        // could be found
         return []
       }
 
+      // Only attempt to find path with declared final forwarder; assume the final forwarder
+      // is able to invoke the action
       forwardersWithPermission = [finalForwarder]
     } else {
+      // Find which apps have the required permissions
+      const permissions = await this.permissions.pipe(first()).toPromise()
+      const roleSig = app.roles.find(
+        (role) => role.id === method.roles[0]
+      ).bytes
+
+      const permissionsForDestination = permissions[destination]
+      const appsWithPermissionForMethod = dotprop.get(
+        permissionsForDestination,
+        `${roleSig}.allowedEntities`,
+        []
+      )
+
+      // No one has access, so of course we don't as well
+      if (appsWithPermissionForMethod.length === 0) {
+        return []
+      }
+
       // Find forwarders with permission to perform the action
-      forwardersWithPermission = forwarders
-        .filter(
-          (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
-        )
+      forwardersWithPermission = forwarders.filter(
+        (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
+      )
     }
 
     return this.calculateForwardingPath(sender, destination, directTransaction, forwardersWithPermission)
