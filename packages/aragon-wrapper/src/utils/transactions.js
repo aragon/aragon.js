@@ -51,7 +51,7 @@ export async function applyPretransaction (directTransaction, web3) {
   return directTransaction
 }
 
-export async function applyForwardingPretransaction (forwardingTransaction, web3) {
+export async function applyForwardingFeePretransaction (forwardingTransaction, web3) {
   const { to: forwarder, from } = forwardingTransaction
 
   // Check if a token approval pretransaction is needed due to the forwarder requiring a fee

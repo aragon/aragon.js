@@ -58,7 +58,7 @@ import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callsc
 import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
-  applyForwardingPretransaction,
+  applyForwardingFeePretransaction,
   createDirectTransaction,
   createDirectTransactionForApp,
   createForwarderTransactionBuilder,
@@ -1754,7 +1754,7 @@ export default class Aragon {
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
         try {
-          const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+          const transactionWithFee = await applyForwardingFeePretransaction(transaction, this.web3)
           // `applyTransactionGas` can throw if the transaction will fail
           // If that happens, we give up as we should've been able to perform the action with this
           // forwarder
@@ -1814,7 +1814,7 @@ export default class Aragon {
           // Only apply pretransactions and gas to the first transaction in the path
           // as it's the only one that will be executed by the user
           try {
-            const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+            const transactionWithFee = await applyForwardingFeePretransaction(transaction, this.web3)
             // `applyTransactionGas` can throw if the transaction will fail
             // If that happens, we give up as we should've been able to perform the action with this
             // forwarding path
