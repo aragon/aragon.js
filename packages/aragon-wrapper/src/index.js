@@ -46,6 +46,7 @@ import {
   tryEvaluatingRadspec
 } from './radspec'
 import {
+  ANY_ENTITY,
   addressesEqual,
   getCacheKey,
   includesAddress,
@@ -1717,7 +1718,10 @@ export default class Aragon {
       }
 
       // User may have permission; attempt direct transaction
-      if (includesAddress(allowedEntities, sender)) {
+      if (
+        includesAddress(allowedEntities, sender) ||
+        includesAddress(allowedEntities, ANY_ENTITY)
+      ) {
         try {
           // `applyTransactionGas` can throw if the transaction will fail
           return [await this.applyTransactionGas(directTransaction)]
