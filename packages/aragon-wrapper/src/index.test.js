@@ -1095,7 +1095,7 @@ test('should be able to reject intent when perform transaction path', async (t) 
   ])
 })
 
-test('should throw if no ABI is found, when calculating the transaction path', async (t) => {
+test('should throw if no functions are found, when calculating the transaction path', async (t) => {
   const { createAragon } = t.context
 
   t.plan(1)
@@ -1122,12 +1122,18 @@ test('should throw if no ABI is found, when calculating the transaction path', a
     {
       appId: 'counterApp',
       kernelAddress: '0x123',
-      abi: 'abi for counterApp',
+      functions: [{
+        sig: 'signature',
+        roles: []
+      }],
       proxyAddress: '0x456'
     }, {
       appId: 'votingApp',
       kernelAddress: '0x123',
-      // abi: 'abi for votingApp',
+      // functions: [{
+      //   sig: 'signature',
+      //   roles: []
+      // }],
       proxyAddress: '0x789'
     }
   ])
@@ -1135,7 +1141,7 @@ test('should throw if no ABI is found, when calculating the transaction path', a
   return instance.calculateTransactionPath(null, '0x789')
     .catch(err => {
       // assert
-      t.is(err.message, 'No ABI specified in artifact for 0x789')
+      t.is(err.message, 'No functions specified in artifact for 0x789')
       /*
        * Note: This test also "asserts" that the permissions object, the app object and the
        * forwarders array does not throw any errors when they are being extracted from their observables.
