@@ -46,6 +46,7 @@ import {
   tryEvaluatingRadspec
 } from './radspec'
 import {
+  ANY_ENTITY,
   addressesEqual,
   getCacheKey,
   includesAddress,
@@ -1664,23 +1665,24 @@ export default class Aragon {
     const finalForwarderProvided = isAddress(finalForwarder)
     const directTransaction = await createDirectTransactionForApp(sender, app, method.sig, params, this.web3)
 
-    // Avoid doing more work if the user can directly perform the action:
-    //   - If the method has no ACL requirements and no final forwarder was given
-    //   - If the final forwarder matches the sender
+    // We can already assume the user is able to directly invoke the action if:
+    //   - The method has no ACL requirements and no final forwarder was given, or
+    //   - The final forwarder matches the sender
     if (
       (method.roles.length === 0 && !finalForwarderProvided) ||
       addressesEqual(finalForwarder, sender)
     ) {
       try {
         // `applyTransactionGas` can throw if the transaction will fail
-        // If that happens, we give up as we should've been able to perform the action directly
         return [await this.applyTransactionGas(directTransaction)]
       } catch (_) {
+        // If the direct transaction fails, we give up as we should have been able to
+        // perform the action directly
         return []
       }
     }
 
-    // Failing the direct transaction, attempt transaction pathing algorithm with forwarders
+    // Failing this, attempt transaction pathing algorithm with forwarders
     const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
@@ -1699,27 +1701,40 @@ export default class Aragon {
       // is able to invoke the action
       forwardersWithPermission = [finalForwarder]
     } else {
-      // Find which apps have the required permissions
+      // Find entities with the required permissions
       const permissions = await this.permissions.pipe(first()).toPromise()
       const roleSig = app.roles.find(
         (role) => role.id === method.roles[0]
       ).bytes
-
-      const permissionsForDestination = permissions[destination]
-      const appsWithPermissionForMethod = dotprop.get(
-        permissionsForDestination,
-        `${roleSig}.allowedEntities`,
+      const allowedEntities = dotprop.get(
+        permissions,
+        `${destination}.${roleSig}.allowedEntities`,
         []
       )
 
       // No one has access, so of course we don't as well
-      if (appsWithPermissionForMethod.length === 0) {
+      if (allowedEntities.length === 0) {
         return []
+      }
+
+      // User may have permission; attempt direct transaction
+      if (
+        includesAddress(allowedEntities, sender) ||
+        includesAddress(allowedEntities, ANY_ENTITY)
+      ) {
+        try {
+          // `applyTransactionGas` can throw if the transaction will fail
+          return [await this.applyTransactionGas(directTransaction)]
+        } catch (_) {
+          // Don't immediately fail as the permission could have parameters applied that
+          // disallows the user from the current action and forces us to use the full
+          // pathing algorithm
+        }
       }
 
       // Find forwarders with permission to perform the action
       forwardersWithPermission = forwarders.filter(
-        (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
+        (forwarder) => includesAddress(allowedEntities, forwarder)
       )
     }
 
