@@ -1726,8 +1726,9 @@ export default class Aragon {
           // `applyTransactionGas` can throw if the transaction will fail
           return [await this.applyTransactionGas(directTransaction)]
         } catch (_) {
-          // Don't immediately fail as the permission could have parameters applied and force
-          // us to use the full pathing algorithm
+          // Don't immediately fail as the permission could have parameters applied that
+          // disallows the user from the current action and forces us to use the full
+          // pathing algorithm
         }
       }
 
