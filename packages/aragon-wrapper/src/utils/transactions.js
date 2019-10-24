@@ -125,7 +125,8 @@ export async function createDirectTransactionForApp (sender, app, methodSignatur
         return method.name === methodSignature
       }
 
-      const currentParameterTypes = method.inputs.map(({ type }) => type)
+      // Fallback functions don't have inputs in the ABI
+      const currentParameterTypes = Array.isArray(method.inputs) ? method.inputs.map(({ type }) => type) : []
       const currentMethodSignature = `${method.name}(${currentParameterTypes.join(',')})`
       return currentMethodSignature === methodSignature
     }
