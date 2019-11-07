@@ -1,0 +1,23 @@
+on: push
+name: CI
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install node
+      uses: actions/setup-node@v1
+      with:
+        node-version: 10
+    - name: npm install
+      run: npm install
+    - name: npm lint
+      run: npm run lint
+    - name: test
+      run: npm run test
+    - name: size-limit
+      run: |
+        npm run build
+        npm run size
+    env:
+      CI: true
