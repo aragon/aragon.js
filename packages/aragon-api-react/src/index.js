@@ -43,7 +43,7 @@ function AragonApi({
   useEffect(() => {
     const api = new Aragon(new providers.WindowMessage(window.parent))
     setApi(api)
-    setRequestPath(() => api.requestPath.bind(api))
+    setRequestPath(() => path => api.requestPath(path).toPromise())
   }, [])
 
   useEffect(() => {
