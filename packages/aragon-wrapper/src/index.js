@@ -190,6 +190,7 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
+    this.initGuiStyle(options.guiStyle)
     this.pathIntents = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
@@ -997,6 +998,32 @@ export default class Aragon {
   }
 
   /**
+   * Initialise the GUI style observable.
+   *
+   * @return {void}
+   */
+  initGuiStyle (guiStyle) {
+    this.guiStyle = new BehaviorSubject(guiStyle || {
+      appearance: 'light',
+      theme: null
+    })
+  }
+
+  /**
+   * Set the GUI style (theme and appearance).
+   *
+   * @param {string} appearance "dark" or "light"
+   * @param {object} The theme, or null.
+   * @return {void}
+   */
+  setGuiStyle (appearance, theme = null) {
+    this.guiStyle.next({
+      appearance,
+      theme,
+    })
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
@@ -1108,6 +1135,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
         handlers.createRequestHandler(request$, 'network', handlers.network),
         handlers.createRequestHandler(request$, 'path', handlers.path),
+        handlers.createRequestHandler(request$, 'gui_style', handlers.guiStyle),
         handlers.createRequestHandler(request$, 'trigger', handlers.trigger),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
 

@@ -170,6 +170,20 @@ export class AppProxy {
   }
 
   /**
+   * Get the current GUI style.
+   *
+   * @return {Observable} Multi-emission Observable that emits the current GUI style every time a change is detected.
+   */
+  guiStyle () {
+    return this.rpc.sendAndObserveResponses(
+      'gui_style',
+      ['observe']
+    ).pipe(
+      pluck('result')
+    )
+  }
+
+  /**
    * Request a new path.
    *
    * @return {Observable} Single-emission Observable that emits if the path request succeeded and errors if rejected

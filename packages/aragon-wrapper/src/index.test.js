@@ -1781,3 +1781,29 @@ test('should be only able to decode call scripts when there are multiple nested 
     }
   ])
 })
+
+test('should set the GUI style', async (t) => {
+  const { createAragon } = t.context
+
+  t.plan(2)
+
+  // arrange
+  const instance1 = createAragon()
+  const instance2 = createAragon()
+  instance1.initGuiStyle()
+  instance2.initGuiStyle()
+
+  // act
+  instance1.setGuiStyle('black', { name: 'Black theme' })
+  instance2.setGuiStyle('dark')
+
+  // assert
+  t.deepEqual(instance1.guiStyle.value, {
+    appearance: 'black',
+    theme: { name: 'Black theme' }
+  })
+  t.deepEqual(instance2.guiStyle.value, {
+    appearance: 'dark',
+    theme: null
+  })
+})
