@@ -110,9 +110,7 @@ function App() {
     return (
       <div>
         <h1>Hello World</h1>
-        <button onClick={() => requestPath('/')}>
-          Back
-        </button>
+        <button onClick={() => requestPath('/')}>Back</button>
       </div>
     )
   }
@@ -120,9 +118,7 @@ function App() {
   // Home
   return (
     <div>
-      <button onClick={() => requestPath('/hello-world')}>
-        Click
-      </button>
+      <button onClick={() => requestPath('/hello-world')}>Click</button>
     </div>
   )
 }
@@ -155,6 +151,78 @@ function App() {
   return (
     <div>Account: {connectedAccount ? connectedAccount : 'Not connected'}</div>
   )
+}
+```
+
+#### `guiStyle`
+
+The GUI style sent by the client. It contains two entries: `theme` and `appearance`.
+
+`theme` contains [an entire theme](https://github.com/aragon/aragon-ui/blob/3797950ad079f7511fe6c9db9fd31535e554cda1/src/theme/theme-light.js) that should be rendered by the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+
+`appearance` is set to either `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and apps should respect it and display a theme that correspond to it.
+
+Example:
+
+```jsx
+function App() {
+  const { guiStyle } = useAragonApi()
+  return (
+    <div
+      style={{
+        background: guiStyle.appearance === 'light' ? 'white' : 'grey',
+      }}
+    >
+      <div
+        style={{ color: guiStyle.appearance === 'light' ? 'black' : 'white' }}
+      >
+        Hello world
+      </div>
+    </div>
+  )
+}
+```
+
+Complete example if you are using [aragonUI](https://ui.aragon.org/):
+
+```jsx
+// index.js
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { Main } from '@aragon/ui'
+import { AragonApi } from '@aragon/api-react'
+
+ReactDOM.render(
+  <AragonApi reducer={/* … */}>
+    <Main>
+      <App />
+    </Main>
+  </AragonApi>,
+  document.getElementById('root')
+)
+```
+
+```jsx
+// App.js
+import React, { useEffect } from 'react'
+import { useAragonApi } from '@aragon/api-react'
+import { useThemeMode } from '@aragon/ui'
+
+function App() {
+  // guiStyle updates whenever the theme gets updated
+  // in the Aragon client displaying the app.
+  const { guiStyle } = useAragonApi()
+  const { appearance } = guiStyle
+
+  // themeMode allows to change the local aragonUI theme.
+  const themeMode = useThemeMode()
+
+  // “dark” or “light” are accepted by aragonUI’s themeMode.
+  useEffect(() => {
+    themeMode.set(appearance)
+  }, [appearance, themeMode])
+
+  return <Header>Hello world</Header>
 }
 ```
 
@@ -240,6 +308,10 @@ This Hook returns the same data as the `installedApps` entry from the `useAragon
 ### useNetwork()
 
 This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
+
+### useGuiStyle()
+
+This Hook returns the same data as the `guiStyle` entry from the `useAragonApi()` hook.
 
 ### usePath()
 

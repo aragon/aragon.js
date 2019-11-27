@@ -273,6 +273,18 @@ To get information about just the current app, use `currentApp()` instead.
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an array of installed application objects every time a change to the installed applications is detected. Each object contains the same details as `currentApp()`.
 
+### guiStyle
+
+Can be ignored by non-GUI apps.
+
+Get the current style of the client running this app.
+
+Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A multi-emission observable that emits an object containing two entries: `theme` and `appearance`.
+
+`theme` contains [an entire theme](https://github.com/aragon/aragon-ui/blob/3797950ad079f7511fe6c9db9fd31535e554cda1/src/theme/theme-light.js) that should be rendered by the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+
+`appearance` is set to either `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and apps should respect it and display a theme that correspond to it.
+
 ### path
 
 Get the current path for the app over time. Useful with `requestPath()` to request and respond to in-app navigation changes.

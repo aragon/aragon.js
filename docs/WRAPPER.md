@@ -140,6 +140,17 @@ Run an app.
 
 Returns **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
 
+### setGuiStyle
+
+Set the current GUI style of the client to the apps.
+
+#### **Parameters**
+
+- `theme` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** [An entire theme](https://github.com/aragon/aragon-ui/blob/3797950ad079f7511fe6c9db9fd31535e554cda1/src/theme/theme-light.js) that should be rendered by the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+- `appearance` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Either `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It should always get passed by the client. Apps should respect it and display a theme that correspond to it.
+
+Returns **void**
+
 ### getAccounts
 
 Get the available accounts for the current user.
