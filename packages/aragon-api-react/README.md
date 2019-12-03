@@ -1,6 +1,6 @@
 # aragonAPI for React
 
-This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
+This module allows for interacting with aragonAPI with [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
 
 ## Usage
 
@@ -14,7 +14,7 @@ function App() {
   return (
     <div>
       <div>{count}</div>
-      <button onClick={() => api.increment(1)}>Increment</button>
+      <button onClick={() => api.increment(1).toPromise()}>Increment</button>
     </div>
   )
 }
@@ -27,7 +27,7 @@ ReactDOM.render(
 )
 ```
 
-This is a simple example demonstrating how we can use aragonAPI for React to connect the app to its contract, fetch some data from its state (using `appState`), and trigger an action on it (with `api.increment(1)`). The full API is detailed below.
+This is a simple example demonstrating how we can use `@aragon/api-react` to connect an app's frontend to its contract, fetch some data from its state (`appState`), and trigger an action on it (`api.increment(1)`). The full API is detailed below.
 
 ## Installation
 
@@ -43,7 +43,7 @@ npm install --save @aragon/api @aragon/api-react
 
 Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
-It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as is.
+It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as-is.
 
 #### Example
 
@@ -89,7 +89,101 @@ Example:
 ```jsx
 function App() {
   const { api } = useAragonApi()
-  return <button onClick={() => api.vote(true)}>Vote</button>
+  return <button onClick={() => api.vote(true).toPromise()}>Vote</button>
+}
+```
+
+#### `appState`
+
+The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
+
+Example:
+
+```jsx
+import { useAragonApi } from '@aragon/api-react'
+
+function App() {
+  const { appState } = useAragonApi()
+  return <div>{appState.count}</div>
+}
+```
+
+#### `connectedAccount`
+
+The connected Ethereum account. Its value is `""` (empty string) when there is no account connected.
+
+Example:
+
+```jsx
+function App() {
+  const { connectedAccount } = useAragonApi()
+  return (
+    <div>Account: {connectedAccount ? connectedAccount : 'Not connected'}</div>
+  )
+}
+```
+
+#### `currentApp`
+
+Details about the current app. Once loaded, it returns a single object with the following keys:
+
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
+- `isForwarder`: whether the app is a forwarder
+- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
+- `name`: the app's name, if available
+
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
+Its value is `null` until it gets loaded.
+
+Example:
+
+```jsx
+function App() {
+  const { currentApp } = useAragonApi()
+  return (
+    <div>
+      <img width="40" height="40" src={app.icon(40)} />
+      {currentApp.appAddress}
+    </div>
+  )
+}
+```
+
+#### `installedApps`
+
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until the list of apps are loaded.
+
+Each object in the array holds the same keys as `currentApp`.
+
+Example:
+
+```jsx
+function App() {
+  const { installedApps } = useAragonApi()
+  return (
+    <div>
+      {installedApps.map(app => (
+        <div>{app.appAddress}</div>
+      ))}
+    </div>
+  )
+}
+```
+
+#### `network`
+
+An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
+
+Example:
+
+```jsx
+function App() {
+  const { network } = useAragonApi()
+  return <div>Current network: {network.type}</div>
 }
 ```
 
@@ -128,99 +222,6 @@ function App() {
 }
 ```
 
-#### `appState`
-
-The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
-
-Example:
-
-```jsx
-import { useAragonApi } from '@aragon/api-react'
-
-function App() {
-  const { appState } = useAragonApi()
-  return <div>{appState.count}</div>
-}
-```
-
-#### `connectedAccount`
-
-The connected Ethereum account. Its value is `""` (empty string) when there is no account connected.
-
-Example:
-
-```jsx
-function App() {
-  const { connectedAccount } = useAragonApi()
-  return (
-    <div>Account: {connectedAccount ? connectedAccount : 'Not connected'}</div>
-  )
-}
-```
-
-#### `currentApp`
-
-Details about the current app. It returns a single object with the following keys:
-
-- `appAddress`: the app's contract address
-- `appId`: the app's appId
-- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
-- `identifier`: the app's identifier, if any
-- `isForwarder`: whether the app is a forwarder
-- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
-- `name`: the app's name, if available
-
-Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
-
-Example:
-
-```jsx
-function App() {
-  const { currentApp } = useAragonApi()
-  return (
-    <div>
-      <img width="40" height="40" src={app.icon(40)} />
-      {currentApp.appAddress}
-    </div>
-  )
-}
-```
-
-#### `installedApps`
-
-The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
-the list of apps are loaded.
-
-Each object in the array holds the same keys as `currentApp`.
-
-Example:
-
-```jsx
-function App() {
-  const { installedApps } = useAragonApi()
-  return (
-    <div>
-      {installedApps.map(app => (
-        <div>{app.appAddress}</div>
-      ))}
-    </div>
-  )
-}
-```
-
-#### `network`
-
-An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
-
-Example:
-
-```jsx
-function App() {
-  const { network } = useAragonApi()
-  return <div>Current network: {network.type}</div>
-}
-```
-
 ### useApi()
 
 This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
@@ -232,6 +233,10 @@ This Hook returns the same data as the `appState` entry from the `useAppState()`
 ### useConnectedAccount()
 
 This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
+
+### useCurrentApp()
+
+This Hook returns the same data as the `currentApp` entry from the `useAragonApi()` hook.
 
 ### useInstalledApps()
 
@@ -246,4 +251,4 @@ This Hook returns the same data as the `network` entry from the `useAragonApi()`
 This Hook returns an array holding two values from the `useAragonApi()` hook:
 
 1. `path`, and
-1. `requestPath`
+2. `requestPath`
