@@ -1347,7 +1347,10 @@ export default class Aragon {
     const intentPaths = await Promise.all(
       intentsToCheck.map(
         ([destination, methodSignature, params]) =>
-          this.getTransactionPath(destination, methodSignature, params))
+          addressesEqual(destination, this.acl.address)
+            ? this.getACLTransactionPath(methodSignature, params)
+            : this.getTransactionPath(destination, methodSignature, params)
+      )
     )
 
     // If the paths don't match, we can't send the transactions in this intent basket together
