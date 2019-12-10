@@ -1529,8 +1529,7 @@ export default class Aragon {
         } catch (err) { }
 
         // If the step wasn't handled, just individually describe each of the transactions
-        // TODO: annotate this description
-        return decoratedStep || Promise.all(step.map(this.describeTransactionPath))
+        return decoratedStep || this.describeTransactionPath(step)
       }
 
       // Single transaction step
