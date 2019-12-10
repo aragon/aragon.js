@@ -1705,12 +1705,13 @@ export default class Aragon {
     } else {
       // Find entities with the required permissions
       const permissions = await this.permissions.pipe(first()).toPromise()
+      const destinationPermissions = permissions[destination]
       const roleSig = app.roles.find(
         (role) => role.id === method.roles[0]
       ).bytes
       const allowedEntities = dotprop.get(
-        permissions,
-        `${destination}.${roleSig}.allowedEntities`,
+        destinationPermissions,
+        `${roleSig}.allowedEntities`,
         []
       )
 
