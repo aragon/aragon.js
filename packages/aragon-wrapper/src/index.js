@@ -1347,7 +1347,7 @@ export default class Aragon {
     const intentPaths = await Promise.all(
       intentsToCheck.map(
         ([destination, methodSignature, params]) =>
-          addressesEqual(destination, this.acl.address)
+          addressesEqual(destination, this.aclProxy.address)
             ? this.getACLTransactionPath(methodSignature, params)
             : this.getTransactionPath(destination, methodSignature, params)
       )
