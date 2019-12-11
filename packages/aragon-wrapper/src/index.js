@@ -1347,7 +1347,10 @@ export default class Aragon {
     const intentPaths = await Promise.all(
       intentsToCheck.map(
         ([destination, methodSignature, params]) =>
-          this.getTransactionPath(destination, methodSignature, params))
+          addressesEqual(destination, this.aclProxy.address)
+            ? this.getACLTransactionPath(methodSignature, params)
+            : this.getTransactionPath(destination, methodSignature, params)
+      )
     )
 
     // If the paths don't match, we can't send the transactions in this intent basket together
@@ -1526,8 +1529,7 @@ export default class Aragon {
         } catch (err) { }
 
         // If the step wasn't handled, just individually describe each of the transactions
-        // TODO: annotate this description
-        return decoratedStep || Promise.all(step.map(this.describeTransactionPath))
+        return decoratedStep || this.describeTransactionPath(step)
       }
 
       // Single transaction step
@@ -1703,12 +1705,13 @@ export default class Aragon {
     } else {
       // Find entities with the required permissions
       const permissions = await this.permissions.pipe(first()).toPromise()
+      const destinationPermissions = permissions[destination]
       const roleSig = app.roles.find(
         (role) => role.id === method.roles[0]
       ).bytes
       const allowedEntities = dotprop.get(
-        permissions,
-        `${destination}.${roleSig}.allowedEntities`,
+        destinationPermissions,
+        `${roleSig}.allowedEntities`,
         []
       )
 
