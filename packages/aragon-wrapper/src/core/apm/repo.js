@@ -1,7 +1,6 @@
 import { hexToAscii } from 'web3-utils'
 import { getAbi } from '../../interfaces'
 import { makeProxyFromABI } from '../../utils'
-import promiseTimeout from '../../utils/promise-timeout'
 
 export function makeRepoProxy (address, web3, options) {
   return makeProxyFromABI(address, getAbi('apm/Repo'), web3, options)
@@ -64,13 +63,11 @@ export async function fetchRepoContentURI (fileFetcher, contentURI, { fetchTimeo
 
   let files
   try {
-    let filesFetch = Promise.all([
-      fileFetcher.fetch(provider, location, 'manifest.json'),
-      fileFetcher.fetch(provider, location, 'artifact.json')
+    const timeout = Number.isFinite(fetchTimeout) ? fetchTimeout : 0
+    const filesFetch = Promise.all([
+      fileFetcher.fetch(provider, location, 'manifest.json', { timeout }),
+      fileFetcher.fetch(provider, location, 'artifact.json', { timeout })
     ])
-    if (Number.isFinite(fetchTimeout) && fetchTimeout > 0) {
-      filesFetch = promiseTimeout(filesFetch, fetchTimeout)
-    }
     files = (await filesFetch).map(JSON.parse)
   } catch (err) {
     if (err instanceof SyntaxError) {

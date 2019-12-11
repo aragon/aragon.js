@@ -39,8 +39,9 @@ export default class FileFetcher {
     return `${sanitizeUrl(baseLocation)}${sanitizePath(path)}`
   }
 
-  async fetch (provider, location, path) {
+  async fetch (provider, location, path, config) {
     const response = await axios(this.getFullPath(provider, location, path), {
+      ...config,
       responseType: 'text',
 
       // This is needed to disable the default behavior of axios, which
