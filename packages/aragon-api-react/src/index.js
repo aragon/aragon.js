@@ -92,7 +92,7 @@ function AragonApi({
           api.path().subscribe(path => setPath(path || '/')),
 
           // GUI style
-          api.guiStyle().subscribe(guiStyle => setGuiStyle(guiStyle)),
+          api.guiStyle().subscribe(setGuiStyle),
         ]
 
         api
