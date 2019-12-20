@@ -219,3 +219,14 @@ Search identites using the highest priority provider.
 - `searchTerm` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** String to search for
 
 Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** which resolves with the found identities or an empty array.
+
+### setGuiStyle
+
+Set the current GUI style of the client to the apps.
+
+#### **Parameters**
+
+- `appearance` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Either `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). Apps should display a corresponding theme, unless `theme` has also been set.
+- `theme` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An entire theme ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/be4faf21172bdbc98816dd7ca4533bfa51e6712a/src/theme/theme-light.js)) that should be displayed by app frontends. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+
+Returns **void**

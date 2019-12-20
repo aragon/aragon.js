@@ -36,6 +36,7 @@ function AragonApi({
   const [connectedAccount, setConnectedAccount] = useState('')
   const [currentApp, setCurrentApp] = useState(null)
   const [installedApps, setInstalledApps] = useState([])
+  const [guiStyle, setGuiStyle] = useState({ appearance: 'light', theme: null })
   const [network, setNetwork] = useState(null)
   const [path, setPath] = useState('/')
   const [requestPath, setRequestPath] = useState(null)
@@ -89,6 +90,9 @@ function AragonApi({
 
           // path
           api.path().subscribe(path => setPath(path || '/')),
+
+          // GUI style
+          api.guiStyle().subscribe(setGuiStyle),
         ]
 
         api
@@ -124,6 +128,7 @@ function AragonApi({
         api,
         connectedAccount,
         currentApp,
+        guiStyle,
         installedApps,
         network,
         path,
@@ -174,6 +179,9 @@ const usePath = () => {
   const { path, requestPath } = getAragonApiData('usePath()')
   return [path, requestPath]
 }
+function useGuiStyle() {
+  return getAragonApiData('useGuiStyle()').guiStyle
+}
 
 // Deprecated
 const useMenuButton = () => {
@@ -196,7 +204,7 @@ export {
   useInstalledApps,
   useNetwork,
   usePath,
-
+  useGuiStyle,
   // Deprecated
   useMenuButton,
 }
