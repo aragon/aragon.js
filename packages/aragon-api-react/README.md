@@ -153,6 +153,70 @@ function App() {
 }
 ```
 
+#### `guiStyle`
+
+The GUI style sent by the client. It contains two entries: `appearance` and `theme`.
+
+`appearance` is currently one of `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and should be respected by apps to display a corresponding theme, unless `theme` is present.
+
+`theme` contains an entire theme object ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/be4faf21172bdbc98816dd7ca4533bfa51e6712a/src/theme/theme-light.js)) that should be applied to the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+
+Example:
+
+```jsx
+function App() {
+  const { guiStyle } = useAragonApi()
+  return (
+    <div
+      style={{
+        background: guiStyle.appearance === 'light' ? 'white' : 'grey',
+      }}
+    >
+      <div
+        style={{ color: guiStyle.appearance === 'light' ? 'black' : 'white' }}
+      >
+        Hello world
+      </div>
+    </div>
+  )
+}
+```
+
+Complete example if you are using [aragonUI](https://ui.aragon.org/):
+
+```jsx
+// index.js
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { AragonApi } from '@aragon/api-react'
+
+ReactDOM.render(
+  <AragonApi reducer={/* … */}>
+    <App />
+  </AragonApi>,
+  document.getElementById('root')
+)
+```
+
+```jsx
+// App.js
+import React from 'react'
+import { useGuiStyle } from '@aragon/api-react'
+import { Main } from '@aragon/ui'
+
+function App() {
+  // useGuiStyle() updates whenever the theme
+  // gets updated in the client running the app.
+  const { appearance } = useGuiStyle()
+
+  return (
+    <Main theme={appearance}>
+      <Header>Hello world</Header>
+    </Main>
+  )
+}
+```
+
 #### `installedApps`
 
 The complete list of apps installed in the organization. Its value is an empty array (`[]`) until the list of apps are loaded.
@@ -237,6 +301,10 @@ This Hook returns the same data as the `connectedAccount` entry from the `useAra
 ### useCurrentApp()
 
 This Hook returns the same data as the `currentApp` entry from the `useAragonApi()` hook.
+
+### useGuiStyle()
+
+This Hook returns the same data as the `guiStyle` entry from the `useAragonApi()` hook.
 
 ### useInstalledApps()
 

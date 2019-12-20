@@ -103,6 +103,8 @@ export const detectProvider = () =>
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
+ * @param {Object} [options.guiStyle]
+ *        Options for initial GUI style
  * @param {string|Object} [options.provider=web3.currentProvider]
  *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
  *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
@@ -190,6 +192,7 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
+    this.initGuiStyle(options.guiStyle)
     this.pathIntents = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
@@ -997,6 +1000,33 @@ export default class Aragon {
   }
 
   /**
+   * Initialise the GUI style observable.
+   *
+   * @param {Object} style GUI style containing appearance and theme
+   * @return {void}
+   */
+  initGuiStyle ({ appearance, theme } = {}) {
+    this.guiStyle = new BehaviorSubject({
+      appearance: appearance || 'light',
+      theme: theme || null
+    })
+  }
+
+  /**
+   * Set the GUI style (theme and appearance).
+   *
+   * @param {string} appearance "dark" or "light"
+   * @param {Object} theme The theme, or null.
+   * @return {void}
+   */
+  setGuiStyle (appearance, theme = null) {
+    this.guiStyle.next({
+      appearance,
+      theme
+    })
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
@@ -1108,6 +1138,7 @@ export default class Aragon {
         handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
         handlers.createRequestHandler(request$, 'network', handlers.network),
         handlers.createRequestHandler(request$, 'path', handlers.path),
+        handlers.createRequestHandler(request$, 'gui_style', handlers.guiStyle),
         handlers.createRequestHandler(request$, 'trigger', handlers.trigger),
         handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
 
