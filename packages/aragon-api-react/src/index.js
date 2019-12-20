@@ -36,9 +36,9 @@ function AragonApi({
   const [connectedAccount, setConnectedAccount] = useState('')
   const [currentApp, setCurrentApp] = useState(null)
   const [installedApps, setInstalledApps] = useState([])
+  const [guiStyle, setGuiStyle] = useState({ appearance: 'light', theme: null })
   const [network, setNetwork] = useState(null)
   const [path, setPath] = useState('/')
-  const [guiStyle, setGuiStyle] = useState({ appearance: 'light', theme: null })
   const [requestPath, setRequestPath] = useState(null)
 
   useEffect(() => {
@@ -128,11 +128,11 @@ function AragonApi({
         api,
         connectedAccount,
         currentApp,
+        guiStyle,
         installedApps,
         network,
         path,
         requestPath,
-        guiStyle,
 
         // reducer(null) is called to get the initial state
         appState: appState === null ? reducer(null) : appState,
