@@ -159,7 +159,7 @@ The GUI style sent by the client. It contains two entries: `appearance` and `the
 
 `appearance` is currently one of `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and should be respected by apps to display a corresponding theme, unless `theme` is present.
 
-`theme` contains an entire theme object ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/3797950ad079f7511fe6c9db9fd31535e554cda1/src/theme/theme-light.js)) that should be applied to the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+`theme` contains an entire theme object ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/be4faf21172bdbc98816dd7ca4533bfa51e6712a/src/theme/theme-light.js)) that should be applied to the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
 
 Example:
 
@@ -188,14 +188,11 @@ Complete example if you are using [aragonUI](https://ui.aragon.org/):
 // index.js
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { Main } from '@aragon/ui'
 import { AragonApi } from '@aragon/api-react'
 
 ReactDOM.render(
   <AragonApi reducer={/* … */}>
-    <Main>
-      <App />
-    </Main>
+    <App />
   </AragonApi>,
   document.getElementById('root')
 )
@@ -203,25 +200,20 @@ ReactDOM.render(
 
 ```jsx
 // App.js
-import React, { useEffect } from 'react'
-import { useAragonApi } from '@aragon/api-react'
-import { useThemeMode } from '@aragon/ui'
+import React from 'react'
+import { useGuiStyle } from '@aragon/api-react'
+import { Main } from '@aragon/ui'
 
 function App() {
-  // guiStyle updates whenever the theme gets updated
-  // in the client running the app.
-  const { guiStyle } = useAragonApi()
-  const { appearance } = guiStyle
+  // useGuiStyle() updates whenever the theme
+  // gets updated in the client running the app.
+  const { appearance } = useGuiStyle()
 
-  // themeMode allows to change the local aragonUI theme.
-  const themeMode = useThemeMode()
-
-  // “dark” or “light” are accepted by aragonUI’s themeMode.
-  useEffect(() => {
-    themeMode.set(appearance)
-  }, [appearance, themeMode])
-
-  return <Header>Hello world</Header>
+  return (
+    <Main theme={appearance}>
+      <Header>Hello world</Header>
+    </Main>
+  )
 }
 ```
 
