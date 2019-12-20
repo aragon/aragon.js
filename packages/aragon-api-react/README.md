@@ -123,13 +123,43 @@ function App() {
 }
 ```
 
+#### `currentApp`
+
+Details about the current app. Once loaded, it returns a single object with the following keys:
+
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
+- `isForwarder`: whether the app is a forwarder
+- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
+- `name`: the app's name, if available
+
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
+Its value is `null` until it gets loaded.
+
+Example:
+
+```jsx
+function App() {
+  const { currentApp } = useAragonApi()
+  return (
+    <div>
+      <img width="40" height="40" src={app.icon(40)} />
+      {currentApp.appAddress}
+    </div>
+  )
+}
+```
+
 #### `guiStyle`
 
-The GUI style sent by the client. It contains two entries: `theme` and `appearance`.
+The GUI style sent by the client. It contains two entries: `appearance` and `theme`.
 
-`theme` contains [an entire theme](https://github.com/aragon/aragon-ui/blob/3797950ad079f7511fe6c9db9fd31535e554cda1/src/theme/theme-light.js) that should be rendered by the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+`appearance` is currently one of `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and should be respected by apps to display a corresponding theme, unless `theme` is present.
 
-`appearance` is set to either `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and apps should respect it and display a theme that correspond to it.
+`theme` contains an entire theme object ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/3797950ad079f7511fe6c9db9fd31535e554cda1/src/theme/theme-light.js)) that should be applied to the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
 
 Example:
 
@@ -179,7 +209,7 @@ import { useThemeMode } from '@aragon/ui'
 
 function App() {
   // guiStyle updates whenever the theme gets updated
-  // in the Aragon client displaying the app.
+  // in the client running the app.
   const { guiStyle } = useAragonApi()
   const { appearance } = guiStyle
 
@@ -192,36 +222,6 @@ function App() {
   }, [appearance, themeMode])
 
   return <Header>Hello world</Header>
-}
-```
-
-#### `currentApp`
-
-Details about the current app. Once loaded, it returns a single object with the following keys:
-
-- `appAddress`: the app's contract address
-- `appId`: the app's appId
-- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
-- `identifier`: the app's identifier, if any
-- `isForwarder`: whether the app is a forwarder
-- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
-- `name`: the app's name, if available
-
-Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
-
-Its value is `null` until it gets loaded.
-
-Example:
-
-```jsx
-function App() {
-  const { currentApp } = useAragonApi()
-  return (
-    <div>
-      <img width="40" height="40" src={app.icon(40)} />
-      {currentApp.appAddress}
-    </div>
-  )
 }
 ```
 
@@ -310,6 +310,10 @@ This Hook returns the same data as the `connectedAccount` entry from the `useAra
 
 This Hook returns the same data as the `currentApp` entry from the `useAragonApi()` hook.
 
+### useGuiStyle()
+
+This Hook returns the same data as the `guiStyle` entry from the `useAragonApi()` hook.
+
 ### useInstalledApps()
 
 This Hook returns the same data as the `installedApps` entry from the `useAragonApi()` hook.
@@ -317,10 +321,6 @@ This Hook returns the same data as the `installedApps` entry from the `useAragon
 ### useNetwork()
 
 This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
-
-### useGuiStyle()
-
-This Hook returns the same data as the `guiStyle` entry from the `useAragonApi()` hook.
 
 ### usePath()
 
