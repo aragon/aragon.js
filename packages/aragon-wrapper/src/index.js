@@ -103,6 +103,8 @@ export const detectProvider = () =>
  *        has access to a recommended gas limit which can be used for custom
  *        calculations. This function can also be used to get a good gas price
  *        estimation from a 3rd party resource.
+ * @param {Object} [options.guiStyle]
+ *        Options for initial GUI style
  * @param {string|Object} [options.provider=web3.currentProvider]
  *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
  *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
@@ -1000,12 +1002,13 @@ export default class Aragon {
   /**
    * Initialise the GUI style observable.
    *
+   * @param {Object} style GUI style containing appearance and theme
    * @return {void}
    */
-  initGuiStyle (guiStyle) {
-    this.guiStyle = new BehaviorSubject(guiStyle || {
-      appearance: 'light',
-      theme: null
+  initGuiStyle ({ appearance, theme } = {}) {
+    this.guiStyle = new BehaviorSubject({
+      appearance: appearance || 'light',
+      theme: theme || null
     })
   }
 
@@ -1013,13 +1016,13 @@ export default class Aragon {
    * Set the GUI style (theme and appearance).
    *
    * @param {string} appearance "dark" or "light"
-   * @param {object} The theme, or null.
+   * @param {Object} theme The theme, or null.
    * @return {void}
    */
   setGuiStyle (appearance, theme = null) {
     this.guiStyle.next({
       appearance,
-      theme,
+      theme
     })
   }
 
