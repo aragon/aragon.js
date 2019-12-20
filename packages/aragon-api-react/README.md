@@ -1,6 +1,6 @@
 # aragonAPI for React
 
-This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
+This module allows for interacting with aragonAPI with [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
 
 ## Usage
 
@@ -14,7 +14,7 @@ function App() {
   return (
     <div>
       <div>{count}</div>
-      <button onClick={() => api.increment(1)}>Increment</button>
+      <button onClick={() => api.increment(1).toPromise()}>Increment</button>
     </div>
   )
 }
@@ -27,7 +27,7 @@ ReactDOM.render(
 )
 ```
 
-This is a simple example demonstrating how we can use aragonAPI for React to connect the app to its contract, fetch some data from its state (using `appState`), and trigger an action on it (with `api.increment(1)`). The full API is detailed below.
+This is a simple example demonstrating how we can use `@aragon/api-react` to connect an app's frontend to its contract, fetch some data from its state (`appState`), and trigger an action on it (`api.increment(1)`). The full API is detailed below.
 
 ## Installation
 
@@ -43,7 +43,7 @@ npm install --save @aragon/api @aragon/api-react
 
 Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
-It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as is.
+It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as-is.
 
 #### Example
 
@@ -89,38 +89,7 @@ Example:
 ```jsx
 function App() {
   const { api } = useAragonApi()
-  return <button onClick={() => api.vote(true)}>Vote</button>
-}
-```
-
-#### `path` / `requestPath()`
-
-The app's current path. Its value is `"/"` by default.
-
-Use `requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
-
-Example:
-
-```jsx
-function App() {
-  const { path, requestPath } = useAragonApi()
-
-  // “Hello World” screen
-  if (path === '/hello-world') {
-    return (
-      <div>
-        <h1>Hello World</h1>
-        <button onClick={() => requestPath('/')}>Back</button>
-      </div>
-    )
-  }
-
-  // Home
-  return (
-    <div>
-      <button onClick={() => requestPath('/hello-world')}>Click</button>
-    </div>
-  )
+  return <button onClick={() => api.vote(true).toPromise()}>Vote</button>
 }
 ```
 
@@ -228,7 +197,7 @@ function App() {
 
 #### `currentApp`
 
-Details about the current app. It returns a single object with the following keys:
+Details about the current app. Once loaded, it returns a single object with the following keys:
 
 - `appAddress`: the app's contract address
 - `appId`: the app's appId
@@ -239,6 +208,8 @@ Details about the current app. It returns a single object with the following key
 - `name`: the app's name, if available
 
 Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
+Its value is `null` until it gets loaded.
 
 Example:
 
@@ -256,8 +227,7 @@ function App() {
 
 #### `installedApps`
 
-The complete list of apps installed in the organization. Its value is an empty array (`[]`) until
-the list of apps are loaded.
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until the list of apps are loaded.
 
 Each object in the array holds the same keys as `currentApp`.
 
@@ -289,6 +259,41 @@ function App() {
 }
 ```
 
+#### `path` / `requestPath()`
+
+The app's current path. Its value is `"/"` by default.
+
+Use `requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
+
+Example:
+
+```jsx
+function App() {
+  const { path, requestPath } = useAragonApi()
+
+  // “Hello World” screen
+  if (path === '/hello-world') {
+    return (
+      <div>
+        <h1>Hello World</h1>
+        <button onClick={() => requestPath('/')}>
+          Back
+        </button>
+      </div>
+    )
+  }
+
+  // Home
+  return (
+    <div>
+      <button onClick={() => requestPath('/hello-world')}>
+        Click
+      </button>
+    </div>
+  )
+}
+```
+
 ### useApi()
 
 This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
@@ -300,6 +305,10 @@ This Hook returns the same data as the `appState` entry from the `useAppState()`
 ### useConnectedAccount()
 
 This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
+
+### useCurrentApp()
+
+This Hook returns the same data as the `currentApp` entry from the `useAragonApi()` hook.
 
 ### useInstalledApps()
 
@@ -318,4 +327,4 @@ This Hook returns the same data as the `guiStyle` entry from the `useAragonApi()
 This Hook returns an array holding two values from the `useAragonApi()` hook:
 
 1. `path`, and
-1. `requestPath`
+2. `requestPath`
