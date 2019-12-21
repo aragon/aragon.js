@@ -169,6 +169,7 @@ export default class Aragon {
    * @param {Object} [options] Options
    * @param {Object} [options.accounts] `initAccount()` options (see below)
    * @param {Object} [options.acl] `initACL()` options (see below)
+   * @param {Object} [options.guiStyle] `initGuiStyle()` options (see below)
    * @return {Promise<void>}
    * @throws {Error} Will throw an error if the `daoAddress` is detected to not be a Kernel instance
    */
