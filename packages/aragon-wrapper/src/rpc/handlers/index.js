@@ -2,6 +2,39 @@ import { from, merge } from 'rxjs'
 import { filter, mergeMap, materialize } from 'rxjs/operators'
 import { signals } from '@aragon/rpc-messenger'
 
+const METHOD_HANDLERS = new Map([
+
+  // Generic handlers
+  ['accounts', 'accounts'],
+  ['cache', 'cache'],
+  ['describe_script', 'describeScript'],
+  ['describe_transaction', 'describeTransaction'],
+  ['get_apps', 'getApps'],
+  ['network', 'network'],
+  ['path', 'path'],
+  ['gui_style', 'guiStyle'],
+  ['trigger', 'trigger'],
+  ['web3_eth', 'web3Eth'],
+
+  // Contract handlers
+  ['intent', 'intent'],
+  ['call', 'call'],
+  ['sign_message', 'signMessage'],
+  ['events', 'events'],
+  ['past_events', 'pastEvents'],
+
+  // External contract handlers
+  ['external_call', 'externalCall'],
+  ['external_events', 'externalEvents'],
+  ['external_intent', 'externalIntent'],
+  ['external_past_events', 'externalPastEvents'],
+
+  // Identity handlers
+  ['identify', 'appIdentifier'],
+  ['address_identity', 'addressIdentity'],
+  ['search_identities', 'searchIdentities']
+])
+
 export function createResponse ({ request: { id } }, { error, value = null, kind }) {
   if (kind === 'C') {
     return { id, payload: signals.COMPLETE }
@@ -14,14 +47,10 @@ export function createResponse ({ request: { id } }, { error, value = null, kind
   return { id, payload: value }
 }
 
-export function createRequestHandler (request$, requestType, handler) {
-  // Filter request types to match provided params
-  const filteredRequest$ = request$.pipe(
-    filter(({ request }) => request.method === requestType)
-  )
+export function createRequestHandler (request$, handlers) {
 
   // Send request to handler and return response
-  return filteredRequest$.pipe(
+  return request$.pipe(
     /**
      * Turn the promise returned by the handler into an observable and materialize it, i.e:
      * - if the observable emits, emit a Notification of kind 'N' (next) with a value property
@@ -30,7 +59,10 @@ export function createRequestHandler (request$, requestType, handler) {
      */
     mergeMap(
       ({ request, proxy, wrapper }) => {
-        return from(handler(request, proxy, wrapper)).pipe(materialize())
+        const handler = handlers[METHOD_HANDLERS.get(request.method)]
+        return handler
+          ? from(handler(request, proxy, wrapper)).pipe(materialize())
+          : from([])
       },
       createResponse
     ),
