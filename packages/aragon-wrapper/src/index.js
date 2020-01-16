@@ -776,13 +776,16 @@ export default class Aragon {
           .find(version => addressesEqual(version.contractAddress, installedRepoInfo.contractAddress))
 
         // Get info for the current and latest versions of the repo
-        const currentVersionRequest = applicationInfoCache
-          .request(`${appId}.${currentVersion.contractAddress}`)
-          .catch(() => ({}))
-          .then(content => ({
-            content,
-            version: currentVersion.version
-          }))
+        const currentVersionRequest = currentVersion
+          ? applicationInfoCache
+            .request(`${appId}.${currentVersion.contractAddress}`)
+            .catch(() => ({}))
+            .then(content => ({
+              content,
+              version: currentVersion.version
+            }))
+          // Installed app version is not published; avoid returning a currentVersion
+          : Promise.resolve()
 
         const versionInfos = await Promise.all([
           currentVersionRequest,
