@@ -9,7 +9,7 @@ export function shouldOverrideAppWithLatestVersion (repoAddress, codeAddress) {
     addressesEqual(codeAddress, MAINNET_UNLISTED_AGENT_V5)
   ) {
     // Unlisted mainnet Agent v5 with NFT hotfix
-    // TODO: deployments URL
+    // See https://github.com/aragon/deployments/issues/176
     return true
   }
 
