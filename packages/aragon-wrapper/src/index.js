@@ -769,44 +769,43 @@ export default class Aragon {
         const { repoAddress, versions } = repos[appId]
         const installedRepoInfo = installedRepoCache.get(appId)
 
+        const baseRepoInfo = { appId, repoAddress, versions }
+        const fetchVersionInfo = version => {
+          return applicationInfoCache
+            .request(`${appId}.${version.contractAddress}`)
+            .catch(() => ({}))
+            .then(content => ({
+              content,
+              version: version.version
+            }))
+        }
+
         const latestVersion = versions[versions.length - 1]
         const currentVersion = Array.from(versions)
           // Apply reverse to find the latest version with the currently installed contract address
           .reverse()
           .find(version => addressesEqual(version.contractAddress, installedRepoInfo.contractAddress))
 
-        // Get info for the current and latest versions of the repo
-        const currentVersionRequest = currentVersion
-          ? applicationInfoCache
-            .request(`${appId}.${currentVersion.contractAddress}`)
-            .catch(() => ({}))
-            .then(content => ({
-              content,
-              version: currentVersion.version
-            }))
-          // Installed app version is not published; avoid returning a currentVersion
-          : Promise.resolve()
+        if (!currentVersion) {
+          // The organization has installed an unpublished version of this app
+          // Avoid returning a current version as we don't know what version they're using
+          return {
+            ...baseRepoInfo,
+            currentVersion: null,
+            latestVersion: await fetchVersionInfo(latestVersion)
+          }
+        }
 
-        const versionInfos = await Promise.all([
-          currentVersionRequest,
+        const currentVersionInfoRequest = fetchVersionInfo(currentVersion)
+        const latestVersionInfoRequest =
           addressesEqual(currentVersion.contractAddress, latestVersion.contractAddress)
-            ? currentVersionRequest // current version is also the latest, no need to refetch
-            : applicationInfoCache
-              .request(`${appId}.${latestVersion.contractAddress}`)
-              .catch(() => ({}))
-              .then(content => ({
-                content,
-                version: latestVersion.version
-              }))
-        ])
+            ? currentVersionInfoRequest
+            : fetchVersionInfo(latestVersion)
 
-        // Emit updated repo information
         return {
-          appId,
-          repoAddress,
-          versions,
-          currentVersion: versionInfos[0],
-          latestVersion: versionInfos[1]
+          ...baseRepoInfo,
+          currentVersion: await currentVersionInfoRequest,
+          latestVersion: await latestVersionInfoRequest
         }
       })
     )
