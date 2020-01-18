@@ -1,3 +1,4 @@
+import { shouldOverrideAppWithLatestVersion } from './overrides'
 import {
   getRepoLatestVersion,
   getRepoLatestVersionForContract,
@@ -46,9 +47,14 @@ export default function (web3, { ipfsGateway, fetchTimeout = DEFAULT_FETCH_TIMEO
     },
     fetchLatestRepoContentForContract: async (repoAddress, codeAddress, options) => {
       const repo = makeRepoProxy(repoAddress, web3)
+      const fetchVersionData =
+        shouldOverrideAppWithLatestVersion(repoAddress, codeAddress)
+          ? getRepoLatestVersion(repo)
+          : getRepoLatestVersionForContract(repo, codeAddress)
+
       return fetchRepoContentFromVersion(
         fetcher,
-        await getRepoLatestVersionForContract(repo, codeAddress),
+        await fetchVersionData,
         { fetchTimeout, ...options }
       )
     }
