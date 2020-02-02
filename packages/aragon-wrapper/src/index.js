@@ -1329,6 +1329,10 @@ export default class Aragon {
   async getExternalTransactionPath (destination, methodJsonDescription, params) {
     let path
 
+    if (addressesEqual(destination, this.aclProxy.address)) {
+      return this.getACLTransactionPath(methodJsonDescription.name, params) || []
+    }
+
     const installedApp = await this.getApp(destination)
     if (installedApp) {
       // Destination is an installed app; need to go through normal transaction pathing
