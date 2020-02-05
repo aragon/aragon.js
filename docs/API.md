@@ -255,6 +255,8 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 Get information about this app (e.g. `appAddress`, `appId`, etc.).
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details, including:
+
+- `abi`: this app's ABI
 - `appAddress`: this app's contract address
 - `appId`: this app's appId
 - `appImplementationAddress`: this app's implementation contract address, if any (only available if this app is a proxied AragonApp)

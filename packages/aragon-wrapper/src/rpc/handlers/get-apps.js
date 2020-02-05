@@ -5,6 +5,7 @@ import { addressesEqual } from '../../utils'
 // Extract just a few important details about the current app to decrease API surface area
 function transformAppInformation (app = {}, getContentPathFn) {
   const {
+    abi,
     appId,
     content,
     contractAddress,
@@ -24,13 +25,14 @@ function transformAppInformation (app = {}, getContentPathFn) {
   } catch (_) {}
 
   return {
-    icons: iconsWithBaseUrl,
+    abi,
     identifier,
     kernelAddress,
     name,
     appAddress: proxyAddress,
     appId: appId,
     appImplementationAddress: contractAddress,
+    icons: iconsWithBaseUrl,
     isForwarder: Boolean(isForwarder)
   }
 }

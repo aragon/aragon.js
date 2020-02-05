@@ -127,6 +127,7 @@ function App() {
 
 Details about the current app. Once loaded, it returns a single object with the following keys:
 
+- `abi`: the app's ABI
 - `appAddress`: the app's contract address
 - `appId`: the app's appId
 - `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)

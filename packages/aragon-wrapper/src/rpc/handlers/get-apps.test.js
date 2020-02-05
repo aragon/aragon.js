@@ -45,6 +45,7 @@ test('should return a subscription for the entire app list if observing all', as
 
   // assert
   const expectedInitialApps = [{
+    abi: 'abi for coolApp',
     appAddress: '0x456',
     appId: 'coolApp',
     appImplementationAddress: '0xcoolApp',
@@ -55,6 +56,7 @@ test('should return a subscription for the entire app list if observing all', as
     icons: [{ src: 'url/icon_link' }]
   }]
   const expectedEndApps = [].concat(expectedInitialApps, {
+    abi: 'abi for votingApp',
     appAddress: '0x789',
     appId: 'votingApp',
     appImplementationAddress: '0xvotingApp',
@@ -181,6 +183,7 @@ test('should return the initial value for the entire app list if getting all', a
 
   // assert
   const expectedApps = [{
+    abi: 'abi for coolApp',
     appAddress: '0x456',
     appId: 'coolApp',
     appImplementationAddress: '0xcoolApp',
@@ -258,6 +261,7 @@ test('should return a subscription for just the current app if observing current
   result.subscribe(value => {
     if (emitIndex === 0) {
       t.deepEqual(value, {
+        abi: 'abi for coolApp',
         appAddress: currentAppAddress,
         appId: 'coolApp',
         appImplementationAddress: '0xcoolApp',
@@ -269,6 +273,7 @@ test('should return a subscription for just the current app if observing current
       })
     } else if (emitIndex === 1) {
       t.deepEqual(value, {
+        abi: 'abi for coolApp',
         appAddress: currentAppAddress,
         appId: 'new coolApp',
         appImplementationAddress: '0xcoolApp',
@@ -353,6 +358,7 @@ test('should return the initial value for just the current app if getting curren
   result.subscribe(value => {
     if (emitIndex === 0) {
       t.deepEqual(value, {
+        abi: 'abi for coolApp',
         appAddress: currentAppAddress,
         appId: 'coolApp',
         appImplementationAddress: '0xcoolApp',
