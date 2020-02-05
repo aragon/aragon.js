@@ -92,7 +92,8 @@ test('should return a subscription for the entire app list if observing all', as
   appsMock.next(endApps)
 })
 
-test('should return a subscription for the entire app list via initial RPC API', async (t) => {
+// Test backwards compatibility with initial RPC API (no parameters passed)
+test('should return a subscription for the entire unmodified app list via initial RPC API', async (t) => {
   t.plan(2)
 
   // arrange
