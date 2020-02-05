@@ -3,9 +3,8 @@
 addReviewers: true
 addAssignees: false
 
-reviewers: 
+reviewers:
   - sohkai
-  - 2color
 
 skipKeywords:
   - wip
