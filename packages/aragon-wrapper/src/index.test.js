@@ -1186,6 +1186,9 @@ test('should use normal transaction pathing when finding external transaction pa
   // arrange
   const instance = createAragon()
   instance.accounts = of('0x00')
+  instance.aclProxy = of({
+    address: '0x456'
+  })
   instance.apps = of([
     {
       appId: 'counterApp',
@@ -1213,6 +1216,9 @@ test('should be able to find external transaction path for non-installed app', a
   // arrange
   const instance = createAragon()
   instance.accounts = of('0x00')
+  instance.aclProxy = of({
+    address: '0x456'
+  })
   instance.apps = of([
     {
       appId: 'counterApp',
@@ -1227,6 +1233,37 @@ test('should be able to find external transaction path for non-installed app', a
   const externalPath = await instance.getExternalTransactionPath(targetAddress, targetMethodJsonDescription, targetParams)
   // assert
   t.deepEqual(externalPath, [mockTransaction])
+})
+
+test('should be able to find external transaction path for ACL', async (t) => {
+  const { createAragon, utilsStub } = t.context
+  const targetAddress = '0x123'
+  const targetMethodJsonDescription = [{ name: 'foo' }]
+  const targetParams = [8]
+  const mockPath = [{ to: '0x123', data: '0x123' }]
+
+  t.plan(2)
+  // arrange
+  const instance = createAragon()
+  instance.accounts = of('0x00')
+  instance.aclProxy = of({
+    address: targetAddress
+  })
+  instance.apps = of([
+    {
+      appId: 'ACL',
+      kernelAddress: '0x789',
+      abi: 'abi for ACL',
+      proxyAddress: '0x456'
+    }
+  ])
+  utilsStub.addressesEqual = sinon.stub().returns(true)
+  instance.getACLTransactionPath = sinon.stub().returns(mockPath)
+  // act
+  const externalPath = await instance.getExternalTransactionPath(targetAddress, targetMethodJsonDescription, targetParams)
+  // assert
+  t.deepEqual(externalPath, mockPath)
+  t.true(instance.getACLTransactionPath.calledOnceWith(targetMethodJsonDescription.name, targetParams))
 })
 
 test('should run the app and reply to a request', async (t) => {
