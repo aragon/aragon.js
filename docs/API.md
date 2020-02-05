@@ -255,6 +255,8 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 Get information about this app (e.g. `appAddress`, `appId`, etc.).
 
 Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observable)**: A single-emission observable that emits this app's details, including:
+
+- `abi`: this app's ABI
 - `appAddress`: this app's contract address
 - `appId`: this app's appId
 - `appImplementationAddress`: this app's implementation contract address, if any (only available if this app is a proxied AragonApp)
@@ -262,6 +264,7 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 - `isForwarder`: whether this app is a forwarder
 - `kernelAddress`: this app's attached kernel address (i.e. organization address)
 - `name`: this app's name, if available
+- `roles` (experimental): an array of this app's roles
 
 Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
 
