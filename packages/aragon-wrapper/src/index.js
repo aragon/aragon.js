@@ -1327,28 +1327,30 @@ export default class Aragon {
    *   single transaction.
    */
   async getExternalTransactionPath (destination, methodJsonDescription, params) {
-    let path
-
     if (addressesEqual(destination, this.aclProxy.address)) {
-      return this.getACLTransactionPath(methodJsonDescription.name, params) || []
+      try {
+        return this.getACLTransactionPath(methodJsonDescription.name, params)
+      } catch (_) {
+        return []
+      }
     }
 
     const installedApp = await this.getApp(destination)
     if (installedApp) {
       // Destination is an installed app; need to go through normal transaction pathing
-      path = this.getTransactionPath(destination, methodJsonDescription.name, params)
-    } else {
-      // Destination is not an installed app on this org, just create a direct transaction
-      // with the first account
-      const account = (await this.getAccounts())[0]
-
-      try {
-        const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
-        path = this.describeTransactionPath([tx])
-      } catch (_) {}
+      return this.getTransactionPath(destination, methodJsonDescription.name, params)
     }
 
-    return path || []
+    // Destination is not an installed app on this org, just create a direct transaction
+    // with the first account
+    const account = (await this.getAccounts())[0]
+
+    try {
+      const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
+      return this.describeTransactionPath([tx])
+    } catch (_) {
+      return []
+    }
   }
 
   /**

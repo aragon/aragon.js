@@ -1240,7 +1240,7 @@ test('should be able to find external transaction path for ACL', async (t) => {
   const targetAddress = '0x123'
   const targetMethodJsonDescription = [{ name: 'foo' }]
   const targetParams = [8]
-  const mockPath = [{ to: '0x123', description: undefined, data: '0x123' }]
+  const mockPath = [{ to: '0x123', data: '0x123' }]
 
   t.plan(2)
   // arrange
