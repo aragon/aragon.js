@@ -110,7 +110,8 @@ test('should send a getApps request for the current app and observe the single r
     identifier: 'counter',
     isForwarder: false,
     kernelAddress: '0x123',
-    name: 'Counter'
+    name: 'Counter',
+    roles: 'roles for counter'
   }
 
   // arrange
@@ -147,7 +148,8 @@ test('should send a getApps request for installed apps and observe the response'
     identifier: undefined,
     isForwarder: false,
     kernelAddress: undefined,
-    name: 'Kernel'
+    name: 'Kernel',
+    roles: 'roles for kernel'
   }]
   const endApps = [].concat(initialApps, {
     abi: 'abi for counter',
@@ -157,7 +159,8 @@ test('should send a getApps request for installed apps and observe the response'
     identifier: 'counter',
     isForwarder: false,
     kernelAddress: '0x123',
-    name: 'Counter'
+    name: 'Counter',
+    roles: 'roles for counter'
   })
 
   // arrange

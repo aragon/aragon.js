@@ -17,6 +17,7 @@ test('should return a subscription for the entire app list if observing all', as
     kernelAddress: '0x123',
     contractAddress: '0xcoolApp',
     abi: 'abi for coolApp',
+    roles: 'roles for coolApp',
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: '0x456',
@@ -53,7 +54,8 @@ test('should return a subscription for the entire app list if observing all', as
     isForwarder: false,
     kernelAddress: '0x123',
     name: 'Cool App',
-    icons: [{ src: 'url/icon_link' }]
+    icons: [{ src: 'url/icon_link' }],
+    roles: 'roles for coolApp'
   }]
   const expectedEndApps = [].concat(expectedInitialApps, {
     abi: 'abi for votingApp',
@@ -64,7 +66,8 @@ test('should return a subscription for the entire app list if observing all', as
     isForwarder: true,
     kernelAddress: '0x123',
     name: 'Voting App',
-    icons: [{ src: 'url/icon_link' }]
+    icons: [{ src: 'url/icon_link' }],
+    roles: 'roles for votingApp'
   })
   let emitIndex = 0
   result.subscribe(value => {
@@ -86,6 +89,7 @@ test('should return a subscription for the entire app list if observing all', as
     kernelAddress: '0x123',
     contractAddress: '0xvotingApp',
     abi: 'abi for votingApp',
+    roles: 'roles for votingApp',
     isForwarder: true,
     name: 'Voting App',
     proxyAddress: '0x789',
@@ -104,6 +108,7 @@ test('should return a subscription for the entire unmodified app list via initia
     kernelAddress: '0x123',
     contractAddress: '0xcoolApp',
     abi: 'abi for coolApp',
+    roles: 'roles for coolApp',
     isForwarder: false,
     name: 'Cool App',
     icon: 'icon link',
@@ -114,6 +119,7 @@ test('should return a subscription for the entire unmodified app list via initia
     kernelAddress: '0x123',
     contractAddress: '0xvotingApp',
     abi: 'abi for votingApp',
+    roles: 'roles for votingApp',
     isForwarder: true,
     name: 'Voting App',
     icon: 'icon link',
@@ -155,6 +161,7 @@ test('should return the initial value for the entire app list if getting all', a
     kernelAddress: '0x123',
     contractAddress: '0xcoolApp',
     abi: 'abi for coolApp',
+    roles: 'roles for coolApp',
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: '0x456',
@@ -191,7 +198,8 @@ test('should return the initial value for the entire app list if getting all', a
     isForwarder: false,
     kernelAddress: '0x123',
     name: 'Cool App',
-    icons: [{ src: 'url/icon_link' }]
+    icons: [{ src: 'url/icon_link' }],
+    roles: 'roles for coolApp'
   }]
   let emitIndex = 0
   result.subscribe(value => {
@@ -211,6 +219,7 @@ test('should return the initial value for the entire app list if getting all', a
     kernelAddress: '0x123',
     contractAddress: '0xvotingApp',
     abi: 'abi for votingApp',
+    roles: 'roles for votingApp',
     isForwarder: true,
     name: 'Voting App',
     proxyAddress: '0x789',
@@ -229,6 +238,7 @@ test('should return a subscription for just the current app if observing current
     contractAddress: '0xcoolApp',
     kernelAddress: '0x123',
     abi: 'abi for coolApp',
+    roles: 'roles for coolApp',
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: currentAppAddress,
@@ -269,7 +279,8 @@ test('should return a subscription for just the current app if observing current
         isForwarder: false,
         kernelAddress: '0x123',
         name: 'Cool App',
-        icons: [{ src: 'url/icon_link' }]
+        icons: [{ src: 'url/icon_link' }],
+        roles: 'roles for coolApp'
       })
     } else if (emitIndex === 1) {
       t.deepEqual(value, {
@@ -281,7 +292,8 @@ test('should return a subscription for just the current app if observing current
         isForwarder: false,
         kernelAddress: '0x123',
         name: 'Cool App',
-        icons: [{ src: 'url/icon_link' }]
+        icons: [{ src: 'url/icon_link' }],
+        roles: 'roles for coolApp'
       })
     } else {
       t.fail('too many emissions')
@@ -303,6 +315,7 @@ test('should return a subscription for just the current app if observing current
       kernelAddress: '0x123',
       contractAddress: '0xvotingApp',
       abi: 'abi for votingApp',
+      roles: 'roles for votingApp',
       isForwarder: true,
       name: 'Voting App',
       proxyAddress: '0x789',
@@ -322,6 +335,7 @@ test('should return the initial value for just the current app if getting curren
     contractAddress: '0xcoolApp',
     kernelAddress: '0x123',
     abi: 'abi for coolApp',
+    roles: 'roles for coolApp',
     isForwarder: false,
     name: 'Cool App',
     proxyAddress: currentAppAddress,
@@ -366,7 +380,8 @@ test('should return the initial value for just the current app if getting curren
         isForwarder: false,
         kernelAddress: '0x123',
         name: 'Cool App',
-        icons: [{ src: 'url/icon_link' }]
+        icons: [{ src: 'url/icon_link' }],
+        roles: 'roles for coolApp'
       })
     } else {
       t.fail('too many emissions')

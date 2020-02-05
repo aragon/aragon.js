@@ -135,6 +135,7 @@ Details about the current app. Once loaded, it returns a single object with the 
 - `isForwarder`: whether the app is a forwarder
 - `kernelAddress`: the app's attached Kernel address (i.e. organization address)
 - `name`: the app's name, if available
+- `roles` (experimental): an array of this app's roles
 
 Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
 

@@ -14,7 +14,8 @@ function transformAppInformation (app = {}, getContentPathFn) {
     isForwarder,
     kernelAddress,
     name,
-    proxyAddress
+    proxyAddress,
+    roles
   } = app
 
   let iconsWithBaseUrl
@@ -33,7 +34,8 @@ function transformAppInformation (app = {}, getContentPathFn) {
     appId: appId,
     appImplementationAddress: contractAddress,
     icons: iconsWithBaseUrl,
-    isForwarder: Boolean(isForwarder)
+    isForwarder: Boolean(isForwarder),
+    roles
   }
 }
 

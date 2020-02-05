@@ -264,6 +264,7 @@ Returns **[Observable](https://rxjs-dev.firebaseapp.com/api/index/class/Observab
 - `isForwarder`: whether this app is a forwarder
 - `kernelAddress`: this app's attached kernel address (i.e. organization address)
 - `name`: this app's name, if available
+- `roles` (experimental): an array of this app's roles
 
 Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
 
