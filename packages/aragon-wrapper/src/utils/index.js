@@ -64,24 +64,24 @@ export function makeProxy (address, interfaceName, web3, options) {
 const appProxyAbi = getAbi('aragon/AppProxy').filter(({ type }) => type === 'event' || type === 'function')
 export function makeProxyFromAppABI (address, appAbi, web3, options) {
   const collisions = findFunctionSignatureCollisions(appAbi, appProxyAbi)
-  if(collisions.length > 0) {
+  if (collisions.length > 0) {
     console.log(
       `WARNING: Collisions detected between the proxy and app contract ABI's.
        This is a potential security risk.
        Affected functions:`, JSON.stringify(collisions.map(entry => entry.name))
     )
-}
+  }
 
   const appProxyCombinedAbi = [].concat(appAbi, appProxyAbi)
 
   return makeProxyFromABI(address, appProxyCombinedAbi, web3, options)
 }
 
-export function makeProxyFromABI(address, abi, web3, options) {
+export function makeProxyFromABI (address, abi, web3, options) {
   return new ContractProxy(address, abi, web3, options)
 }
 
-export function findFunctionSignatureCollisions(abi1, abi2) {
+export function findFunctionSignatureCollisions (abi1, abi2) {
   const getFunctionSignatures = (abi) => {
     let signatures = []
     for (let entity of abi) {
@@ -105,8 +105,8 @@ export function findFunctionSignatureCollisions(abi1, abi2) {
   return collisions
 }
 
-export function isProxyContract() {
-  
+export function isProxyContract () {
+
 }
 
 export { default as AsyncRequestCache } from './AsyncRequestCache'

@@ -9,18 +9,18 @@ test.afterEach.always(() => {
 
 const mockAbi = [
   {
-    "constant": false,
-    "inputs": [
+    'constant': false,
+    'inputs': [
       {
-        "name": "test",
-        "type": "uint256"
+        'name': 'test',
+        'type': 'uint256'
       }
     ],
-    "name": "testFunction",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
+    'name': 'testFunction',
+    'outputs': [],
+    'payable': false,
+    'stateMutability': 'nonpayable',
+    'type': 'function'
   }
 ]
 
@@ -81,12 +81,12 @@ test('should combine the app ABI with the events and methods from ProxyApp ABI',
 test('should find collisions', t => {
   const mockAbi2 = [{
     ...mockAbi[0],
-    "inputs": [
+    'inputs': [
       {
-        "name": "test2",
-        "type": "uint256"
+        'name': 'test2',
+        'type': 'uint256'
       }
-    ],
+    ]
   }]
 
   const collisions = utils.findFunctionSignatureCollisions(mockAbi, mockAbi2)
