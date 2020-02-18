@@ -93,8 +93,4 @@ test('should find collisions', t => {
 
   t.assert(collisions.length > 0)
   t.assert(collisions[0].name === mockAbi[0].name)
-  t.is(`WARNING: Collisions detected between the proxy and app contract ABI's.
-       This is a potential security risk.
-       Affected functions:
-       ${collisions}`, '')
 })
