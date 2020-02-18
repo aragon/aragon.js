@@ -1,6 +1,7 @@
 import { isAddress } from 'web3-utils'
 import ContractProxy from '../core/proxy'
 import { getAbi } from '../interfaces'
+import abiUtils from 'web3-eth-abi'
 
 export const ANY_ENTITY = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF'
 
@@ -60,14 +61,52 @@ export function makeProxy (address, interfaceName, web3, options) {
   return makeProxyFromABI(address, abi, web3, options)
 }
 
-const appProxyEventsAbi = getAbi('aragon/AppProxy').filter(({ type }) => type === 'event')
+const appProxyAbi = getAbi('aragon/AppProxy').filter(({ type }) => type === 'event' || type === 'function')
 export function makeProxyFromAppABI (address, appAbi, web3, options) {
-  const appAbiWithProxyEvents = [].concat(appAbi, appProxyEventsAbi)
-  return makeProxyFromABI(address, appAbiWithProxyEvents, web3, options)
+  const collisions = findFunctionSignatureCollisions(appAbi, appProxyAbi)
+  if(collisions.length > 0) {
+    console.log(
+      `WARNING: Collisions detected between the proxy and app contract ABI's.
+       This is a potential security risk.
+       Affected functions:`, JSON.stringify(collisions.map(entry => entry.name))
+    )
 }
 
-export function makeProxyFromABI (address, abi, web3, options) {
+  const appProxyCombinedAbi = [].concat(appAbi, appProxyAbi)
+
+  return makeProxyFromABI(address, appProxyCombinedAbi, web3, options)
+}
+
+export function makeProxyFromABI(address, abi, web3, options) {
   return new ContractProxy(address, abi, web3, options)
+}
+
+export function findFunctionSignatureCollisions(abi1, abi2) {
+  const getFunctionSignatures = (abi) => {
+    let signatures = []
+    for (let entity of abi) {
+      if (!(entity.type === 'function')) continue
+      signatures.push({
+        name: entity.name,
+        signature: abiUtils.encodeFunctionSignature(entity)
+      })
+    }
+    return signatures
+  }
+
+  const signatures1 = getFunctionSignatures(abi1)
+  const signatures2 = getFunctionSignatures(abi2)
+
+  const collisions = signatures1.filter(item1 => {
+    if (signatures2.some(item2 => item2.signature === item1.signature)) return true
+    return false
+  })
+
+  return collisions
+}
+
+export function isProxyContract() {
+  
 }
 
 export { default as AsyncRequestCache } from './AsyncRequestCache'
