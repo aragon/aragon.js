@@ -30,13 +30,21 @@ const providers = require('@aragon/wrapper').providers
 - `daoAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the DAO.
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Wrapper options. (optional, default `{}`)
   - `options.provider` **any** The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider` if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws (optional)
-  - `options.apm` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Primarily used to set an alternative ipfs provider (optional, default `{}`)
-  - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry (optional, default `null`)
+  - `options.apm` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Options for fetching information from aragonPM
+  - `options.apm.ensRegistryAddress` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The address of the ENS registry
+  - `options.apm.ipfs` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** IPFS options for fetching information from aragonPM (optional)
+  - `options.apm.ipfs.gateway` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** The IPFS gateway to use for fetching information (optional)
+  - `options.apm.ipfs.fetchTimeout` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** The timeout before a request to IPFS is automatically failed in milliseconds (optional, default 10s)
+  - `options.cache` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Cache options (optional)
+  - `options.cache.forceLocalStorage` **[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** On browser environments, downgrade to localStorage even if IndexedDB is available (optional)
 
 ### **Examples**
 
 ```javascript
-const aragon = new Aragon('0xdeadbeef')
+const aragon = new Aragon(
+  '0xdeadbeef',
+  { apm: { ensRegistryAddress: '0x...' } }
+)
 
 // Initialises the wrapper
 await aragon.init({
@@ -58,7 +66,7 @@ Initialise the wrapper.
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
-Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/dev/contracts/kernel/Kernel.sol) instance
+Throws **[Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)** if the `daoAddress` provided during constructor is detected to not be a [`Kernel`](https://github.com/aragon/aragonOS/blob/next/contracts/kernel/Kernel.sol) instance
 
 ### initAccounts
 
@@ -79,7 +87,7 @@ Initialise the ACL.
 #### **Parameters**
 
 - `options` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**
-  - `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/dev/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
+  - `aclAddress` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Address of the [`ACL`](https://github.com/aragon/aragonOS/blob/next/contracts/acl/ACL.sol) instance to use, defaults to the `daoAddress`'s default `ACL`
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;void>**
 
@@ -211,3 +219,14 @@ Search identites using the highest priority provider.
 - `searchTerm` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** String to search for
 
 Returns a **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>>** which resolves with the found identities or an empty array.
+
+### setGuiStyle
+
+Set the current GUI style of the client to the apps.
+
+#### **Parameters**
+
+- `appearance` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Either `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). Apps should display a corresponding theme, unless `theme` has also been set.
+- `theme` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** An entire theme ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/be4faf21172bdbc98816dd7ca4533bfa51e6712a/src/theme/theme-light.js)) that should be displayed by app frontends. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+
+Returns **void**

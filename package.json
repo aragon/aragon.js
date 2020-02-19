@@ -5,15 +5,15 @@
   "author": "Aragon Assocation <legal@aragon.org>",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
+    "@size-limit/preset-small-lib": "^2.1.6",
     "coveralls": "^3.0.4",
     "lcov-result-merger": "^3.1.0",
-    "lerna": "^3.11.1",
-    "size-limit": "^0.21.0"
+    "lerna": "^3.11.1"
   },
   "scripts": {
     "lint": "lerna run lint",
     "test": "lerna run test",
-    "install": "npm run bootstrap",
+    "install": "npm run bootstrap && npm run build",
     "bootstrap": "lerna bootstrap --no-ci",
     "build": "lerna run build",
     "build:watch": "lerna run --parallel build:dev -- -- --watch",

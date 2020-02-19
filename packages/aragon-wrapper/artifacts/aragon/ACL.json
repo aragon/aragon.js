@@ -70,6 +70,13 @@
 
         ],
         "notice":null
+    },
+    {
+      "sig":"transferToVault(address)",
+      "roles":[
+
+      ],
+      "notice":"Send funds to recovery Vault. This contract should never receive funds, but in case it does, this function allows one to recover them."
     }
   ]
 }

@@ -6,7 +6,7 @@ test.afterEach.always(() => {
   sinon.restore()
 })
 
-test('apm: getApmAppInfo', async (t) => {
+test('apm: getApmInternalAppInfo', async (t) => {
   t.plan(6)
   // arrange
   // namehash('apm-repo.aragonpm.eth')
@@ -14,9 +14,9 @@ test('apm: getApmAppInfo', async (t) => {
   // namehash('apm-repo.open.aragonpm.eth')
   const repoOpenNamehash = '0xf254443da20ea3d6bad4fa45ddd197dd713255675d3304106f889682e479f9c0'
   // act
-  const result = apm.getApmAppInfo(repoNamehash)
-  const openResult = apm.getApmAppInfo(repoOpenNamehash)
-  const emptyResult = apm.getApmAppInfo()
+  const result = apm.getApmInternalAppInfo(repoNamehash)
+  const openResult = apm.getApmInternalAppInfo(repoOpenNamehash)
+  const emptyResult = apm.getApmInternalAppInfo()
   // assert
   t.is(result.name, 'Repo')
   t.true(Array.isArray(result.abi))

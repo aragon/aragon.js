@@ -1,6 +1,6 @@
 # aragonAPI for React
 
-This module allows to interact with aragonAPI using [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
+This module allows for interacting with aragonAPI with [React Hooks](https://reactjs.org/docs/hooks-intro.html). [`@aragon/api`](https://github.com/aragon/aragon.js/blob/master/docs/API.md) is used under the hood, so being familiar with it can be useful.
 
 ## Usage
 
@@ -14,7 +14,7 @@ function App() {
   return (
     <div>
       <div>{count}</div>
-      <button onClick={() => api.increment(1)}>Increment</button>
+      <button onClick={() => api.increment(1).toPromise()}>Increment</button>
     </div>
   )
 }
@@ -27,7 +27,7 @@ ReactDOM.render(
 )
 ```
 
-This is a simple example demonstrating how we can use aragonAPI for React to connect the app to its contract, fetch some data from its state (using `appState`), and trigger an action on it (with `api.increment(1)`). The full API is detailed below.
+This is a simple example demonstrating how we can use `@aragon/api-react` to connect an app's frontend to its contract, fetch some data from its state (`appState`), and trigger an action on it (`api.increment(1)`). The full API is detailed below.
 
 ## Installation
 
@@ -43,7 +43,7 @@ npm install --save @aragon/api @aragon/api-react
 
 Before using any Hook provided, you need to declare this component to connect the app. It is generally a good idea to do it near the top level of your React tree. It should only be declared once.
 
-It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html). If not provided, the state is passed as is.
+It has an optional `reducer` prop, which lets you process the state coming from the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md). If not provided, the state is passed as-is.
 
 #### Example
 
@@ -89,13 +89,13 @@ Example:
 ```jsx
 function App() {
   const { api } = useAragonApi()
-  return <button onClick={() => api.vote(true)}>Vote</button>
+  return <button onClick={() => api.vote(true).toPromise()}>Vote</button>
 }
 ```
 
 #### `appState`
 
-The app state, after having passed the [background script](https://hack.aragon.org/docs/aragonjs-guide-bg-scripts.html) state through the `reducer` prop of `AragonApi`.
+The app state, after having passed the [background script](https://github.com/aragon/aragon.js/blob/master/docs/BACKGROUND_SCRIPTS.md) state through the `reducer` prop of `AragonApi`.
 
 Example:
 
@@ -123,6 +123,123 @@ function App() {
 }
 ```
 
+#### `currentApp`
+
+Details about the current app. Once loaded, it returns a single object with the following keys:
+
+- `abi`: the app's ABI
+- `appAddress`: the app's contract address
+- `appId`: the app's appId
+- `appImplementationAddress`: the app's implementation contract address, if any (only available if this app is a proxied AragonApp)
+- `identifier`: the app's identifier, if any
+- `isForwarder`: whether the app is a forwarder
+- `kernelAddress`: the app's attached Kernel address (i.e. organization address)
+- `name`: the app's name, if available
+- `roles` (experimental): an array of this app's roles
+
+Each app detail also includes an `icon(size)` function, that allows you to query for the app's icon (if available) based on a preferred size.
+
+Its value is `null` until it gets loaded.
+
+Example:
+
+```jsx
+function App() {
+  const { currentApp } = useAragonApi()
+  return (
+    <div>
+      <img width="40" height="40" src={app.icon(40)} />
+      {currentApp.appAddress}
+    </div>
+  )
+}
+```
+
+#### `guiStyle`
+
+The GUI style sent by the client. It contains two entries: `appearance` and `theme`.
+
+`appearance` is currently one of `light` or `dark`. Other values could be passed in the future (e.g. `black` for OLED screens). It is always present and should be respected by apps to display a corresponding theme, unless `theme` is present.
+
+`theme` contains an entire theme object ([e.g. aragonUI's light theme](https://github.com/aragon/aragon-ui/blob/be4faf21172bdbc98816dd7ca4533bfa51e6712a/src/theme/theme-light.js)) that should be applied to the app. It is optional and apps should respect it when present. If not possible, apps should respect the value of `appearance`.
+
+Example:
+
+```jsx
+function App() {
+  const { guiStyle } = useAragonApi()
+  return (
+    <div
+      style={{
+        background: guiStyle.appearance === 'light' ? 'white' : 'grey',
+      }}
+    >
+      <div
+        style={{ color: guiStyle.appearance === 'light' ? 'black' : 'white' }}
+      >
+        Hello world
+      </div>
+    </div>
+  )
+}
+```
+
+Complete example if you are using [aragonUI](https://ui.aragon.org/):
+
+```jsx
+// index.js
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { AragonApi } from '@aragon/api-react'
+
+ReactDOM.render(
+  <AragonApi reducer={/* … */}>
+    <App />
+  </AragonApi>,
+  document.getElementById('root')
+)
+```
+
+```jsx
+// App.js
+import React from 'react'
+import { useGuiStyle } from '@aragon/api-react'
+import { Main } from '@aragon/ui'
+
+function App() {
+  // useGuiStyle() updates whenever the theme
+  // gets updated in the client running the app.
+  const { appearance } = useGuiStyle()
+
+  return (
+    <Main theme={appearance}>
+      <Header>Hello world</Header>
+    </Main>
+  )
+}
+```
+
+#### `installedApps`
+
+The complete list of apps installed in the organization. Its value is an empty array (`[]`) until the list of apps are loaded.
+
+Each object in the array holds the same keys as `currentApp`.
+
+Example:
+
+```jsx
+function App() {
+  const { installedApps } = useAragonApi()
+  return (
+    <div>
+      {installedApps.map(app => (
+        <div>{app.appAddress}</div>
+      ))}
+    </div>
+  )
+}
+```
+
 #### `network`
 
 An [object](https://github.com/aragon/aragon.js/blob/master/docs/API.md#network) representing the current network using its `id` and `type` entries. Its value is `null` until it gets loaded.
@@ -136,30 +253,72 @@ function App() {
 }
 ```
 
-#### `displayMenuButton`
+#### `path` / `requestPath()`
 
-Whether or not to display the menu button (`Boolean`), depending on it being automatically hidden or not in the client.
+The app's current path. Its value is `"/"` by default.
 
-#### `requestMenu()`
+Use `requestPath()` to request the app be navigated to another path. Note that the navigation request _may_ be rejected, and in that case the `path` will stay constant.
 
-Call this function to display the Aragon menu, when hidden automatically. This should be called when the user clicks on the menu button.
+Example:
+
+```jsx
+function App() {
+  const { path, requestPath } = useAragonApi()
+
+  // “Hello World” screen
+  if (path === '/hello-world') {
+    return (
+      <div>
+        <h1>Hello World</h1>
+        <button onClick={() => requestPath('/')}>
+          Back
+        </button>
+      </div>
+    )
+  }
+
+  // Home
+  return (
+    <div>
+      <button onClick={() => requestPath('/hello-world')}>
+        Click
+      </button>
+    </div>
+  )
+}
+```
 
 ### useApi()
 
-This Hook returns the same data than the `api` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `api` entry from the `useAragonApi()` hook.
 
 ### useAppState()
 
-This Hook returns the same data than the `appState` entry from the `useAppState()` hook.
+This Hook returns the same data as the `appState` entry from the `useAppState()` hook.
 
 ### useConnectedAccount()
 
-This Hook returns the same data than the `connectedAccount` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `connectedAccount` entry from the `useAragonApi()` hook.
 
-### useMenuButton()
+### useCurrentApp()
 
-This Hook returns an array containing the `displayMenuButton` and the `requestMenu` entries from the `useAragonApi()` hook, in that order.
+This Hook returns the same data as the `currentApp` entry from the `useAragonApi()` hook.
+
+### useGuiStyle()
+
+This Hook returns the same data as the `guiStyle` entry from the `useAragonApi()` hook.
+
+### useInstalledApps()
+
+This Hook returns the same data as the `installedApps` entry from the `useAragonApi()` hook.
 
 ### useNetwork()
 
-This Hook returns the same data than the `network` entry from the `useAragonApi()` hook.
+This Hook returns the same data as the `network` entry from the `useAragonApi()` hook.
+
+### usePath()
+
+This Hook returns an array holding two values from the `useAragonApi()` hook:
+
+1. `path`, and
+2. `requestPath`

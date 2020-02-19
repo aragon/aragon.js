@@ -55,13 +55,19 @@ export function getCacheKey (address, location) {
   return `${address}.${location}`
 }
 
-export function makeProxy (address, interfaceName, web3, initializationBlock) {
+export function makeProxy (address, interfaceName, web3, options) {
   const abi = getAbi(`aragon/${interfaceName}`)
-  return makeProxyFromABI(address, abi, web3, initializationBlock)
+  return makeProxyFromABI(address, abi, web3, options)
 }
 
-export function makeProxyFromABI (address, abi, web3, initializationBlock) {
-  return new ContractProxy(address, abi, web3, initializationBlock)
+const appProxyEventsAbi = getAbi('aragon/AppProxy').filter(({ type }) => type === 'event')
+export function makeProxyFromAppABI (address, appAbi, web3, options) {
+  const appAbiWithProxyEvents = [].concat(appAbi, appProxyEventsAbi)
+  return makeProxyFromABI(address, appAbiWithProxyEvents, web3, options)
+}
+
+export function makeProxyFromABI (address, abi, web3, options) {
+  return new ContractProxy(address, abi, web3, options)
 }
 
 export { default as AsyncRequestCache } from './AsyncRequestCache'

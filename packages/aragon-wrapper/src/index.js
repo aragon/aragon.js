@@ -1,5 +1,5 @@
 // Externals
-import { asyncScheduler, concat, from, merge, of, ReplaySubject, Subject, BehaviorSubject } from 'rxjs'
+import { asyncScheduler, concat, from, merge, of, BehaviorSubject, ReplaySubject, Subject } from 'rxjs'
 import {
   concatMap,
   debounceTime,
@@ -14,66 +14,57 @@ import {
   scan,
   startWith,
   switchMap,
-  tap,
   throttleTime,
   withLatestFrom
 } from 'rxjs/operators'
-import uuidv4 from 'uuid/v4'
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
-
-// APM
-import apm from '@aragon/apm'
 
 // RPC
 import Messenger from '@aragon/rpc-messenger'
 import * as handlers from './rpc/handlers'
 
-// Utilities
-import { getApmAppInfo } from './core/apm'
+import AppContextPool, { APP_CONTEXTS } from './apps'
+import Cache from './cache'
+import apm, { getApmInternalAppInfo } from './core/apm'
 import { makeRepoProxy, getAllRepoVersions, getRepoVersionById } from './core/apm/repo'
 import {
   getAragonOsInternalAppInfo,
   isAragonOsInternalApp
 } from './core/aragonOS'
-import { getKernelNamespace, isKernelAppCodeNamespace } from './core/aragonOS/kernel'
+import { isKernelAppCodeNamespace } from './core/aragonOS/kernel'
+import { setConfiguration } from './configuration'
+import * as configurationKeys from './configuration/keys'
+import ens from './ens'
+import { LocalIdentityProvider } from './identity'
+import { getAbi } from './interfaces'
 import {
+  postprocessRadspecDescription,
   tryDescribingUpdateAppIntent,
   tryDescribingUpgradeOrganizationBasket,
   tryEvaluatingRadspec
 } from './radspec'
 import {
+  ANY_ENTITY,
   addressesEqual,
   getCacheKey,
   includesAddress,
   makeAddressMapProxy,
   makeProxy,
-  makeProxyFromABI,
-  AsyncRequestCache,
-  ANY_ENTITY
+  makeProxyFromAppABI,
+  AsyncRequestCache
 } from './utils'
 import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callscript'
 import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
 import {
-  applyForwardingPretransaction,
+  applyForwardingFeePretransaction,
   createDirectTransaction,
+  createDirectTransactionForApp,
   createForwarderTransactionBuilder,
   getRecommendedGasLimit
 } from './utils/transactions'
-
-// Templates
-import Templates from './templates'
-
-// Cache
-import Cache from './cache'
-
-// Local address labels
-import { LocalIdentityProvider } from './identity'
-
-// Interfaces
-import { getAbi } from './interfaces'
 
 // Try to get an injected web3 provider, return a public one otherwise.
 export const detectProvider = () =>
@@ -82,62 +73,30 @@ export const detectProvider = () =>
     : 'wss://rinkeby.eth.aragon.network/ws'
 
 /**
- * Set up an instance of the template factory that can be used independently
- *
- * @param {string} from
- *        The address of the account using the factory.
- * @param {Object} options
- *        Template factory options.
- * @param {Object} [options.apm]
- *        Options for apm.js (see https://github.com/aragon/apm.js)
- * @param {string} [options.apm.ensRegistryAddress]
- *        ENS registry for apm.js
- * @param {Object} [options.apm.ipfs]
- *        IPFS provider config for apm.js
- * @param {string} [options.apm.ipfs.gateway]
- *        IPFS gateway apm.js will use to fetch artifacts from
- * @param {Function} [options.defaultGasPriceFn=function]
- *        A factory function to provide the default gas price for transactions.
- *        It can return a promise of number string or a number string. The function
- *        has access to a recommended gas limit which can be used for custom
- *        calculations. This function can also be used to get a good gas price
- *        estimation from a 3rd party resource.
- * @param {string|Object} [options.provider=web3.currentProvider]
- *        The Web3 provider to use for blockchain communication. Defaults to `web3.currentProvider`
- *        if web3 is injected, otherwise will fallback to wss://rinkeby.eth.aragon.network/ws
- * @return {Object} Template factory instance
- */
-export const setupTemplates = (from, options = {}) => {
-  const defaultOptions = {
-    apm: {},
-    defaultGasPriceFn: () => { },
-    provider: detectProvider()
-  }
-  options = Object.assign(defaultOptions, options)
-  const web3 = new Web3(options.provider)
-
-  return Templates(from, {
-    web3,
-    apm: apm(web3, options.apm),
-    defaultGasPriceFn: options.defaultGasPriceFn
-  })
-}
-
-/**
  * An Aragon wrapper.
  *
  * @param {string} daoAddress
  *        The address of the DAO.
  * @param {Object} options
  *        Wrapper options.
- * @param {Object} [options.apm]
- *        Options for apm.js (see https://github.com/aragon/apm.js)
- * @param {string} [options.apm.ensRegistryAddress]
- *        ENS registry for apm.js
+ * @param {Object} options.apm
+ *        Options for fetching information from aragonPM
+ * @param {string} options.apm.ensRegistryAddress
+ *        ENS registry for aragonPM
  * @param {Object} [options.apm.ipfs]
- *        IPFS provider config for apm.js
+ *        IPFS provider config for aragonPM
  * @param {string} [options.apm.ipfs.gateway]
- *        IPFS gateway apm.js will use to fetch artifacts from
+ *        IPFS gateway to fetch aragonPM artifacts from
+ * @param {number} [options.apm.ipfs.fetchTimeout]
+ *        Timeout for retrieving aragonPM artifacts from IPFS before failing
+ * @param {Object} [options.cache]
+ *        Options for the internal cache
+ * @param {boolean} [options.cache.forceLocalStorage=false]
+ *        Downgrade to localStorage even if IndexedDB is available
+ * @param {Object} [options.events]
+ *        Options for handling Ethereum events
+ * @param {boolean} [options.events.subscriptionEventDelay]
+ *        Time in ms to delay a new event from a contract subscription
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
@@ -151,23 +110,53 @@ export const setupTemplates = (from, options = {}) => {
 export default class Aragon {
   constructor (daoAddress, options = {}) {
     const defaultOptions = {
-      apm: {},
-      defaultGasPriceFn: () => { },
-      provider: detectProvider()
+      defaultGasPriceFn: () => {},
+      provider: detectProvider(),
+      cache: {
+        forceLocalStorage: false
+      },
+      events: {
+        subscriptionDelayTime: 0
+      }
     }
     options = Object.assign(defaultOptions, options)
+
+    // Set up desired configuration
+    setConfiguration(
+      configurationKeys.FORCE_LOCAL_STORAGE,
+      !!(options.cache && options.cache.forceLocalStorage)
+    )
+    setConfiguration(
+      configurationKeys.SUBSCRIPTION_EVENT_DELAY,
+      Number.isFinite(options.events && options.events.subscriptionEventDelay)
+        ? options.events.subscriptionEventDelay
+        : 0
+    )
 
     // Set up Web3
     this.web3 = new Web3(options.provider)
 
-    // Set up APM
-    this.apm = apm(this.web3, options.apm)
+    // Set up ENS
+    this.ens = ens(options.provider, options.apm.ensRegistryAddress)
+
+    // Set up APM utilities
+    const { ipfs: apmIpfsOptions = {} } = options.apm
+    this.apm = apm(
+      this.web3,
+      {
+        fetchTimeout: apmIpfsOptions.fetchTimeout,
+        ipfsGateway: apmIpfsOptions.gateway
+      }
+    )
 
     // Set up the kernel proxy
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
     this.cache = new Cache(daoAddress)
+
+    // Set up app contexts
+    this.appContextPool = new AppContextPool()
 
     this.defaultGasPriceFn = options.defaultGasPriceFn
   }
@@ -178,6 +167,7 @@ export default class Aragon {
    * @param {Object} [options] Options
    * @param {Object} [options.accounts] `initAccount()` options (see below)
    * @param {Object} [options.acl] `initACL()` options (see below)
+   * @param {Object} [options.guiStyle] `initGuiStyle()` options (see below)
    * @return {Promise<void>}
    * @throws {Error} Will throw an error if the `daoAddress` is detected to not be a Kernel instance
    */
@@ -201,7 +191,8 @@ export default class Aragon {
     this.initForwarders()
     this.initAppIdentifiers()
     this.initNetwork()
-    this.initNotifications()
+    this.initGuiStyle(options.guiStyle)
+    this.pathIntents = new Subject()
     this.transactions = new Subject()
     this.signatures = new Subject()
   }
@@ -235,7 +226,7 @@ export default class Aragon {
     }
 
     // Set up ACL proxy
-    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, this.kernelProxy.initializationBlock)
+    this.aclProxy = makeProxy(aclAddress, 'ACL', this.web3, { initializationBlock: this.kernelProxy.initializationBlock })
 
     const SET_PERMISSION_EVENT = 'SetPermission'
     const CHANGE_PERMISSION_MANAGER_EVENT = 'ChangePermissionManager'
@@ -365,11 +356,14 @@ export default class Aragon {
      *                            *
      ******************************/
 
-    const applicationInfoCache = new AsyncRequestCache((cacheKey) => {
+    const applicationInfoCache = new AsyncRequestCache(async (cacheKey) => {
       const [appId, codeAddress] = cacheKey.split('.')
       return getAragonOsInternalAppInfo(appId) ||
-        getApmAppInfo(appId) ||
-        this.apm.getLatestVersionForContract(appId, codeAddress)
+        getApmInternalAppInfo(appId) ||
+        this.apm.fetchLatestRepoContentForContract(
+          await this.ens.resolve(appId),
+          codeAddress
+        )
     })
 
     const proxyContractValueCache = new AsyncRequestCache((proxyAddress) => {
@@ -457,8 +451,8 @@ export default class Aragon {
     // These may modify the implementation addresses of the proxies (modifying their behaviour), so
     // we invalidate any caching we've done
     const updatedApps$ = this.kernelProxy
-      // Override events subscription with empty options to subscribe from latest block
-      .events('SetApp', {})
+      // Only need to subscribe from latest block
+      .events('SetApp', { fromBlock: 'latest' })
       .pipe(
         // Only care about changes if they're in the APP_BASE namespace
         filter(({ returnValues }) => isKernelAppCodeNamespace(returnValues.namespace)),
@@ -512,10 +506,32 @@ export default class Aragon {
               } catch (_) { }
             }
 
+            // This is a hack to fix web3.js and ethers not being able to detect reverts on decoding
+            // `eth_call`s (apps that implement fallbacks may revert if they haven't defined
+            // `isForwarder()`)
+            // Ideally web3.js would throw an error if it receives a revert from an `eth_call`, but
+            // as of v1.2.1, it interprets reverts as `true` :(.
+            //
+            // We check if the app's ABI actually has `isForwarder()` declared, and if not, override
+            // the isForwarder setting to false.
+            let isForwarderOverride = {}
+            if (
+              app.isForwarder &&
+              appInfo &&
+              Array.isArray(appInfo.abi) &&
+              !appInfo.abi.some(({ type, name }) => type === 'function' && name === 'isForwarder')
+            ) {
+              isForwarderOverride = {
+                isForwarder: false
+              }
+            }
+
             return {
               ...appInfo,
               // Override the fetched appInfo with the actual app proxy's values to avoid mismatches
-              ...app
+              ...app,
+              // isForwarder override (see above)
+              ...isForwarderOverride
             }
           })
         )
@@ -540,8 +556,8 @@ export default class Aragon {
       //   - No apps are lying about their appId (malicious apps _could_ masquerade as other
       //     apps by setting this value themselves)
       //   - `contractAddress`s will stay the same across all installed apps.
-      //      This is technically not true as apps could set this value themselves
-      //      (e.g. as pinned apps do), but these apps wouldn't be able to upgrade anyway
+      //     This is technically not true as apps could set this value themselves
+      //     (e.g. as pinned apps do), but these apps wouldn't be able to upgrade anyway
       //
       //  Ultimately returns an array of objects, holding the repo's:
       //    - appId
@@ -560,8 +576,8 @@ export default class Aragon {
       )),
 
       // Filter list of installed repos into:
-      //   - New repos we haven't seen before (so we only subscribe once to their events)
-      //   - Repos with apps that were updated in the kernel, to recalculate their current version
+      //   - New repos we haven't seen before (to begin subscribing to their version events)
+      //   - Repos we've seen before, to trigger a recalculation of the currently installed version
       map((repos) => {
         const newRepoAppIds = []
         const updatedRepoAppIds = []
@@ -588,17 +604,30 @@ export default class Aragon {
 
       // Project new repos into their ids and web3 proxy objects
       concatMap(async ([newRepoAppIds, updatedRepoAppIds]) => {
-        const newRepos = await Promise.all(
+        const newRepos = (await Promise.all(
           newRepoAppIds.map(async (appId) => {
-            const repoProxy = await makeRepoProxy(appId, this.apm, this.web3)
-            await repoProxy.updateInitializationBlock()
+            let repoProxy
+
+            try {
+              const repoAddress = await this.ens.resolve(appId)
+              repoProxy = makeRepoProxy(repoAddress, this.web3)
+              await repoProxy.updateInitializationBlock()
+            } catch (err) {
+              console.error(`Could not find repo for ${appId}`, err)
+            }
 
             return {
               appId,
               repoProxy
             }
           })
-        )
+        ))
+          // Filter out repos we couldn't create proxies for (they were likely due to publishing
+          // invalid aragonPM repos)
+          // Note that we don't need to worry about doing this for the updated repos list; if
+          // we could not create the original repo proxy when we first saw the repo, the updates
+          // won't do anything because we weren't able to fetch enough information (versions list)
+          .filter((newRepos) => newRepos.repoProxy)
         return [newRepos, updatedRepoAppIds]
       }),
 
@@ -740,41 +769,43 @@ export default class Aragon {
         const { repoAddress, versions } = repos[appId]
         const installedRepoInfo = installedRepoCache.get(appId)
 
+        const baseRepoInfo = { appId, repoAddress, versions }
+        const fetchVersionInfo = version => {
+          return applicationInfoCache
+            .request(`${appId}.${version.contractAddress}`)
+            .catch(() => ({}))
+            .then(content => ({
+              content,
+              version: version.version
+            }))
+        }
+
         const latestVersion = versions[versions.length - 1]
         const currentVersion = Array.from(versions)
           // Apply reverse to find the latest version with the currently installed contract address
           .reverse()
-          .find(version => version.contractAddress === installedRepoInfo.contractAddress)
+          .find(version => addressesEqual(version.contractAddress, installedRepoInfo.contractAddress))
 
-        // Get info for the current and latest versions of the repo
-        const currentVersionRequest = applicationInfoCache
-          .request(`${appId}.${currentVersion.contractAddress}`)
-          .catch(() => ({}))
-          .then(content => ({
-            content,
-            version: currentVersion.version
-          }))
+        if (!currentVersion) {
+          // The organization has installed an unpublished version of this app
+          // Avoid returning a current version as we don't know what version they're using
+          return {
+            ...baseRepoInfo,
+            currentVersion: null,
+            latestVersion: await fetchVersionInfo(latestVersion)
+          }
+        }
 
-        const versionInfos = await Promise.all([
-          currentVersionRequest,
-          currentVersion.contractAddress === latestVersion.contractAddress
-            ? currentVersionRequest // current version is also the latest, no need to refetch
-            : applicationInfoCache
-              .request(`${appId}.${latestVersion.contractAddress}`)
-              .catch(() => ({}))
-              .then(content => ({
-                content,
-                version: latestVersion.version
-              }))
-        ])
+        const currentVersionInfoRequest = fetchVersionInfo(currentVersion)
+        const latestVersionInfoRequest =
+          addressesEqual(currentVersion.contractAddress, latestVersion.contractAddress)
+            ? currentVersionInfoRequest
+            : fetchVersionInfo(latestVersion)
 
-        // Emit updated repo information
         return {
-          appId,
-          repoAddress,
-          versions,
-          currentVersion: versionInfos[0],
-          latestVersion: versionInfos[1]
+          ...baseRepoInfo,
+          currentVersion: await currentVersionInfoRequest,
+          latestVersion: await latestVersionInfoRequest
         }
       })
     )
@@ -927,7 +958,7 @@ export default class Aragon {
    * which listens and handles `this.identityIntents`
    *
    * @param  {string} address Address to modify
-   * @return {Promise} Reolved by the handler of identityIntents
+   * @return {Promise} Resolved by the handler of identityIntents
    */
   requestAddressIdentityModification (address) {
     const providerName = 'local' // TODO - get provider
@@ -970,6 +1001,35 @@ export default class Aragon {
   }
 
   /**
+   * Initialise the GUI style observable.
+   *
+   * @param {Object} style GUI style options
+   * @param {string} style.appearance "dark" or "light"
+   * @param {Object} [style.theme] The theme object
+   * @return {void}
+   */
+  initGuiStyle ({ appearance, theme } = {}) {
+    this.guiStyle = new BehaviorSubject({
+      appearance: appearance || 'light',
+      theme: theme || null
+    })
+  }
+
+  /**
+   * Set the GUI style (theme and appearance).
+   *
+   * @param {string} appearance "dark" or "light"
+   * @param {Object} [theme] The theme object.
+   * @return {void}
+   */
+  setGuiStyle (appearance, theme = null) {
+    this.guiStyle.next({
+      appearance,
+      theme
+    })
+  }
+
+  /**
    * Initialise the network observable.
    *
    * @return {Promise<void>}
@@ -983,124 +1043,46 @@ export default class Aragon {
   }
 
   /**
-   * Initialise the notifications observable.
+   * Request an app's path be changed.
    *
-   * @return {void}
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {Promise} Succeeds if path request was allowed
    */
-  initNotifications () {
-    // If the cached notifications doesn't exist or isn't an array, set it to an empty one
-    let cached = this.cache.get('notifications')
-    if (!Array.isArray(cached)) {
-      cached = []
-    } else {
-      // Set up acknowledge for unread notifications
-      cached.forEach(notification => {
-        if (notification && !notification.read) {
-          notification.acknowledge = () => this.acknowledgeNotification(notification.id)
+  async requestAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
+    }
+
+    if (!await this.getApp(appAddress)) {
+      throw new Error(`Cannot request path for non-installed app: ${appAddress}`)
+    }
+
+    return new Promise((resolve, reject) => {
+      this.pathIntents.next({
+        appAddress,
+        path,
+        resolve,
+        reject (err) {
+          reject(err || new Error('The path was rejected'))
         }
       })
+    })
+  }
+
+  /**
+   * Set an app's path.
+   *
+   * @param {string} appAddress
+   * @param {string} path
+   * @return {void}
+   */
+  setAppPath (appAddress, path) {
+    if (typeof path !== 'string') {
+      throw new Error('Path must be a string')
     }
 
-    this.notifications = new BehaviorSubject(cached).pipe(
-      scan((notifications, { modifier, notification }) => modifier(notifications, notification)),
-      tap((notifications) => this.cache.set('notifications', notifications)),
-      publishReplay(1)
-    )
-    this.notifications.connect()
-  }
-
-  /**
-   * Send a notification.
-   *
-   * @param {string} app   The address of the app sending the notification
-   * @param {string} title The notification title
-   * @param {string} body  The notification body
-   * @param {object} [context={}] The application context to send back if the notification is clicked
-   * @param  {Date}  [date=new Date()] The date the notification was sent
-   * @return {void}
-   */
-  sendNotification (app, title, body, context = {}, date = new Date()) {
-    const id = uuidv4()
-    const notification = {
-      app,
-      body,
-      context,
-      date,
-      id,
-      title,
-      read: false
-    }
-    this.notifications.next({
-      modifier: (notifications, notification) => {
-        // Find the first notification that's not before this new one
-        // and insert ahead of it if it exists
-        const newNotificationIndex = notifications.findIndex(
-          notification => ((new Date(notification.date)).getTime() >= date.getTime())
-        )
-        return newNotificationIndex === -1
-          ? [...notifications, notification]
-          : [
-            ...notifications.slice(0, newNotificationIndex),
-            notification,
-            ...notifications.slice(newNotificationIndex)
-          ]
-      },
-      notification: {
-        ...notification,
-        acknowledge: () => this.acknowledgeNotification(id)
-      }
-    })
-  }
-
-  /**
-   * Acknowledge a notification.
-   *
-   * @param {string} id The notification's id
-   * @return {void}
-   */
-  acknowledgeNotification (id) {
-    this.notifications.next({
-      modifier: (notifications) => {
-        const notificationIndex = notifications.findIndex(notification => notification.id === id)
-        // Copy the old notifications and replace the old notification with a read version
-        const newNotifications = [...notifications]
-        newNotifications[notificationIndex] = {
-          ...notifications[notificationIndex],
-          read: true,
-          acknowledge: () => { }
-        }
-        return newNotifications
-      }
-    })
-  }
-
-  /**
-   * Clears a notification.
-   *
-   * @param {string} id The notification's id
-   * @return {void}
-   */
-  clearNotification (id) {
-    this.notifications.next({
-      modifier: (notifications) => {
-        return notifications.pipe(
-          filter(notification => notification.id !== id)
-        )
-      }
-    })
-  }
-
-  /**
-   * Clears all notifications.
-   *
-   * @return {void}
-   */
-  clearNotifications () {
-    this.notifications.next({
-      modifier: (notifications) => {
-        return []
-      }
-    })
+    this.appContextPool.emit(appAddress, APP_CONTEXTS.PATH, path)
   }
 
   /**
@@ -1127,7 +1109,7 @@ export default class Aragon {
     const app = apps.find((app) => addressesEqual(app.proxyAddress, proxyAddress))
 
     // TODO: handle undefined (no proxy found), otherwise when calling app.proxyAddress next, it will throw
-    const appProxy = makeProxyFromABI(app.proxyAddress, app.abi, this.web3)
+    const appProxy = makeProxyFromAppABI(app.proxyAddress, app.abi, this.web3)
 
     await appProxy.updateInitializationBlock()
 
@@ -1151,31 +1133,38 @@ export default class Aragon {
 
       // Register request handlers
       const handlerSubscription = handlers.combineRequestHandlers(
+        // Generic handlers
+        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
         handlers.createRequestHandler(request$, 'cache', handlers.cache),
-        handlers.createRequestHandler(request$, 'events', handlers.events),
-        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
+        handlers.createRequestHandler(request$, 'describe_transaction', handlers.describeTransaction),
+        handlers.createRequestHandler(request$, 'get_apps', handlers.getApps),
+        handlers.createRequestHandler(request$, 'network', handlers.network),
+        handlers.createRequestHandler(request$, 'path', handlers.path),
+        handlers.createRequestHandler(request$, 'gui_style', handlers.guiStyle),
+        handlers.createRequestHandler(request$, 'trigger', handlers.trigger),
+        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
+
+        // Contract handlers
         handlers.createRequestHandler(request$, 'intent', handlers.intent),
         handlers.createRequestHandler(request$, 'call', handlers.call),
-        handlers.createRequestHandler(request$, 'network', handlers.network),
-        handlers.createRequestHandler(request$, 'notification', handlers.notifications),
+        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage),
+        handlers.createRequestHandler(request$, 'events', handlers.events),
+        handlers.createRequestHandler(request$, 'past_events', handlers.pastEvents),
+
+        // External contract handlers
         handlers.createRequestHandler(request$, 'external_call', handlers.externalCall),
         handlers.createRequestHandler(request$, 'external_events', handlers.externalEvents),
+        handlers.createRequestHandler(request$, 'external_intent', handlers.externalIntent),
         handlers.createRequestHandler(request$, 'external_past_events', handlers.externalPastEvents),
+
+        // Identity handlers
         handlers.createRequestHandler(request$, 'identify', handlers.appIdentifier),
         handlers.createRequestHandler(request$, 'address_identity', handlers.addressIdentity),
-        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities),
-        handlers.createRequestHandler(request$, 'accounts', handlers.accounts),
-        handlers.createRequestHandler(request$, 'describe_script', handlers.describeScript),
-        handlers.createRequestHandler(request$, 'web3_eth', handlers.web3Eth),
-        handlers.createRequestHandler(request$, 'sign_message', handlers.signMessage)
+        handlers.createRequestHandler(request$, 'search_identities', handlers.searchIdentities)
       ).subscribe(
         (response) => messenger.sendResponse(response.id, response.payload)
       )
-
-      // App context helper function
-      function setContext (context) {
-        return messenger.send('context', [context])
-      }
 
       // The attached unsubscribe isn't automatically bound to the subscription
       const shutdown = () => handlerSubscription.unsubscribe()
@@ -1196,7 +1185,6 @@ export default class Aragon {
       }
 
       return {
-        setContext,
         shutdown,
         shutdownAndClearCache
       }
@@ -1246,15 +1234,20 @@ export default class Aragon {
   }
 
   /**
-   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each step in the path
-   * @return {Promise<string>} transaction hash
+   * @param {Array<Object>} transactionPath An array of Ethereum transactions that describe each
+   *   step in the path
+   * @param {Object} [options]
+   * @param {boolean} [options.external] Whether the transaction path is initiating an action on
+   *   an external destination (not the currently running app)
+   * @return {Promise<string>} Promise that should be resolved with the sent transaction hash
    */
-  performTransactionPath (transactionPath) {
+  performTransactionPath (transactionPath, { external } = {}) {
     return new Promise((resolve, reject) => {
       this.transactions.next({
+        resolve,
+        external: !!external,
         transaction: transactionPath[0],
         path: transactionPath,
-        resolve,
         reject (err) {
           reject(err || new Error('The transaction was not signed'))
         }
@@ -1289,22 +1282,22 @@ export default class Aragon {
 
   /**
    * Calculate the transaction path for a transaction to `destination`
-   * that invokes `methodName` with `params`.
+   * that invokes `methodSignature` with `params`.
    *
    * @param  {string} destination
-   * @param  {string} methodName
+   * @param  {string} methodSignature
    * @param  {Array<*>} params
    * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async getTransactionPath (destination, methodName, params, finalForwarder) {
+  async getTransactionPath (destination, methodSignature, params, finalForwarder) {
     const accounts = await this.getAccounts()
 
     for (let account of accounts) {
       const path = await this.calculateTransactionPath(
         account,
         destination,
-        methodName,
+        methodSignature,
         params,
         finalForwarder
       )
@@ -1312,7 +1305,9 @@ export default class Aragon {
       if (path.length > 0) {
         try {
           return this.describeTransactionPath(path)
-        } catch (_) { }
+        } catch (_) {
+          return path
+        }
       }
     }
 
@@ -1320,10 +1315,49 @@ export default class Aragon {
   }
 
   /**
+   * Calculate the transaction path for a transaction to an external `destination`
+   * (not the currently running app) that invokes a method matching the
+   * `methodJsonDescription` with `params`.
+   *
+   * @param  {string} destination Address of the external contract
+   * @param  {object} methodJsonDescription ABI description of method to invoke
+   * @param  {Array<*>} params
+   * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path.
+   *   If the destination is a non-installed contract, always results in an array containing a
+   *   single transaction.
+   */
+  async getExternalTransactionPath (destination, methodJsonDescription, params) {
+    if (addressesEqual(destination, this.aclProxy.address)) {
+      try {
+        return this.getACLTransactionPath(methodJsonDescription.name, params)
+      } catch (_) {
+        return []
+      }
+    }
+
+    const installedApp = await this.getApp(destination)
+    if (installedApp) {
+      // Destination is an installed app; need to go through normal transaction pathing
+      return this.getTransactionPath(destination, methodJsonDescription.name, params)
+    }
+
+    // Destination is not an installed app on this org, just create a direct transaction
+    // with the first account
+    const account = (await this.getAccounts())[0]
+
+    try {
+      const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
+      return this.describeTransactionPath([tx])
+    } catch (_) {
+      return []
+    }
+  }
+
+  /**
    * Calculate the transaction path for a basket of intents.
    * Expects the `intentBasket` to be an array of tuples holding the following:
    *   {string}   destination: destination address
-   *   {string}   methodName: method to invoke on destination
+   *   {string}   methodSignature: method to invoke on destination
    *   {Array<*>} params: method params
    * These are the same parameters as the ones used for `getTransactionPath()`
    *
@@ -1336,10 +1370,11 @@ export default class Aragon {
    * @param  {Object} [options]
    * @param  {string} [options.checkMode] Path checking mode
    * @return {Promise<Object>} An object containing:
-   *   - `direct`: whether the current account can directly invoke this basket
-   *     (requiring separate transactions)
-   *   - `transactions`: array of Ethereum transactions that describe each step in the path, with
-   *     the last step being an array of transactions that describe each intent in the basket
+   *   - `path` (Array<Object>): a multi-step transaction path that eventually invokes this basket.
+   *     Empty if no such path could be found.
+   *   - `transactions` (Array<Object>): array of Ethereum transactions that invokes this basket.
+   *     If a multi-step transaction path was found, returns the first transaction in that path.
+   *     Empty if no such transactions could be found.
    */
   async getTransactionPathForIntentBasket (intentBasket, { checkMode = 'all' } = {}) {
     // Get transaction paths for entire basket
@@ -1351,8 +1386,11 @@ export default class Aragon {
           : []
     const intentPaths = await Promise.all(
       intentsToCheck.map(
-        ([destination, methodName, params]) =>
-          this.getTransactionPath(destination, methodName, params))
+        ([destination, methodSignature, params]) =>
+          addressesEqual(destination, this.aclProxy.address)
+            ? this.getACLTransactionPath(methodSignature, params)
+            : this.getTransactionPath(destination, methodSignature, params)
+      )
     )
 
     // If the paths don't match, we can't send the transactions in this intent basket together
@@ -1362,8 +1400,8 @@ export default class Aragon {
       const sender = (await this.getAccounts())[0] // TODO: don't assume it's the first account
       const directTransactions = await Promise.all(
         intentBasket.map(
-          async ([destination, methodName, params]) =>
-            createDirectTransaction(sender, await this.getApp(destination), methodName, params, this.web3)
+          async ([destination, methodSignature, params]) =>
+            createDirectTransactionForApp(sender, await this.getApp(destination), methodSignature, params, this.web3)
         )
       )
 
@@ -1377,7 +1415,7 @@ export default class Aragon {
           )
 
           return {
-            direct: true,
+            path: [],
             transactions: decoratedTransactions
           }
         } catch (_) { }
@@ -1406,8 +1444,9 @@ export default class Aragon {
           // Put the finishing touches: apply gas, and add radspec descriptions
           forwarderPath[0] = await this.applyTransactionGas(forwarderPath[0], true)
           return {
-            direct: false,
-            path: await this.describeTransactionPath(forwarderPath)
+            path: await this.describeTransactionPath(forwarderPath),
+            // When we have a path, we only need to send the first transaction to start it
+            transactions: [forwarderPath[0]]
           }
         } catch (_) { }
       }
@@ -1415,7 +1454,7 @@ export default class Aragon {
 
     // Failed to find a path
     return {
-      direct: false,
+      path: [],
       transactions: []
     }
   }
@@ -1526,12 +1565,11 @@ export default class Aragon {
         // Intent basket with multiple transactions in a single callscript
         // First see if the step can be handled with a specialized descriptor
         try {
-          decoratedStep = tryDescribingUpgradeOrganizationBasket(step, this)
+          decoratedStep = await tryDescribingUpgradeOrganizationBasket(step, this)
         } catch (err) { }
 
         // If the step wasn't handled, just individually describe each of the transactions
-        // TODO: annotate this description
-        return decoratedStep || Promise.all(step.map(this.describeTransactionPath))
+        return decoratedStep || this.describeTransactionPath(step)
       }
 
       // Single transaction step
@@ -1551,7 +1589,7 @@ export default class Aragon {
       if (decoratedStep) {
         if (decoratedStep.description) {
           try {
-            const processed = await this.postprocessRadspecDescription(decoratedStep.description)
+            const processed = await postprocessRadspecDescription(decoratedStep.description, this)
             decoratedStep.description = processed.description
             decoratedStep.annotatedDescription = processed.annotatedDescription
           } catch (err) { }
@@ -1564,100 +1602,6 @@ export default class Aragon {
 
       return decoratedStep || step
     }))
-  }
-
-  /**
-   * Look for known addresses and roles in a radspec description and substitute them with a human string
-   *
-   * @param  {string} description
-   * @return {Promise<Object>} Description and annotated description
-   */
-  async postprocessRadspecDescription (description) {
-    const addressRegexStr = '0x[a-fA-F0-9]{40}'
-    const addressRegex = new RegExp(`^${addressRegexStr}$`)
-    const bytes32RegexStr = '0x[a-f0-9]{64}'
-    const bytes32Regex = new RegExp(`^${bytes32RegexStr}$`)
-    const combinedRegex = new RegExp(`\\b(${addressRegexStr}|${bytes32RegexStr})\\b`)
-
-    const tokens = description
-      .split(combinedRegex)
-      .map(token => token.trim())
-      .filter(token => token)
-
-    if (tokens.length <= 1) {
-      return { description }
-    }
-
-    const apps = await this.apps.pipe(first()).toPromise()
-    const roles = apps
-      .map(({ roles }) => roles || [])
-      .reduce((acc, roles) => acc.concat(roles), []) // flatten
-
-    const annotateAddress = (input) => {
-      if (addressesEqual(input, ANY_ENTITY)) {
-        return [input, "'Any account'", { type: 'any-account', value: ANY_ENTITY }]
-      }
-
-      const app = apps.find(
-        ({ proxyAddress }) => addressesEqual(proxyAddress, input)
-      )
-      if (app) {
-        const replacement = `${app.name}${app.identifier ? ` (${app.identifier})` : ''}`
-        return [input, `'${replacement}'`, { type: 'app', value: app }]
-      }
-
-      return [input, input, { type: 'address', value: input }]
-    }
-
-    const annotateBytes32 = (input) => {
-      const role = roles.find(({ bytes }) => bytes === input)
-
-      if (role && role.name) {
-        return [input, `'${role.name}'`, { type: 'role', value: role }]
-      }
-
-      const app = apps.find(({ appId }) => appId === input)
-
-      if (app) {
-        // return the entire app as it contains APM package details
-        return [input, `'${app.appName}'`, { type: 'apmPackage', value: app }]
-      }
-
-      const namespace = getKernelNamespace(input)
-      if (namespace) {
-        return [input, `'${namespace.name}'`, { type: 'kernelNamespace', value: namespace }]
-      }
-
-      return [input, input, { type: 'bytes32', value: input }]
-    }
-
-    const annotateText = (input) => {
-      return [input, input, { type: 'text', value: input }]
-    }
-
-    const annotatedTokens = tokens.map(token => {
-      if (addressRegex.test(token)) {
-        return annotateAddress(token)
-      }
-      if (bytes32Regex.test(token)) {
-        return annotateBytes32(token)
-      }
-      return annotateText(token)
-    })
-
-    const compiled = annotatedTokens.reduce((acc, [_, replacement, annotation]) => {
-      acc.description.push(replacement)
-      acc.annotatedDescription.push(annotation)
-      return acc
-    }, {
-      annotatedDescription: [],
-      description: []
-    })
-
-    return {
-      annotatedDescription: compiled.annotatedDescription,
-      description: compiled.description.join(' ')
-    }
   }
 
   /**
@@ -1724,77 +1668,63 @@ export default class Aragon {
 
   /**
    * Calculate the transaction path for a transaction to `destination`
-   * that invokes `methodName` with `params`.
+   * that invokes `methodSignature` with `params`.
    *
    * @param  {string} sender
    * @param  {string} destination
-   * @param  {string} methodName
+   * @param  {string} methodSignature
    * @param  {Array<*>} params
    * @param  {string} [finalForwarder] Address of the final forwarder that can perfom the action.
    *                  Needed for actions that aren't in the ACL but whose execution depends on other factors
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async calculateTransactionPath (sender, destination, methodName, params, finalForwarder) {
-    const finalForwarderProvided = isAddress(finalForwarder)
-
-    const permissions = await this.permissions.pipe(first()).toPromise()
+  async calculateTransactionPath (sender, destination, methodSignature, params, finalForwarder) {
+    // Get the destination app
     const app = await this.getApp(destination)
-    const directTransaction = await createDirectTransaction(sender, app, methodName, params, this.web3)
-
-    let appsWithPermissionForMethod = []
-
-    // Only try to perform direct transaction if no final forwarder is provided or
-    // if the final forwarder is the sender
-    if (!finalForwarderProvided || finalForwarder === sender) {
-      const methods = app.functions
-
-      if (!methods) {
-        throw new Error(`No functions specified in artifact for ${destination}`)
-      }
-
-      // Find method description from the function signatures
-      const method = methods.find(
-        (method) => method.sig.split('(')[0] === methodName
-      )
-      if (!method) {
-        throw new Error(`No method named ${methodName} on ${destination}`)
-      }
-
-      // If the method has no ACL requirements, we assume we
-      // can perform the action directly
-      if (method.roles.length === 0) {
-        try {
-          // `applyTransactionGas` can throw if the transaction will fail
-          // If that happens, we give up as we should've been able to perform the action directly
-          return [await this.applyTransactionGas(directTransaction)]
-        } catch (_) {
-          return []
-        }
-      }
-
-      const roleSig = app.roles.find(
-        (role) => role.id === method.roles[0]
-      ).bytes
-
-      const permissionsForDestination = permissions[destination]
-      appsWithPermissionForMethod = dotprop.get(
-        permissionsForDestination,
-        `${roleSig}.allowedEntities`,
-        []
-      )
-
-      // No one has access, so of course we (or the final forwarder) don't as well
-      if (appsWithPermissionForMethod.length === 0) {
-        return []
-      }
-
-      try {
-        // `applyTransactionGas` can throw if the transaction will fail
-        // If that happens, we will try to find a transaction path through a forwarder
-        return [await this.applyTransactionGas(directTransaction)]
-      } catch (_) { }
+    if (!app) {
+      throw new Error(`Transaction path destination (${destination}) is not an installed app`)
     }
 
+    const methods = app.functions
+    if (!methods) {
+      throw new Error(`No functions specified in artifact for ${destination}`)
+    }
+
+    // Find the relevant method information
+    // Is the given method a full signature, e.g. 'foo(arg1,arg2,...)'
+    const fullMethodSignature =
+      Boolean(methodSignature) && methodSignature.includes('(') && methodSignature.includes(')')
+    const method = methods.find(
+      (method) => fullMethodSignature
+        ? method.sig === methodSignature
+        // If the full signature isn't given, just select the first overload declared
+        : method.sig.split('(')[0] === methodSignature
+    )
+    if (!method) {
+      throw new Error(`No method named ${methodSignature} on ${destination}`)
+    }
+
+    const finalForwarderProvided = isAddress(finalForwarder)
+    const directTransaction = await createDirectTransactionForApp(sender, app, method.sig, params, this.web3)
+
+    // We can already assume the user is able to directly invoke the action if:
+    //   - The method has no ACL requirements and no final forwarder was given, or
+    //   - The final forwarder matches the sender
+    if (
+      (method.roles.length === 0 && !finalForwarderProvided) ||
+      addressesEqual(finalForwarder, sender)
+    ) {
+      try {
+        // `applyTransactionGas` can throw if the transaction will fail
+        return [await this.applyTransactionGas(directTransaction)]
+      } catch (_) {
+        // If the direct transaction fails, we give up as we should have been able to
+        // perform the action directly
+        return []
+      }
+    }
+
+    // Failing this, attempt transaction pathing algorithm with forwarders
     const forwarders = await this.forwarders.pipe(first()).toPromise().then(
       (forwarders) => forwarders.map(
         (forwarder) => forwarder.proxyAddress
@@ -1802,19 +1732,53 @@ export default class Aragon {
     )
 
     let forwardersWithPermission
-
     if (finalForwarderProvided) {
       if (!includesAddress(forwarders, finalForwarder)) {
+        // Final forwarder was given, but did not match any available forwarders, so no path
+        // could be found
         return []
       }
 
+      // Only attempt to find path with declared final forwarder; assume the final forwarder
+      // is able to invoke the action
       forwardersWithPermission = [finalForwarder]
     } else {
+      // Find entities with the required permissions
+      const permissions = await this.permissions.pipe(first()).toPromise()
+      const destinationPermissions = permissions[destination]
+      const roleSig = app.roles.find(
+        (role) => role.id === method.roles[0]
+      ).bytes
+      const allowedEntities = dotprop.get(
+        destinationPermissions,
+        `${roleSig}.allowedEntities`,
+        []
+      )
+
+      // No one has access, so of course we don't as well
+      if (allowedEntities.length === 0) {
+        return []
+      }
+
+      // User may have permission; attempt direct transaction
+      if (
+        includesAddress(allowedEntities, sender) ||
+        includesAddress(allowedEntities, ANY_ENTITY)
+      ) {
+        try {
+          // `applyTransactionGas` can throw if the transaction will fail
+          return [await this.applyTransactionGas(directTransaction)]
+        } catch (_) {
+          // Don't immediately fail as the permission could have parameters applied that
+          // disallows the user from the current action and forces us to use the full
+          // pathing algorithm
+        }
+      }
+
       // Find forwarders with permission to perform the action
-      forwardersWithPermission = forwarders
-        .filter(
-          (forwarder) => includesAddress(appsWithPermissionForMethod, forwarder)
-        )
+      forwardersWithPermission = forwarders.filter(
+        (forwarder) => includesAddress(allowedEntities, forwarder)
+      )
     }
 
     return this.calculateForwardingPath(sender, destination, directTransaction, forwardersWithPermission)
@@ -1850,7 +1814,7 @@ export default class Aragon {
       if (await this.canForward(forwarder, sender, script)) {
         const transaction = createForwarderTransaction(forwarder, script)
         try {
-          const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+          const transactionWithFee = await applyForwardingFeePretransaction(transaction, this.web3)
           // `applyTransactionGas` can throw if the transaction will fail
           // If that happens, we give up as we should've been able to perform the action with this
           // forwarder
@@ -1910,7 +1874,7 @@ export default class Aragon {
           // Only apply pretransactions and gas to the first transaction in the path
           // as it's the only one that will be executed by the user
           try {
-            const transactionWithFee = await applyForwardingPretransaction(transaction, this.web3)
+            const transactionWithFee = await applyForwardingFeePretransaction(transaction, this.web3)
             // `applyTransactionGas` can throw if the transaction will fail
             // If that happens, we give up as we should've been able to perform the action with this
             // forwarding path
@@ -1941,10 +1905,12 @@ export default class Aragon {
   }
 }
 
-export { isNameUsed } from './templates'
+// Re-export some web3 utilities
+export { apm, getRecommendedGasLimit }
 export { resolve as ensResolve } from './ens'
 
 // Re-export the AddressIdentityProvider abstract base class
 export { AddressIdentityProvider } from './identity'
+
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/rpc-messenger'

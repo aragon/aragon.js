@@ -1,8 +1,11 @@
 import { fromEvent, from } from 'rxjs'
-import { filter } from 'rxjs/operators'
+import { delay, filter } from 'rxjs/operators'
+import { getConfiguration } from '../../configuration'
+import * as configurationKeys from '../../configuration/keys'
+import { getEventNames } from '../../utils/events'
 
-export default class Proxy {
-  constructor (address, jsonInterface, web3, initializationBlock = 0) {
+export default class ContractProxy {
+  constructor (address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
     this.address = address
     this.contract = new web3.eth.Contract(
       jsonInterface,
@@ -16,56 +19,50 @@ export default class Proxy {
    * Fetches past events for a given block range
    *
    * @param {Array<String>} eventNames events to fetch
-   * @param {Object} options object with fromBlock and toBlock to specify the range
-   * @return {Observable} Single emission observable with the past events
+   * @param {Object} [options] web3.eth.Contract.getPastEvents()' options
+   *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
+   * @return {Observable} Single-emission observable with an array of past events
    */
-  pastEvents (eventNames, { fromBlock = this.initializationBlock, toBlock = null } = {}) {
-    // Get all events
-    if (!eventNames) {
-      eventNames = ['allEvents']
-    }
+  pastEvents (eventNames, options = {}) {
+    options.fromBlock = options.fromBlock || this.initializationBlock
+    eventNames = getEventNames(eventNames)
 
-    // Convert `eventNames` to an array in order to
-    // support `.events(name)` and `.events([a, b])`
-    if (!Array.isArray(eventNames)) {
-      eventNames = [eventNames]
-    }
-
+    // The `from`s only unpack the returned Promises (and not the array inside them!)
     if (eventNames.length === 1) {
-      //
+      // Get a specific event or all events unfiltered
       return from(
-        this.contract.getPastEvents(eventNames[0], { fromBlock, toBlock })
+        this.contract.getPastEvents(eventNames[0], options)
       )
     } else {
-      // Get all events in the block range and filter
+      // Get all events and filter ourselves
       return from(
-        this.contract.getPastEvents('allEvents', { fromBlock, toBlock })
+        this.contract.getPastEvents('allEvents', options)
           .then(events => events.filter(event => eventNames.includes(event.event)))
       )
     }
   }
-  // TODO: Make this a hot observable
-  events (eventNames, options = { fromBlock: this.initializationBlock }) {
-    // Get all events
-    if (!eventNames) {
-      eventNames = ['allEvents']
-    }
 
-    // Convert `eventNames` to an array in order to
-    // support `.events(name)` and `.events([a, b])`
-    if (!Array.isArray(eventNames)) {
-      eventNames = [eventNames]
-    }
+  /**
+   * Subscribe to events, fetching past events if necessary (based on the given options)
+   *
+   * @param {Array<String>} eventNames events to fetch
+   * @param {Object} options web3.eth.Contract.events()' options
+   *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
+   * @return {Observable} Multi-emission observable with individual events
+   */
+  events (eventNames, options = {}) {
+    options.fromBlock = options.fromBlock || this.initializationBlock
+    eventNames = getEventNames(eventNames)
 
     let eventSource
     if (eventNames.length === 1) {
-      // Get a specific event
+      // Get a specific event or all events unfiltered
       eventSource = fromEvent(
         this.contract.events[eventNames[0]](options),
         'data'
       )
     } else {
-      // Get multiple events
+      // Get all events and filter ourselves
       eventSource = fromEvent(
         this.contract.events.allEvents(options),
         'data'
@@ -74,7 +71,9 @@ export default class Proxy {
       )
     }
 
-    return eventSource
+    const eventDelay = getConfiguration(configurationKeys.SUBSCRIPTION_EVENT_DELAY) || 0
+    // Small optimization: don't pipe a delay if we don't have to
+    return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
   }
 
   async call (method, ...params) {
