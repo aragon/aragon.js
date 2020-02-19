@@ -26,7 +26,10 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
     if (method) {
       return {
         method,
-        abi: app.abi
+        // This is not very nice, but some apps don't have ABIs attached to their function
+        // declarations and so we have to fall back to using their full app ABI
+        // TODO: define a more concrete schema around the artifact.json's `function.abi`
+        abi: method.abi ? [method.abi] : app.abi
       }
     }
   }, undefined)
