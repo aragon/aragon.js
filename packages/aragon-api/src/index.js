@@ -369,7 +369,7 @@ export class AppProxy {
       events: (options = {}) => {
         return this.rpc.sendAndObserveResponses(
           'external_events',
-          [address, eventsInterface, 'allEvents', options]
+          [address, eventsInterface, options.event ? options.event : 'allEvents', options]
         ).pipe(
           pluck('result')
         )
@@ -377,7 +377,7 @@ export class AppProxy {
       pastEvents: (options = {}) => {
         return this.rpc.sendAndObserveResponse(
           'external_past_events',
-          [address, eventsInterface, 'allEvents', options]
+          [address, eventsInterface, options.event ? options.event : 'allEvents', options]
         ).pipe(
           pluck('result')
         )
