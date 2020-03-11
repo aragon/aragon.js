@@ -38,7 +38,7 @@ Unsure where to begin contributing? You can start by looking through these `good
 * [Good first issue](https://github.com/aragon/aragon.js/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) - issues which should only require a few lines of code, and a test or two.
 
 ## Getting help
-If you need help, please reach out to Aragon core contributors and community members in the [#dev-help channel](https://aragon.chat/channel/dev-help) on the Aragon Chat.  We'd love to hear from you and know what you're working on!
+If you need help, please reach out to Aragon core contributors and community members on [Discord](https://spectrum.chat/aragon).  We'd love to hear from you and know what you're working on!
 
 ## Styleguides
 
