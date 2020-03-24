@@ -1037,7 +1037,7 @@ export default class Aragon {
   async initNetwork () {
     this.network = new ReplaySubject(1)
     this.network.next({
-      id: await this.web3.eth.net.getId(),
+      id: await this.web3.eth.getChainId(),
       type: await this.web3.eth.net.getNetworkType()
     })
   }
