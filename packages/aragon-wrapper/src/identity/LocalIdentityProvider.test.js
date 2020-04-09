@@ -31,17 +31,15 @@ test.serial('should modify a local identity', async t => {
 })
 
 test.serial('should throw an error when no name is given', async t => {
-  t.plan(2)
+  t.plan(1)
   const provider = t.context.localIdentityProvider
 
-  const error = await t.throwsAsync(async () => {
+  await t.throwsAsync(async () => {
     await provider.modify(ADDRESS_MIXED_CASE)
   }, {
     instanceOf: Error,
     message: 'name is required when modifying a local identity'
   })
-
-  t.is(error.message, 'name is required when modifying a local identity')
 })
 
 test.serial('should return null when resolving non existent local identity', async t => {
@@ -50,6 +48,15 @@ test.serial('should return null when resolving non existent local identity', asy
 
   const identityMetadata = await provider.resolve(ADDRESS_LOWER_CASE)
   t.is(identityMetadata, null)
+})
+
+test.serial('should throw an error when no address is provided', async t => {
+  t.plan(1)
+  const provider = t.context.localIdentityProvider
+
+  await t.throwsAsync(provider.resolve(null), {
+    instanceOf: Error
+  })
 })
 
 test.serial('should be case insensitive when resolving', async t => {
