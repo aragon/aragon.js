@@ -16,6 +16,7 @@ import {
 } from 'rxjs/operators'
 import Messenger, { providers } from '@aragon/rpc-messenger'
 import { debug, getIconBySize } from './utils'
+import ExternalProxy from './externalProxy'
 
 export const events = {
   ACCOUNTS_TRIGGER: 'ACCOUNTS_TRIGGER',
@@ -363,58 +364,7 @@ export class AppProxy {
    *   - Calling any other method on the handle will send a call or an external intent to the smart contract and return a single-emission Observable with the result
    */
   external (address, jsonInterface) {
-    const eventsInterface = jsonInterface.filter((item) => item.type === 'event')
-
-    const contract = {
-      events: (options = {}) => {
-        return this.rpc.sendAndObserveResponses(
-          'external_events',
-          [address, eventsInterface, 'allEvents', options]
-        ).pipe(
-          pluck('result')
-        )
-      },
-      pastEvents: (options = {}) => {
-        return this.rpc.sendAndObserveResponse(
-          'external_past_events',
-          [address, eventsInterface, 'allEvents', options]
-        ).pipe(
-          pluck('result')
-        )
-      }
-    }
-
-    // Bind calls
-    const callMethods = jsonInterface.filter(
-      (item) => item.type === 'function' && item.constant
-    )
-    callMethods.forEach((methodJsonDescription) => {
-      contract[methodJsonDescription.name] = (...params) => {
-        return this.rpc.sendAndObserveResponse(
-          'external_call',
-          [address, methodJsonDescription, ...params]
-        ).pipe(
-          pluck('result')
-        )
-      }
-    })
-
-    // Bind non-call (ie. "write") methods for external intents
-    const intentMethods = jsonInterface.filter(
-      (item) => item.type === 'function' && !item.constant
-    )
-    intentMethods.forEach((methodJsonDescription) => {
-      contract[methodJsonDescription.name] = (...params) => {
-        return this.rpc.sendAndObserveResponse(
-          'external_intent',
-          [address, methodJsonDescription, ...params]
-        ).pipe(
-          pluck('result')
-        )
-      }
-    })
-
-    return contract
+    return new ExternalProxy(this.rpc, address, jsonInterface)
   }
 
   /**
