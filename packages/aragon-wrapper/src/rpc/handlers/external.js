@@ -16,8 +16,8 @@ export function call (request, proxy, wrapper) {
     [methodJsonDescription],
     address
   )
-  // Here we must use method signature instead of name
-  return contract.methods[methodJsonDescription.name](...params).call() //HERE
+
+  return contract.methods[methodJsonDescription.name](...params).call()
 }
 
 export async function intent (request, proxy, wrapper) {
@@ -32,6 +32,7 @@ export async function intent (request, proxy, wrapper) {
     methodJsonDescription,
     params
   )
+
   return wrapper.performTransactionPath(transactionPath, { external: true })
 }
 
