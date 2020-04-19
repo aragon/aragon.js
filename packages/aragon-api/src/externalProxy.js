@@ -1,7 +1,7 @@
 import {
     pluck,
 } from 'rxjs/operators'
-
+import { findMethodBySignature } from './utils'
 
 class ExternalTarget {
     constructor (rpc, address, jsonInterface) {
@@ -41,24 +41,23 @@ export default class ExternalProxy {
       )
     }
 }
-  
 const ExternalProxyHandler = {
     get (target, name, receiver) {
         if (name in target) {
             return target[name]
         }
-        const callMethod = target.jsonInterface.filter(
-            (item) => item.type === 'function' && item.constant && item.name === name
-        )
-        if (callMethod.length === 1) {
-            return externalCalls(target.address, callMethod[0], target.rpc)
+        const { jsonInterface, address, rpc } = target
+
+        const fullMethodSignature = Boolean(name) && name.includes('(') && name.includes(')')
+        let methodJsonDescription = undefined
+        if (fullMethodSignature) {
+            methodJsonDescription = findMethodBySignature(name, jsonInterface)
+        } else {
+            methodJsonDescription = jsonInterface.filter(
+                (item) => item.type === 'function' && item.name === name
+            )[0]
         }
-        const intentMethod = target.jsonInterface.filter(
-            (item) => item.type === 'function' && !item.constant && item.name === name
-        )
-        if (intentMethod.length === 1) {
-            return externalInitents(target.address, intentMethod[0], target.rpc)
-        }
+        return Boolean(methodJsonDescription) && methodJsonDescription.constant ? externalCalls(address, methodJsonDescription, rpc) : externalInitents(address, methodJsonDescription, rpc)
     }
 }
 

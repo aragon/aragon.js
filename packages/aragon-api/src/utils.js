@@ -32,3 +32,30 @@ export function getIconBySize (icons, size = -1) {
     sizes[sizes.length - 1])[0]
   return icons[iconIndex]
 }
+
+export function findMethodBySignature (signature, jsonInterface) {
+  const { name, types } = getNameAndTypesFromSignature(signature)
+  const callMethods = jsonInterface.filter(
+      (item) => item.type === 'function' && item.name === name
+  )
+  const result = callMethods.filter( (item) => matchTypesOnJsonInterface(item.inputs, types) )
+  return result.length === 1 ? result[0] : undefined
+}
+
+function getNameAndTypesFromSignature (signature) {
+  let signatureChunks = signature.split('(')
+  const name = signatureChunks[0]
+  signatureChunks = signatureChunks[1].split(')')
+  const types = signatureChunks[0].split(',')
+  return {
+    name,
+    types,
+  }
+}
+
+function matchTypesOnJsonInterface (inputs, types) {
+  const results = types.map((type) => {
+      Boolean(inputs.find( (input) => input.type === type ))
+  })
+  return results.find((item) => item === false) === false ? false : true
+}

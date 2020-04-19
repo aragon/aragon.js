@@ -420,6 +420,57 @@ test('should return a handle for creating external calls', t => {
   )
 })
 
+test('should return a handle for creating external calls with function payload', t => {
+  t.plan(2)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableCall = of({
+    id: 'uuid4',
+    result: 'bob was granted permission for the counter app'
+  })
+
+  const jsonInterfaceStub = [
+    { 
+      type: 'function', 
+      name: 'grantPermission', 
+      constant: true,     
+      inputs: [
+        {
+          name: "_owner",
+          type: "address"
+        },
+        {
+          name: "app",
+          type: "address"
+        }
+      ], 
+    }
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableCall)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+  const callResult = result['grantPermission(address, address)']('0xbob', '0xcounter')
+
+  // assert
+  subscribe(callResult, value => {
+    t.is(value, 'bob was granted permission for the counter app')
+  })
+
+  t.true(
+    instanceStub.rpc.sendAndObserveResponse.calledOnceWith(
+      'external_call',
+      ['0xextContract', jsonInterfaceStub[0], '0xbob', '0xcounter']
+    )
+  )
+})
+
 test('should return a handle for creating external transaction intents', t => {
   t.plan(2)
   // arrange
@@ -455,6 +506,58 @@ test('should return a handle for creating external transaction intents', t => {
     )
   )
 })
+
+test('should return a handle for creating external intents with function payload', t => {
+  t.plan(2)
+  // arrange
+  const externalFn = Index.AppProxy.prototype.external
+  const observableCall = of({
+    id: 'uuid4',
+    result: 'bob was granted permission for the counter app'
+  })
+
+  const jsonInterfaceStub = [
+    { 
+      type: 'function', 
+      name: 'grantPermission', 
+      constant: false,     
+      inputs: [
+        {
+          name: "_owner",
+          type: "address"
+        },
+        {
+          name: "app",
+          type: "address"
+        }
+      ], 
+    }
+  ]
+
+  const instanceStub = {
+    rpc: {
+      // Mimic behaviour of @aragon/rpc-messenger
+      sendAndObserveResponse: createDeferredStub(observableCall)
+    }
+  }
+
+  // act
+  const result = externalFn.call(instanceStub, '0xextContract', jsonInterfaceStub)
+  const callResult = result['grantPermission(address, address)']('0xbob', '0xcounter')
+
+  // assert
+  subscribe(callResult, value => {
+    t.is(value, 'bob was granted permission for the counter app')
+  })
+
+  t.true(
+    instanceStub.rpc.sendAndObserveResponse.calledOnceWith(
+      'external_intent',
+      ['0xextContract', jsonInterfaceStub[0], '0xbob', '0xcounter']
+    )
+  )
+})
+
 
 test('should return the state from cache', t => {
   t.plan(3)
