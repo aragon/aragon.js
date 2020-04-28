@@ -25,7 +25,7 @@ export default class LocalIdentityProvider extends AddressIdentityProvider {
    * @param  {string} address Address to resolve
    * @return {Promise} Resolved metadata, null when not found, rejected on error
    */
-  resolve (address) {
+  async resolve (address) {
     address = address.toLowerCase()
     return this.identityCache.get(address)
   }
