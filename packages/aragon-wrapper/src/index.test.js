@@ -233,8 +233,8 @@ test('should get the network details from web3', async (t) => {
   const testNetworkType = 'rinkeby'
   instance.web3 = {
     eth: {
+      getChainId: sinon.stub().resolves(testNetworkId),
       net: {
-        getId: sinon.stub().resolves(testNetworkId),
         getNetworkType: sinon.stub().resolves(testNetworkType)
       }
     }
