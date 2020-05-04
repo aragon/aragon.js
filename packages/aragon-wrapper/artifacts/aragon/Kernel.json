@@ -5,6 +5,11 @@
       "name": "Manage apps",
       "id": "APP_MANAGER_ROLE",
       "bytes": "0xb6d92708f3d4817afc106147d969e229ced5c46e65e0a5002a0d391287762bd0"
+    },
+    {
+      "name": "Manage profile",
+      "id": "MANAGE_PROFILE_ROLE",
+      "bytes": "0x675b358b95ae7561136697fcc3302da54a334ac7c199d53621288290fb863f5c"
     }
   ],
   "functions": [
