@@ -20,7 +20,7 @@ export async function postprocessRadspecDescription (description, wrapper) {
     .map(token => token.trim())
     .filter(token => token)
 
-  if (tokens.length <= 1) {
+  if (tokens.length < 1) {
     return { description }
   }
 

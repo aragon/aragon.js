@@ -72,6 +72,8 @@ export const detectProvider = () =>
     ? web3.currentProvider // eslint-disable-line
     : 'wss://rinkeby.eth.aragon.network/ws'
 
+console.log('linked wrapper')
+
 /**
  * An Aragon wrapper.
  *
