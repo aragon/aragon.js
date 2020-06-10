@@ -1,6 +1,6 @@
 {
   "name": "@aragon/wrapper",
-  "version": "5.0.0-rc.26",
+  "version": "5.0.0-rc.27",
   "description": "Library for Aragon client implementations",
   "main": "dist/index.js",
   "files": [
