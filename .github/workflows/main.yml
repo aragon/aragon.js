@@ -8,13 +8,15 @@ jobs:
     - name: Install node
       uses: actions/setup-node@v1
       with:
-        node-version: 10
+        node-version: 12
     - name: npm install
       run: npm install
     - name: npm lint
       run: npm run lint
     - name: test
-      run: npm run test
+      run: |
+        npm run test
+        npx lcov-result-merger 'packages/*/coverage/lcov.info' | ./node_modules/.bin/coveralls
     - name: size-limit
       run: |
         npm run build
