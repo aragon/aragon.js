@@ -4,12 +4,11 @@
 # Dependencies
 node_modules
 
-# Ignore lock files
-package-lock.json
-yarn.lock
-
 # Artifacts
 dist
+
+# Ignore package-lock files (only use yarn.lock files)
+package-lock.json
 
 # Tests and coverage
 coverage
