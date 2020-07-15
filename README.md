@@ -6,11 +6,6 @@
     <img src="https://img.shields.io/badge/stability-experimental-orange.svg?style=flat-square"
       alt="API stability" />
   </a>
-  <!-- Build Status -->
-  <a href="https://travis-ci.org/aragon/aragon.js">
-    <img src="https://img.shields.io/travis/aragon/aragon.js/master.svg?style=flat-square"
-      alt="Build Status" />
-  </a>
   <!-- Test Coverage -->
   <a href="https://coveralls.io/github/aragon/aragon.js">
     <img src="https://img.shields.io/coveralls/aragon/aragon.js.svg?style=flat-square"

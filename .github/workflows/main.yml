@@ -1,5 +1,7 @@
-on: push
 name: CI
+
+on: push
+
 jobs:
   CI:
     runs-on: ubuntu-latest
@@ -9,17 +11,23 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 12
-    - name: npm install
-      run: npm install
-    - name: npm lint
-      run: npm run lint
+    - name: Install
+      run: yarn install --frozen-lockfile
+    - name: Lint
+      run: yarn lint
     - name: test
       run: |
-        npm run test
-        npx lcov-result-merger 'packages/*/coverage/lcov.info' | ./node_modules/.bin/coveralls
+        yarn test
+        # Merge coverage into a local coverage file
+        npx lcov-result-merger 'packages/*/coverage/lcov.info' './merged-lcov.info'
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: './merged-lcov.info'
     - name: size-limit
       run: |
-        npm run build
-        npm run size
-    env:
-      CI: true
+        yarn build
+        yarn size
+env:
+  CI: true
