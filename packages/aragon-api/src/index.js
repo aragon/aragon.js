@@ -388,11 +388,11 @@ export class AppProxy {
     const callMethods = jsonInterface.filter(
       (item) => item.type === 'function' && item.constant
     )
-    callMethods.forEach((methodJsonDescription) => {
-      contract[methodJsonDescription.name] = (...params) => {
+    callMethods.forEach((methodAbiFragment) => {
+      contract[methodAbiFragment.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_call',
-          [address, methodJsonDescription, ...params]
+          [address, methodAbiFragment, ...params]
         ).pipe(
           pluck('result')
         )
@@ -403,11 +403,11 @@ export class AppProxy {
     const intentMethods = jsonInterface.filter(
       (item) => item.type === 'function' && !item.constant
     )
-    intentMethods.forEach((methodJsonDescription) => {
-      contract[methodJsonDescription.name] = (...params) => {
+    intentMethods.forEach((methodAbiFragment) => {
+      contract[methodAbiFragment.name] = (...params) => {
         return this.rpc.sendAndObserveResponse(
           'external_intent',
-          [address, methodJsonDescription, ...params]
+          [address, methodAbiFragment, ...params]
         ).pipe(
           pluck('result')
         )

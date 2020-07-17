@@ -8,28 +8,28 @@ export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [
     address,
-    methodJsonDescription,
+    methodAbiFragment,
     ...params
   ] = request.params
 
   const contract = new web3.eth.Contract(
-    [methodJsonDescription],
+    [methodAbiFragment],
     address
   )
 
-  return contract.methods[methodJsonDescription.name](...params).call()
+  return contract.methods[methodAbiFragment.name](...params).call()
 }
 
 export async function intent (request, proxy, wrapper) {
   const [
     address,
-    methodJsonDescription,
+    methodAbiFragment,
     ...params
   ] = request.params
 
   const transactionPath = await wrapper.getExternalTransactionPath(
     address,
-    methodJsonDescription,
+    methodAbiFragment,
     params
   )
 

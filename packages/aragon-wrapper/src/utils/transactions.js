@@ -82,11 +82,11 @@ export async function applyForwardingFeePretransaction (forwardingTransaction, w
   return applyPretransaction(forwardingTransaction, web3)
 }
 
-export async function createDirectTransaction (sender, destination, methodJsonDescription, params, web3) {
+export async function createDirectTransaction (sender, destination, methodAbiFragment, params, web3) {
   let transactionOptions = {}
 
   // If an extra parameter has been provided, it is the transaction options if it is an object
-  if (methodJsonDescription.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
+  if (methodAbiFragment.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
     const options = params.pop()
     transactionOptions = { ...transactionOptions, ...options }
   }
@@ -96,7 +96,7 @@ export async function createDirectTransaction (sender, destination, methodJsonDe
     ...transactionOptions, // Options are overwriten by the values below
     from: sender,
     to: destination,
-    data: web3.eth.abi.encodeFunctionCall(methodJsonDescription, params)
+    data: web3.eth.abi.encodeFunctionCall(methodAbiFragment, params)
   }
 
   // Add any pretransactions specified
@@ -118,7 +118,7 @@ export async function createDirectTransactionForApp (sender, app, methodSignatur
   const fullMethodSignature =
     Boolean(methodSignature) && methodSignature.includes('(') && methodSignature.includes(')')
 
-  const methodJsonDescription = app.abi.find(
+  const methodAbiFragment = app.abi.find(
     (method) => {
       // If the full signature isn't given, just find the first overload declared
       if (!fullMethodSignature) {
@@ -132,11 +132,11 @@ export async function createDirectTransactionForApp (sender, app, methodSignatur
     }
   )
 
-  if (!methodJsonDescription) {
+  if (!methodAbiFragment) {
     throw new Error(`${methodSignature} not found on ABI for ${destination}`)
   }
 
-  return createDirectTransaction(sender, destination, methodJsonDescription, params, web3)
+  return createDirectTransaction(sender, destination, methodAbiFragment, params, web3)
 }
 
 export function createForwarderTransactionBuilder (sender, directTransaction, web3) {
