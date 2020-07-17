@@ -1317,19 +1317,19 @@ export default class Aragon {
   /**
    * Calculate the transaction path for a transaction to an external `destination`
    * (not the currently running app) that invokes a method matching the
-   * `methodJsonDescription` with `params`.
+   * `methodAbiFragment` with `params`.
    *
    * @param  {string} destination Address of the external contract
-   * @param  {object} methodJsonDescription ABI description of method to invoke
+   * @param  {object} methodAbiFragment ABI fragment of method to invoke
    * @param  {Array<*>} params
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path.
    *   If the destination is a non-installed contract, always results in an array containing a
    *   single transaction.
    */
-  async getExternalTransactionPath (destination, methodJsonDescription, params) {
+  async getExternalTransactionPath (destination, methodAbiFragment, params) {
     if (addressesEqual(destination, this.aclProxy.address)) {
       try {
-        return this.getACLTransactionPath(methodJsonDescription.name, params)
+        return this.getACLTransactionPath(methodAbiFragment.name, params)
       } catch (_) {
         return []
       }
@@ -1338,7 +1338,7 @@ export default class Aragon {
     const installedApp = await this.getApp(destination)
     if (installedApp) {
       // Destination is an installed app; need to go through normal transaction pathing
-      return this.getTransactionPath(destination, methodJsonDescription.name, params)
+      return this.getTransactionPath(destination, methodAbiFragment.name, params)
     }
 
     // Destination is not an installed app on this org, just create a direct transaction
@@ -1346,7 +1346,7 @@ export default class Aragon {
     const account = (await this.getAccounts())[0]
 
     try {
-      const tx = await createDirectTransaction(account, destination, methodJsonDescription, params, this.web3)
+      const tx = await createDirectTransaction(account, destination, methodAbiFragment, params, this.web3)
       return this.describeTransactionPath([tx])
     } catch (_) {
       return []
