@@ -1,4 +1,4 @@
-![aragonJS logo](/docs/assets/brand/aragonjs.png)
+![aragonJS logo](/docs/assets/brand/aragonapi.svg)
 
 A JavaScript implementation of aragonAPI, used to interact with aragonOS by handling transaction pathing, upgradeability and state of the contracts.
 
