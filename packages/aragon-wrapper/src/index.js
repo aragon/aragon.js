@@ -1680,7 +1680,7 @@ export default class Aragon {
       throw new Error(`Transaction path destination (${destination}) is not an installed app`)
     }
 
-    const method = findAppMethodFromSignature(app.abi, methodSignature, { allowDeprecated: false })
+    const method = findAppMethodFromSignature(app, methodSignature, { allowDeprecated: false })
     if (!method) {
       throw new Error(`No method named ${methodSignature} on ${destination}`)
     }
