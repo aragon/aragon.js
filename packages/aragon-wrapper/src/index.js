@@ -55,6 +55,8 @@ import {
   makeProxyFromAppABI,
   AsyncRequestCache
 } from './utils'
+import { findMethodAbiFragment } from './utils/abi'
+import { findAppMethodFromSignature } from './utils/apps'
 import { decodeCallScript, encodeCallScript, isCallScript } from './utils/callscript'
 import { isValidForwardCall, parseForwardCall } from './utils/forwarding'
 import { doIntentPathsMatch } from './utils/intents'
@@ -1476,49 +1478,42 @@ export default class Aragon {
   /**
    * Calculates transaction path for performing a method on the ACL
    *
-   * @param {string} method
+   * @param {string} methodSignature
    * @param {Array<*>} params
    * @return {Promise<Array<Object>>} An array of Ethereum transactions that describe each step in the path
    */
-  async getACLTransactionPath (method, params) {
+  async getACLTransactionPath (methodSignature, params) {
     const aclAddr = this.aclProxy.address
-
     const acl = await this.getApp(aclAddr)
 
-    const functionArtifact = acl.functions.find(
-      ({ sig }) => sig.split('(')[0] === method
-    )
-
-    if (!functionArtifact) {
-      throw new Error(`Method ${method} not found on ACL artifact`)
+    const method = findAppMethodFromSignature(acl, methodSignature, { allowDeprecated: false })
+    if (!method) {
+      throw new Error(`No method named ${methodSignature} on ACL`)
     }
 
-    if (functionArtifact.roles && functionArtifact.roles.length !== 0) {
-      // createPermission can be done with regular transaction pathing (it has a regular ACL role)
-      return this.getTransactionPath(aclAddr, method, params)
+    if (method.roles && method.roles.length !== 0) {
+      // This action can be done with regular transaction pathing (it's protected by an ACL role)
+      return this.getTransactionPath(aclAddr, methodSignature, params)
     } else {
-      // All other ACL functions don't have a role, the manager needs to be provided to aid transaction pathing
-
-      // Inspect ABI to find the position of the 'app' and 'role' parameters needed to get the permission manager
-      const methodABI = acl.abi.find(
-        (item) => item.name === method && item.type === 'function'
-      )
-
-      if (!methodABI) {
+      // Some ACL functions don't have a role and are instead protected by a manager
+      // Inspect the matched method's ABI to find the position of the 'app' and 'role' parameters
+      // needed to get the permission manager
+      const methodAbiFragment = findMethodAbiFragment(acl.abi, methodSignature)
+      if (!methodAbiFragment) {
         throw new Error(`Method ${method} not found on ACL ABI`)
       }
 
-      const inputNames = methodABI.inputs.map((input) => input.name)
+      const inputNames = methodAbiFragment.inputs.map((input) => input.name)
       const appIndex = inputNames.indexOf('_app')
       const roleIndex = inputNames.indexOf('_role')
 
       if (appIndex === -1 || roleIndex === -1) {
-        throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
+        throw new Error(`Method ${methodSignature} doesn't take _app and _role as input. Permission manager cannot be found.`)
       }
 
       const manager = await this.getPermissionManager(params[appIndex], params[roleIndex])
 
-      return this.getTransactionPath(aclAddr, method, params, manager)
+      return this.getTransactionPath(aclAddr, methodSignature, params, manager)
     }
   }
 
@@ -1685,27 +1680,15 @@ export default class Aragon {
       throw new Error(`Transaction path destination (${destination}) is not an installed app`)
     }
 
-    const methods = app.functions
-    if (!methods) {
-      throw new Error(`No functions specified in artifact for ${destination}`)
-    }
-
-    // Find the relevant method information
-    // Is the given method a full signature, e.g. 'foo(arg1,arg2,...)'
-    const fullMethodSignature =
-      Boolean(methodSignature) && methodSignature.includes('(') && methodSignature.includes(')')
-    const method = methods.find(
-      (method) => fullMethodSignature
-        ? method.sig === methodSignature
-        // If the full signature isn't given, just select the first overload declared
-        : method.sig.split('(')[0] === methodSignature
-    )
+    const method = findAppMethodFromSignature(app, methodSignature, { allowDeprecated: false })
     if (!method) {
       throw new Error(`No method named ${methodSignature} on ${destination}`)
     }
 
+    // Create transaction for target action
+    const directTransaction = await createDirectTransactionForApp(sender, app, methodSignature, params, this.web3)
+
     const finalForwarderProvided = isAddress(finalForwarder)
-    const directTransaction = await createDirectTransactionForApp(sender, app, method.sig, params, this.web3)
 
     // We can already assume the user is able to directly invoke the action if:
     //   - The method has no ACL requirements and no final forwarder was given, or

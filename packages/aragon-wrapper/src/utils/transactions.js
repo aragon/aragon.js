@@ -1,5 +1,6 @@
 import { toBN } from 'web3-utils'
 import { getAbi } from '../interfaces'
+import { findMethodAbiFragment } from './abi'
 
 const DEFAULT_GAS_FUZZ_FACTOR = 1.5
 const PREVIOUS_BLOCK_GAS_LIMIT_FACTOR = 0.95
@@ -83,10 +84,22 @@ export async function applyForwardingFeePretransaction (forwardingTransaction, w
 }
 
 export async function createDirectTransaction (sender, destination, methodAbiFragment, params, web3) {
-  let transactionOptions = {}
+  let paramsIncludesTransactionOptions = false
+  if (methodAbiFragment.type === 'fallback') {
+    if (params.length > 1) {
+      throw new Error('Could not create transaction to fallback function due to too many parameters', params)
+    }
 
-  // If an extra parameter has been provided, it is the transaction options if it is an object
-  if (methodAbiFragment.inputs.length + 1 === params.length && typeof params[params.length - 1] === 'object') {
+    paramsIncludesTransactionOptions = params.length === 1
+  } else if (
+    methodAbiFragment.inputs.length + 1 === params.length &&
+    typeof params[params.length - 1] === 'object'
+  ) {
+    paramsIncludesTransactionOptions = true
+  }
+
+  let transactionOptions = {}
+  if (paramsIncludesTransactionOptions) {
     const options = params.pop()
     transactionOptions = { ...transactionOptions, ...options }
   }
@@ -105,7 +118,7 @@ export async function createDirectTransaction (sender, destination, methodAbiFra
 
 export async function createDirectTransactionForApp (sender, app, methodSignature, params, web3) {
   if (!app) {
-    throw new Error(`Could not create transaction due to missing app artifact`)
+    throw new Error('Could not create transaction due to missing app artifact')
   }
 
   const { proxyAddress: destination } = app
@@ -114,24 +127,7 @@ export async function createDirectTransactionForApp (sender, app, methodSignatur
     throw new Error(`No ABI specified in artifact for ${destination}`)
   }
 
-  // Is the given method a full signature, e.g. 'foo(arg1,arg2,...)'
-  const fullMethodSignature =
-    Boolean(methodSignature) && methodSignature.includes('(') && methodSignature.includes(')')
-
-  const methodAbiFragment = app.abi.find(
-    (method) => {
-      // If the full signature isn't given, just find the first overload declared
-      if (!fullMethodSignature) {
-        return method.name === methodSignature
-      }
-
-      // Fallback functions don't have inputs in the ABI
-      const currentParameterTypes = Array.isArray(method.inputs) ? method.inputs.map(({ type }) => type) : []
-      const currentMethodSignature = `${method.name}(${currentParameterTypes.join(',')})`
-      return currentMethodSignature === methodSignature
-    }
-  )
-
+  const methodAbiFragment = findMethodAbiFragment(app.abi, methodSignature)
   if (!methodAbiFragment) {
     throw new Error(`${methodSignature} not found on ABI for ${destination}`)
   }

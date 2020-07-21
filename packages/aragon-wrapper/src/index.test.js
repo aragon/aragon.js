@@ -1164,10 +1164,10 @@ test('should throw if no functions are found, when calculating the transaction p
     }
   ])
   // act
-  return instance.calculateTransactionPath(null, '0x789')
+  return instance.calculateTransactionPath(null, '0x789', 'signature')
     .catch(err => {
       // assert
-      t.is(err.message, 'No functions specified in artifact for 0x789')
+      t.is(err.message, 'No method named signature on 0x789')
       /*
        * Note: This test also "asserts" that the permissions object, the app object and the
        * forwarders array does not throw any errors when they are being extracted from their observables.
