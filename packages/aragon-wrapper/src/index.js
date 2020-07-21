@@ -1496,7 +1496,7 @@ export default class Aragon {
       return this.getTransactionPath(aclAddr, methodSignature, params)
     } else {
       // Some ACL functions don't have a role and are instead protected by a manager
-      // Inspect the match method's ABI to find the position of the 'app' and 'role' parameters
+      // Inspect the matched method's ABI to find the position of the 'app' and 'role' parameters
       // needed to get the permission manager
       const methodAbiFragment = findMethodAbiFragment(acl.abi, methodSignature)
       if (!methodAbiFragment) {
@@ -1508,12 +1508,12 @@ export default class Aragon {
       const roleIndex = inputNames.indexOf('_role')
 
       if (appIndex === -1 || roleIndex === -1) {
-        throw new Error(`Method ${method} doesn't take _app and _role as input. Permission manager cannot be found.`)
+        throw new Error(`Method ${methodSignature} doesn't take _app and _role as input. Permission manager cannot be found.`)
       }
 
       const manager = await this.getPermissionManager(params[appIndex], params[roleIndex])
 
-      return this.getTransactionPath(aclAddr, method, params, manager)
+      return this.getTransactionPath(aclAddr, methodSignature, params, manager)
     }
   }
 

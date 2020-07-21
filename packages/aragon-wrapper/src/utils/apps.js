@@ -48,12 +48,13 @@ export function findAppMethodFromData (app, data, { allowDeprecated = true } = {
  * Find the method descriptor corresponding to an app's method signature.
  *
  * @param  {Object} app App artifact
- * @param  {Object} methodSignature Method signature to be called
+ * @param  {string} methodSignature Method signature to be called
  * @param  {Object} options Options
  * @param  {boolean} [options.allowDeprecated] Allow deprecated functions to be returned. Defaults to true.
  * @return {Object|void} Method with radspec notice and function signature, or undefined if none was found
  */
 export function findAppMethodFromSignature (app, methodSignature, { allowDeprecated = true } = {}) {
+  // Is the given method a full signature, e.g. 'foo(arg1,arg2,...)'
   const fullMethodSignature =
     Boolean(methodSignature) && methodSignature.includes('(') && methodSignature.includes(')')
 
