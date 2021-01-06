@@ -79,7 +79,7 @@
     "@aragon/os": "^4.2.1",
     "@aragon/rpc-messenger": "^2.0.0",
     "@babel/runtime": "^7.1.2",
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "dot-prop": "^4.2.0",
     "eth-ens-namehash": "^2.0.8",
     "ethjs-ens": "^2.0.1",
