@@ -17,6 +17,51 @@ import * as configurationKeys from '../configuration/keys'
  *        Require the cache to downgrade to localstorage even if IndexedDB is available
  */
 export default class Cache {
+  static cacheTracker
+
+  static initCacheTracker = async () => {
+    if(!Cache.cacheTracker) {
+      Cache.cacheTracker = new Cache(configurationKeys.CACHE_TRACKER_PREFIX)
+      await Cache.cacheTracker.init()
+    }
+  }
+
+  static trackNewCache = async (prefix) => {
+    if(!Cache.cacheTracker) {
+      await Cache.initCacheTracker()
+    }
+
+    const savedCaches = await Cache.cacheTracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
+
+    if(!savedCaches) {
+      await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [prefix])
+    } else {
+      await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [...savedCaches, prefix])
+    }
+  }
+
+  static clearAllCaches = async () => {
+    if(!Cache.cacheTracker) {
+      await Cache.initCacheTracker()
+    }
+
+    const savedCaches = await Cache.cacheTracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
+
+    return await Promise.all(
+      savedCaches.map(
+        async (savedCache) => {
+          try {
+            await localforage.dropInstance({
+              name: `localforage/${savedCache}`
+            })
+          } catch(e) {
+            console.log(e)
+          }
+        }
+      )
+    )
+  }
+
   #trackedKeys = new Set()
 
   constructor (prefix) {
@@ -53,6 +98,9 @@ export default class Cache {
 
       await this.db.ready()
     }
+
+    await Cache.trackNewCache(this.prefix)
+    
   }
 
   async set (key, value) {

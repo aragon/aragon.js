@@ -185,6 +185,7 @@ export default class Aragon {
     }
 
     await this.cache.init()
+    await Cache.initCacheTracker()
     await this.kernelProxy.updateInitializationBlock()
     await this.initAccounts(options.accounts)
     await this.initAcl(Object.assign({ aclAddress }, options.acl))
@@ -1897,3 +1898,5 @@ export { AddressIdentityProvider } from './identity'
 
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/rpc-messenger'
+
+export { Cache } from "./cache"
