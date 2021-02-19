@@ -1899,4 +1899,4 @@ export { AddressIdentityProvider } from './identity'
 // Re-export the Aragon RPC providers
 export { providers } from '@aragon/rpc-messenger'
 
-export { Cache } from "./cache"
+export { Cache }

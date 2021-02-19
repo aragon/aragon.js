@@ -26,17 +26,21 @@ export default class Cache {
     }
   }
 
+  static getSavedCaches = async () => {
+    const savedCaches = await Cache.cacheTracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
+    return Array.from(new Set(savedCaches)).filter(c => !!c)
+  }
+
   static trackNewCache = async (prefix) => {
     if(!Cache.cacheTracker) {
       await Cache.initCacheTracker()
     }
 
-    const savedCaches = await Cache.cacheTracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
-
-    if(!savedCaches) {
-      await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [prefix])
-    } else {
+    const savedCaches = await this.getSavedCaches()
+    if(savedCaches[0]) {
       await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [...savedCaches, prefix])
+    } else {
+      await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [prefix])
     }
   }
 
@@ -45,21 +49,18 @@ export default class Cache {
       await Cache.initCacheTracker()
     }
 
-    const savedCaches = await Cache.cacheTracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
+    const savedCaches = await this.getSavedCaches()
 
-    return await Promise.all(
-      savedCaches.map(
-        async (savedCache) => {
-          try {
-            await localforage.dropInstance({
-              name: `localforage/${savedCache}`
-            })
-          } catch(e) {
-            console.log(e)
-          }
-        }
-      )
-    )
+    for(let savedCache of savedCaches) {
+      try {
+        const instance = new Cache(savedCache)
+        await instance.init(false)
+        await instance.clear()
+        await instance.db.dropInstance()
+      } catch(e) {
+        console.log(e)
+      }
+    }
   }
 
   #trackedKeys = new Set()
@@ -72,7 +73,7 @@ export default class Cache {
       : [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
   }
 
-  async init () {
+  async init (track = true) {
     // Set up the changes observable
     this.changes = new Subject()
 
@@ -99,7 +100,9 @@ export default class Cache {
       await this.db.ready()
     }
 
-    await Cache.trackNewCache(this.prefix)
+    if(track) {
+      await Cache.trackNewCache(this.prefix)
+    }
     
   }
 
