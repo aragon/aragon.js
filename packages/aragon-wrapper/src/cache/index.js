@@ -19,36 +19,58 @@ import * as configurationKeys from '../configuration/keys'
 export default class Cache {
   static cacheTracker
 
-  static initCacheTracker = async () => {
+  static async getCacheTracker() {
     if(!Cache.cacheTracker) {
-      Cache.cacheTracker = new Cache(configurationKeys.CACHE_TRACKER_PREFIX)
-      await Cache.cacheTracker.init()
+      await Cache.initCacheTracker()
     }
+
+    return Cache.cacheTracker
   }
 
+  /**
+    * Initializes the singleton cache tracker
+    * 
+    * @returns {Promise<void>}
+    */
+  static initCacheTracker = async () => {
+    Cache.cacheTracker = new Cache(configurationKeys.CACHE_TRACKER_PREFIX)
+    await Cache.cacheTracker.init()
+  }
+
+  /**
+    * Returns currently saved caches's keys, without duplicates
+    * 
+    * @returns {Promise<string[]>}
+    */
   static getSavedCaches = async () => {
-    const savedCaches = await Cache.cacheTracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
+    const tracker = await Cache.getCacheTracker()
+    const savedCaches = await tracker.get(configurationKeys.CACHE_TRACKER_CACHES_KEY)
     return Array.from(new Set(savedCaches)).filter(c => !!c)
   }
 
+  /**
+    * Save new cache's key to track it and delete it later
+    * @param {string} prefix
+    *       String prefix to use for the cache
+    * 
+    * @returns {Promise<void>}
+    */
   static trackNewCache = async (prefix) => {
-    if(!Cache.cacheTracker) {
-      await Cache.initCacheTracker()
-    }
-
+    const tracker = await Cache.getCacheTracker()
     const savedCaches = await this.getSavedCaches()
     if(savedCaches[0]) {
-      await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [...savedCaches, prefix])
+      await tracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [...savedCaches, prefix])
     } else {
-      await Cache.cacheTracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [prefix])
+      await tracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [prefix])
     }
   }
 
-  static clearAllCaches = async () => {
-    if(!Cache.cacheTracker) {
-      await Cache.initCacheTracker()
-    }
-
+  /**
+    * Clears all tracked caches
+    * 
+    * @returns {Promise<void>}
+    */
+  static async clearAllCaches() {
     const savedCaches = await this.getSavedCaches()
 
     for(let savedCache of savedCaches) {
@@ -73,6 +95,13 @@ export default class Cache {
       : [localforage.INDEXEDDB, localforage.LOCALSTORAGE, memoryStorageDriver]
   }
 
+  /**
+    * Initializes a cache and optionally tracks it for later deletion
+    * @param {boolean} track
+    *       Flag that indicates if the cache should be tracked
+    * 
+    * @returns {Promise<void>}
+    */
   async init (track = true) {
     // Set up the changes observable
     this.changes = new Subject()
