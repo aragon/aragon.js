@@ -19,8 +19,8 @@ import * as configurationKeys from '../configuration/keys'
 export default class Cache {
   static cacheTracker
 
-  static async getCacheTracker() {
-    if(!Cache.cacheTracker) {
+  static async getCacheTracker () {
+    if (!Cache.cacheTracker) {
       await Cache.initCacheTracker()
     }
 
@@ -29,7 +29,7 @@ export default class Cache {
 
   /**
     * Initializes the singleton cache tracker
-    * 
+    *
     * @returns {Promise<void>}
     */
   static initCacheTracker = async () => {
@@ -39,7 +39,7 @@ export default class Cache {
 
   /**
     * Returns currently saved caches's keys, without duplicates
-    * 
+    *
     * @returns {Promise<string[]>}
     */
   static getSavedCaches = async () => {
@@ -52,13 +52,13 @@ export default class Cache {
     * Save new cache's key to track it and delete it later
     * @param {string} prefix
     *       String prefix to use for the cache
-    * 
+    *
     * @returns {Promise<void>}
     */
   static trackNewCache = async (prefix) => {
     const tracker = await Cache.getCacheTracker()
     const savedCaches = await this.getSavedCaches()
-    if(savedCaches[0]) {
+    if (savedCaches[0]) {
       await tracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [...savedCaches, prefix])
     } else {
       await tracker.set(configurationKeys.CACHE_TRACKER_CACHES_KEY, [prefix])
@@ -67,19 +67,19 @@ export default class Cache {
 
   /**
     * Clears all tracked caches
-    * 
+    *
     * @returns {Promise<void>}
     */
-  static async clearAllCaches() {
+  static async clearAllCaches () {
     const savedCaches = await this.getSavedCaches()
 
-    for(let savedCache of savedCaches) {
+    for (let savedCache of savedCaches) {
       try {
         const instance = new Cache(savedCache)
         await instance.init(false)
         await instance.clear()
         await instance.db.dropInstance()
-      } catch(e) {
+      } catch (e) {
         console.log(e)
       }
     }
@@ -99,7 +99,7 @@ export default class Cache {
     * Initializes a cache and optionally tracks it for later deletion
     * @param {boolean} track
     *       Flag that indicates if the cache should be tracked
-    * 
+    *
     * @returns {Promise<void>}
     */
   async init (track = true) {
@@ -129,10 +129,9 @@ export default class Cache {
       await this.db.ready()
     }
 
-    if(track) {
+    if (track) {
       await Cache.trackNewCache(this.prefix)
     }
-    
   }
 
   async set (key, value) {
