@@ -115,7 +115,8 @@ export default class Aragon {
       defaultGasPriceFn: () => {},
       provider: detectProvider(),
       cache: {
-        forceLocalStorage: false
+        forceLocalStorage: false,
+        prefix: null
       },
       events: {
         subscriptionDelayTime: 0
@@ -155,7 +156,8 @@ export default class Aragon {
     this.kernelProxy = makeProxy(daoAddress, 'Kernel', this.web3)
 
     // Set up cache
-    this.cache = new Cache(daoAddress)
+    const cachePrefix = options.cache.prefix ? `${options.cache.prefix}:${daoAddress}` : daoAddress
+    this.cache = new Cache(cachePrefix)
 
     // Set up app contexts
     this.appContextPool = new AppContextPool()
