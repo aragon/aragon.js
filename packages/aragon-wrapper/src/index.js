@@ -116,7 +116,7 @@ export default class Aragon {
       provider: detectProvider(),
       cache: {
         forceLocalStorage: false,
-        prefix: null 
+        prefix: null
       },
       events: {
         subscriptionDelayTime: 0
