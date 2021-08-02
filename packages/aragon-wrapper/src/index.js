@@ -118,7 +118,6 @@ export default class Aragon {
         forceLocalStorage: false,
         prefix: null 
       },
-      networkType: null,
       events: {
         subscriptionDelayTime: 0
       }
