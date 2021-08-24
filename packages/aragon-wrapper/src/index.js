@@ -20,6 +20,7 @@ import {
 import Web3 from 'web3'
 import { isAddress } from 'web3-utils'
 import dotprop from 'dot-prop'
+import { KNOWN_CHAINS } from 'use-wallet'
 
 // RPC
 import Messenger from '@aragon/rpc-messenger'
@@ -1040,9 +1041,11 @@ export default class Aragon {
    */
   async initNetwork () {
     this.network = new ReplaySubject(1)
+
+    const chainId = await this.web3.eth.getChainId()
     this.network.next({
-      id: await this.web3.eth.getChainId(),
-      type: await this.web3.eth.net.getNetworkType()
+      id: chainId,
+      type: KNOWN_CHAINS.get(chainId) || 'unknown'
     })
   }
 
