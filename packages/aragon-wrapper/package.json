@@ -87,7 +87,6 @@
     "localforage-memoryStorageDriver": "^0.9.2",
     "radspec": "^1.8.0",
     "rxjs": "^6.5.2",
-    "use-wallet": "https://github.com/aragon/use-wallet.git#multichain",
     "web3": "1.2.6",
     "web3-eth-abi": "1.2.6",
     "web3-utils": "1.2.6"
