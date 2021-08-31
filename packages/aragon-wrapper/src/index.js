@@ -1036,13 +1036,13 @@ export default class Aragon {
   /**
    * Initialise the network observable.
    *
-   * @param {Object} network of node
+   * @param {Object} network information of node
    * @return {Promise<void>}
    */
-  async initNetwork (network = {}) {
+  async initNetwork (network) {
     this.network = new ReplaySubject(1)
 
-    if (network.id && network.type) {
+    if (network) {
       this.network.next(network)
     } else {
       this.network.next({
