@@ -12,7 +12,7 @@ module.exports = [
   {
     name: '@aragon/wrapper',
     path: "packages/aragon-wrapper/dist/index.js",
-    limit: "540 KB"
+    limit: "740 KB"
   },
   {
     name: '@aragon/api-react',

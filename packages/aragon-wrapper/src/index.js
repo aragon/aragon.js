@@ -194,7 +194,7 @@ export default class Aragon {
     this.initApps()
     this.initForwarders()
     this.initAppIdentifiers()
-    this.initNetwork()
+    this.initNetwork(options.network)
     this.initGuiStyle(options.guiStyle)
     this.pathIntents = new Subject()
     this.transactions = new Subject()
@@ -1036,14 +1036,20 @@ export default class Aragon {
   /**
    * Initialise the network observable.
    *
+   * @param {Object} network information of node
    * @return {Promise<void>}
    */
-  async initNetwork () {
+  async initNetwork (network) {
     this.network = new ReplaySubject(1)
-    this.network.next({
-      id: await this.web3.eth.getChainId(),
-      type: await this.web3.eth.net.getNetworkType()
-    })
+
+    if (network) {
+      this.network.next(network)
+    } else {
+      this.network.next({
+        id: await this.web3.eth.getChainId(),
+        type: await this.web3.eth.net.getNetworkType()
+      })
+    }
   }
 
   /**
