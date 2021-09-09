@@ -39,13 +39,17 @@ export async function tryEvaluatingRadspec (intent, wrapper) {
   let evaluatedNotice
   if (method && method.notice) {
     try {
+      const network = await wrapper.network.pipe(first()).toPromise()
       evaluatedNotice = await radspec.evaluate(
         method.notice,
         {
           abi,
           transaction: intent
         },
-        { ethNode: wrapper.web3.currentProvider }
+        {
+          ethNode: wrapper.web3.currentProvider,
+          currency: network.nativeCurrency
+        }
       )
     } catch (err) {
       console.error(`Could not evaluate a description for given transaction data: ${intent.data}`, err)
