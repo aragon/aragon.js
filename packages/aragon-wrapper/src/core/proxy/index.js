@@ -27,12 +27,34 @@ export default class ContractProxy {
     options.fromBlock = options.fromBlock || this.initializationBlock
     eventNames = getEventNames(eventNames)
 
+
+
     // The `from`s only unpack the returned Promises (and not the array inside them!)
     if (eventNames.length === 1) {
       // Get a specific event or all events unfiltered
       return from(
-        this.contract.getPastEvents(eventNames[0], options)
-      )
+        new Promise(async resolve => {
+          // console.log("Resolving ", resolve);
+          const ranges = [];
+
+          for (let i = +options.fromBlock; i < +options.toBlock; i += 1024) {
+            ranges.push({ ...options, fromBlock: i, toBlock: (i + 1023) > options.toBlock ? options.toBlock : i + 1023 });
+          }
+
+          // console.log(ranges);
+          // console.log(options);
+
+          let res = [];
+          for (let range of ranges) {
+            const arr = await this.contract.getPastEvents(eventNames[0], range);
+            if (arr && arr.length)
+              res = res.concat(arr);
+          }
+          // console.log(ranges, res);
+          resolve(res);
+        })
+      );
+      // return from(this.contract.getPastEvents(eventNames[0], options));
     } else {
       // Get all events and filter ourselves
       return from(
