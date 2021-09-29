@@ -123,8 +123,29 @@ export function pastEvents (request, proxy, wrapper) {
   // The `from`s only unpack the returned Promises (and not the array inside them!)
   if (eventNames.length === 1) {
     // Get a specific event or all events unfiltered
+    if (!process.env.PAST_EVENTS_BATCH_SIZE) {
+      return from(
+        contract.getPastEvents(eventNames[0], eventOptions)
+      )
+    }
+    
     return from(
-      contract.getPastEvents(eventNames[0], eventOptions)
+      new Promise(async resolve => {
+          const options = eventOptions;
+          const ranges = [];
+
+          for (let i = +options.fromBlock; i < +options.toBlock; i += process.env.PAST_EVENTS_BATCH_SIZE) {
+            ranges.push({ ...options, fromBlock: i, toBlock: (i + process.env.PAST_EVENTS_BATCH_SIZE - 1) > options.toBlock ? options.toBlock : i + process.env.PAST_EVENTS_BATCH_SIZE - 1 });
+          }
+
+          let res = [];
+          for (let range of ranges) {
+            const arr = await contract.getPastEvents(eventNames[0], range)
+            if (arr && arr.length)
+              res = res.concat(arr);
+          }
+          resolve(res)
+        })
     )
   } else {
     // Get all events and filter ourselves
