@@ -2,10 +2,10 @@ import { fromEvent, from } from 'rxjs'
 import { delay, filter } from 'rxjs/operators'
 import { getConfiguration } from '../../configuration'
 import * as configurationKeys from '../../configuration/keys'
-import { getEventNames } from '../../utils/events'
+import { getEventNames, getPastEventsByBatch } from '../../utils/events'
 
 export default class ContractProxy {
-  constructor (address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
+  constructor(address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
     this.address = address
     this.contract = new web3.eth.Contract(
       jsonInterface,
@@ -23,33 +23,18 @@ export default class ContractProxy {
    *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
    * @return {Observable} Single-emission observable with an array of past events
    */
-  pastEvents (eventNames, options = {}) {
+  pastEvents(eventNames, options = {}) {
     options.fromBlock = options.fromBlock || this.initializationBlock
     eventNames = getEventNames(eventNames)
 
     // The `from`s only unpack the returned Promises (and not the array inside them!)
     if (eventNames.length === 1) {
-      if (!process.env.PAST_EVENTS_BATCH_SIZE) {
+      if (!process.env.REACT_APP_PAST_EVENTS_BATCH_SIZE) {
         return from(this.contract.getPastEvents(eventNames[0], options))
       }
       // Get a specific event or all events unfiltered
       return from(
-        new Promise(async resolve => {
-          // console.log("Resolving ", resolve);
-          const ranges = [];
-
-          for (let i = +options.fromBlock; i < +options.toBlock; i += process.env.PAST_EVENTS_BATCH_SIZE) {
-            ranges.push({ ...options, fromBlock: i, toBlock: (i + process.env.PAST_EVENTS_BATCH_SIZE - 1) > options.toBlock ? options.toBlock : i + process.env.PAST_EVENTS_BATCH_SIZE - 1 });
-          }
-
-          let res = [];
-          for (let range of ranges) {
-            const arr = await this.contract.getPastEvents(eventNames[0], range)
-            if (arr && arr.length)
-              res = res.concat(arr);
-          }
-          resolve(res);
-        })
+        getPastEventsByBatch({ options, contract: this.contract, eventName: eventNames[0] })
       )
     } else {
       // Get all events and filter ourselves
@@ -68,7 +53,7 @@ export default class ContractProxy {
    *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
    * @return {Observable} Multi-emission observable with individual events
    */
-  events (eventNames, options = {}) {
+  events(eventNames, options = {}) {
     options.fromBlock = options.fromBlock || this.initializationBlock
     eventNames = getEventNames(eventNames)
 
@@ -94,7 +79,7 @@ export default class ContractProxy {
     return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
   }
 
-  async call (method, ...params) {
+  async call(method, ...params) {
     if (!this.contract.methods[method]) {
       throw new Error(`No method named ${method} on ${this.address}`)
     }
@@ -106,7 +91,7 @@ export default class ContractProxy {
       : this.contract.methods[method](...params).call()
   }
 
-  async updateInitializationBlock () {
+  async updateInitializationBlock() {
     const initBlock = await this.contract.methods.getInitializationBlock().call()
     this.initializationBlock = initBlock
   }
