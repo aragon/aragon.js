@@ -5,7 +5,7 @@ import * as configurationKeys from '../../configuration/keys'
 import { getEventNames, getPastEventsByBatch } from '../../utils/events'
 
 export default class ContractProxy {
-  constructor(address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
+  constructor (address, jsonInterface, web3, { initializationBlock = 0 } = {}) {
     this.address = address
     this.contract = new web3.eth.Contract(
       jsonInterface,
@@ -23,7 +23,7 @@ export default class ContractProxy {
    *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
    * @return {Observable} Single-emission observable with an array of past events
    */
-  pastEvents(eventNames, options = {}) {
+  pastEvents (eventNames, options = {}) {
     options.fromBlock = options.fromBlock || this.initializationBlock
     eventNames = getEventNames(eventNames)
 
@@ -53,7 +53,7 @@ export default class ContractProxy {
    *   The fromBlock is defaulted to this app's initializationBlock unless explicitly provided
    * @return {Observable} Multi-emission observable with individual events
    */
-  events(eventNames, options = {}) {
+  events (eventNames, options = {}) {
     options.fromBlock = options.fromBlock || this.initializationBlock
     eventNames = getEventNames(eventNames)
 
@@ -79,7 +79,7 @@ export default class ContractProxy {
     return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
   }
 
-  async call(method, ...params) {
+  async call (method, ...params) {
     if (!this.contract.methods[method]) {
       throw new Error(`No method named ${method} on ${this.address}`)
     }
@@ -91,7 +91,7 @@ export default class ContractProxy {
       : this.contract.methods[method](...params).call()
   }
 
-  async updateInitializationBlock() {
+  async updateInitializationBlock () {
     const initBlock = await this.contract.methods.getInitializationBlock().call()
     this.initializationBlock = initBlock
   }

@@ -4,7 +4,7 @@ import { getConfiguration } from '../../configuration'
 import * as configurationKeys from '../../configuration/keys'
 import { getEventNames, getPastEventsByBatch } from '../../utils/events'
 
-export function call(request, proxy, wrapper) {
+export function call (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [
     address,
@@ -20,7 +20,7 @@ export function call(request, proxy, wrapper) {
   return contract.methods[methodAbiFragment.name](...params).call()
 }
 
-export async function intent(request, proxy, wrapper) {
+export async function intent (request, proxy, wrapper) {
   const [
     address,
     methodAbiFragment,
@@ -36,7 +36,7 @@ export async function intent(request, proxy, wrapper) {
   return wrapper.performTransactionPath(transactionPath, { external: true })
 }
 
-export function events(request, proxy, wrapper) {
+export function events (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [
     address,
@@ -89,7 +89,7 @@ export function events(request, proxy, wrapper) {
   return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
 }
 
-export function pastEvents(request, proxy, wrapper) {
+export function pastEvents (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [
     address,
