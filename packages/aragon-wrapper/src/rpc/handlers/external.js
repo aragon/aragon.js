@@ -123,11 +123,12 @@ export function pastEvents (request, proxy, wrapper) {
   // The `from`s only unpack the returned Promises (and not the array inside them!)
   if (eventNames.length === 1) {
     // Get a specific event or all events unfiltered
-    if (!process.env.REACT_APP_PAST_EVENTS_BATCH_SIZE) {
+    if (!getConfiguration(configurationKeys.PAST_EVENTS_BLOCK_SIZE)) {
       return from(
         contract.getPastEvents(eventNames[0], eventOptions)
       )
     }
+    eventOptions.blockSizeLimit = getConfiguration(configurationKeys.PAST_EVENTS_BLOCK_SIZE)
 
     return from(
       getPastEventsByBatch({ options: eventOptions, contract: contract, eventName: eventNames[0] })

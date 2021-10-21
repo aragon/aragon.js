@@ -13,11 +13,11 @@ export function getEventNames (eventNames) {
   return eventNames
 }
 
-// get all events by blocks (configured from REACT_APP_PAST_EVENTS_BATCH_SIZE environment variable)
+// get all events by blocks
 export async function getPastEventsByBatch ({ options, contract, eventName }) {
   let res = []
   const opts = { ...options }
-  const batchSize = +process.env.REACT_APP_PAST_EVENTS_BATCH_SIZE
+  const batchSize = +options.blockSizeLimit
 
   for (let i = +options.fromBlock; i < +options.toBlock; i += batchSize) {
     opts.fromBlock = i
