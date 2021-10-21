@@ -15,9 +15,10 @@ export function getEventNames (eventNames) {
 
 // get all events by blocks
 export async function getPastEventsByBatch ({ options, contract, eventName }) {
+
   let res = []
   const opts = { ...options }
-  const batchSize = +options.blockSize
+  const batchSize = +options.blockSizeLimit
 
   for (let i = +options.fromBlock; i < +options.toBlock; i += batchSize) {
     opts.fromBlock = i

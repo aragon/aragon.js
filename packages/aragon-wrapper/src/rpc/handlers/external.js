@@ -89,7 +89,7 @@ export function events (request, proxy, wrapper) {
   return eventDelay ? eventSource.pipe(delay(eventDelay)) : eventSource
 }
 
-export function pastEvents (request, proxy, wrapper, blockSize) {
+export function pastEvents (request, proxy, wrapper) {
   const web3 = wrapper.web3
   const [
     address,
@@ -123,12 +123,12 @@ export function pastEvents (request, proxy, wrapper, blockSize) {
   // The `from`s only unpack the returned Promises (and not the array inside them!)
   if (eventNames.length === 1) {
     // Get a specific event or all events unfiltered
-    if (!blockSize) {
+    if (!getConfiguration(configurationKeys.PAST_EVENTS_BLOCK_SIZE)) {
       return from(
         contract.getPastEvents(eventNames[0], eventOptions)
       )
     }
-    eventOptions.blockSize = blockSize
+    eventOptions.blockSizeLimit = getConfiguration(configurationKeys.PAST_EVENTS_BLOCK_SIZE)
 
     return from(
       getPastEventsByBatch({ options: eventOptions, contract: contract, eventName: eventNames[0] })

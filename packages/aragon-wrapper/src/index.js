@@ -99,6 +99,8 @@ export const detectProvider = () =>
  *        Options for handling Ethereum events
  * @param {boolean} [options.events.subscriptionEventDelay]
  *        Time in ms to delay a new event from a contract subscription
+ * @param {Object} [options.events.blockSizeLimit]
+ *        Optional max amount of blocks to fetch from past events
  * @param {Function} [options.defaultGasPriceFn=function]
  *        A factory function to provide the default gas price for transactions.
  *        It can return a promise of number string or a number string. The function
@@ -129,11 +131,17 @@ export default class Aragon {
       configurationKeys.FORCE_LOCAL_STORAGE,
       !!(options.cache && options.cache.forceLocalStorage)
     )
+
     setConfiguration(
       configurationKeys.SUBSCRIPTION_EVENT_DELAY,
       Number.isFinite(options.events && options.events.subscriptionEventDelay)
         ? options.events.subscriptionEventDelay
         : 0
+    )
+
+    setConfiguration(
+      configurationKeys.PAST_EVENTS_BLOCK_SIZE,
+      (options.events && options.events.blockSizeLimit) ? options.events.blockSizeLimit : false
     )
 
     // Set up Web3

@@ -29,9 +29,10 @@ export default class ContractProxy {
 
     // The `from`s only unpack the returned Promises (and not the array inside them!)
     if (eventNames.length === 1) {
-      if (!options.blockSize) {
+      if (!getConfiguration(configurationKeys.PAST_EVENTS_BLOCK_SIZE)) {
         return from(this.contract.getPastEvents(eventNames[0], options))
       }
+      options.blockSizeLimit = getConfiguration(configurationKeys.PAST_EVENTS_BLOCK_SIZE)
       // Get a specific event or all events unfiltered
       return from(
         getPastEventsByBatch({ options, contract: this.contract, eventName: eventNames[0] })
