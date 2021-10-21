@@ -29,7 +29,7 @@ export default class ContractProxy {
 
     // The `from`s only unpack the returned Promises (and not the array inside them!)
     if (eventNames.length === 1) {
-      if (!process.env.REACT_APP_PAST_EVENTS_BATCH_SIZE) {
+      if (!options.blockSize) {
         return from(this.contract.getPastEvents(eventNames[0], options))
       }
       // Get a specific event or all events unfiltered
