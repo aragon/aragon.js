@@ -2,6 +2,15 @@
 # yarn lockfile v1
 
 
+"@aragon/rpc-messenger@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@aragon/rpc-messenger/-/rpc-messenger-2.0.0.tgz#84d621fca88a723dc01db4f67b3936b6387a2c33"
+  integrity sha512-voJVVgI97MIeUQUTjHOH9GLzMjCvJlp6L2MEsj3nGKgj01VkFVZR7AlooDqqNytAnVnLvJmERtuZ2oXE33UtCg==
+  dependencies:
+    "@babel/runtime" "^7.1.2"
+    rxjs "^6.5.2"
+    uuid "^3.2.1"
+
 "@ava/babel-plugin-throws-helper@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@ava/babel-plugin-throws-helper/-/babel-plugin-throws-helper-4.0.0.tgz#8f5b45b7a0a79c6f4032de2101e0c221847efb62"
@@ -2071,9 +2080,9 @@ decamelize@^1.1.0, decamelize@^1.2.0:
   integrity sha1-9lNNFRSCabIDUue+4m9QH5oZEpA=
 
 decode-uri-component@^0.2.0:
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/decode-uri-component/-/decode-uri-component-0.2.0.tgz#eb3913333458775cb84cd1a1fae062106bb87545"
-  integrity sha1-6zkTMzRYd1y4TNGh+uBiEGu4dUU=
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/decode-uri-component/-/decode-uri-component-0.2.2.tgz#e69dbe25d37941171dd540e024c444cd5188e1e9"
+  integrity sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ==
 
 decompress-response@^3.3.0:
   version "3.3.0"
@@ -5572,7 +5581,7 @@ util-deprecate@~1.0.1:
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
 
-uuid@^3.3.2:
+uuid@^3.2.1, uuid@^3.3.2:
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.4.0.tgz#b23e4358afa8a202fe7a100af1f5f883f02007ee"
   integrity sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==
